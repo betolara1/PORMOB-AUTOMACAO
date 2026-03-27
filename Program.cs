@@ -315,50 +315,61 @@ namespace AutomacaoPromobTeste{
         // ────────────────────────────────────────────────────────────────────
         // Importação
         static void ClicarBotaoImportar(Window janelaPromob){
-            while (true){
-                AutomationElement? btnFound = null;
-
-                // 1. Tenta usar o cache global primeiro
-                if (ElementoValido(_cachedBotaoImportar)){
-                    Log("  [OK] Usando botão 'Importar' do cache.");
-                    btnFound = _cachedBotaoImportar;
-                }
-                else {
-                    Log("  [INFO] Iniciando busca persistente do botão 'Importar Projeto'...");
-                    
-                    // Tenta localizar o host (Ribbon) do botão de forma otimizada
-                    var buscaEm = ObterHostOuJanela(janelaPromob);
-
-                    // Busca pelo ID ou Fallback (limitado a 4 níveis)
-                    btnFound = BuscarElementoComFallback(
-                        buscaEm,
-                        cf => cf.ByAutomationId(AutomationIdImportar),
-                        e => (e.AutomationId ?? "").Equals(AutomationIdImportar, StringComparison.OrdinalIgnoreCase) ||
-                             (e.Name ?? "").Equals("Importar projeto", StringComparison.OrdinalIgnoreCase),
-                        limitarAoMesmoProcesso: true,
-                        processId: _cachedProcessIdPromob
-                    );
-                }
-
-                if (btnFound != null){
-                    // 2. Garante que o Promob está visível e focado
-                    AtivarJanela(janelaPromob);
-
-                    // 3. Clicar no botão
-                    ClicarComFallback(btnFound);
-                    _cachedBotaoImportar = btnFound; // Garante que está em cache se foi achado agora
-                    
-                    break; // Sucesso! Sai do loop.
-
-                    Log("  [AVISO] Clique não surtiu efeito após 5s. Invalidando cache e tentando novamente...", LogLevel.Warn);
-                    _cachedBotaoImportar = null; // Invalida para forçar nova busca se necessário
-                }
-                else {
-                    Log("  [AVISO] Botão 'Importar' não encontrado. Tentando novamente em 5s...", LogLevel.Warn);
-                }
-
-                Thread.Sleep(5000); // Aguarda 5 segundos conforme solicitado pelo usuário
+            // OPTIMIZAÇÃO: Tenta usar o cache global primeiro
+            if (ElementoValido(_cachedBotaoImportar)){
+                Log("  [OK] Usando botão 'Importar' do cache.");
+                ClicarComFallback(_cachedBotaoImportar!);
+                return;
             }
+
+            Log("  [INFO] Iniciando busca persistente do botão 'Importar Projeto'...");
+            
+            AutomationElement? btnFound = null;
+            int tentativas = 0;
+
+            while (btnFound == null){
+                tentativas++;
+                
+                // 1. Garante que o Promob está visível e focado em cada tentativa
+                // (Se estiver minimizado ou com algo na frente, traz para cima)
+                AtivarJanela(janelaPromob);
+
+                // 2. Verifica se algum popup lateral ou de aviso está bloqueando a busca
+                var desktop = janelaPromob.Automation.GetDesktop();
+                var popup = EncontrarPopupAtencao(desktop);
+                if (popup != null && popup.Properties.ProcessId == janelaPromob.Properties.ProcessId){
+                    Log($"  [AVISO] Popup detectado durante a busca de importar: '{popup.Name}'. Fechando...");
+                    TratarPopupGenerico(popup.AsWindow());
+                    AtivarJanela(janelaPromob);
+                }
+
+                // 3. Tenta localizar o host (Ribbon) do botão
+                var buscaEm = ObterHostOuJanela(janelaPromob);
+
+                // 4. Busca pelo ID ou Fallback
+                btnFound = buscaEm.FindFirstDescendant(cf => cf.ByAutomationId(AutomationIdImportar)) ??
+                           BuscarElementoComFallback(
+                               buscaEm,
+                               cf => cf.ByName("Importar projeto").Or(cf.ByAutomationId(AutomationIdImportar)),
+                               e => (e.AutomationId ?? "").Equals(AutomationIdImportar, StringComparison.OrdinalIgnoreCase) ||
+                                    (e.Name ?? "").Equals("Importar projeto", StringComparison.OrdinalIgnoreCase),
+                               limitarAoMesmoProcesso: true,
+                               processId: _cachedProcessIdPromob
+                           );
+
+                if (btnFound != null) break;
+
+                // 5. Se não achou, informa e espera antes de tentar novamente
+                if (tentativas % 5 == 0){
+                    Log($"  [INFO] Ainda procurando botão 'Importar' (tentativa {tentativas})...");
+                }
+                
+                Thread.Sleep(500); // OPTIMIZAÇÃO: Polling mais rápido (de 2s para 0.5s)
+            }
+
+            Log($"  [OK] Botão encontrado após {tentativas} tentativa(s)!");
+            _cachedBotaoImportar = btnFound;
+            ClicarComFallback(btnFound);
         }
 
         //────────────────────────────────────────────────────────────────────
@@ -522,7 +533,7 @@ namespace AutomacaoPromobTeste{
 
                     return false;
                 } catch { return true; }
-            }, 5000);
+            }, 2000);
 
             if (fechou) Log("  [OK] Diálogo de arquivo fechado com sucesso.");
             else Log("  [AVISO] Diálogo não fechou no tempo esperado.", LogLevel.Warn);
@@ -593,13 +604,6 @@ namespace AutomacaoPromobTeste{
                 Log("  [AVISO] Botão de cancelamento não encontrado. Usando ESC...", LogLevel.Warn);
                 Keyboard.Type(VirtualKeyShort.ESCAPE);
             }
-
-            // CORREÇÃO: apenas uma chamada ao Vision (o código original chamava duas vezes o mesmo método sem motivo)
-            VisionHelper.AguardarEstadoTela(
-                "Popup de atenção fechou e a lista de projetos importados está visível no Promob",
-                maxTentativas: 6,
-                intervaloMs: 1200,
-                fallbackMs: 1500);
         }
 
         //────────────────────────────────────────────────────────────────────

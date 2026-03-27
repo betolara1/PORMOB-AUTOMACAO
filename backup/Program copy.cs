@@ -604,13 +604,6 @@ namespace AutomacaoPromobTeste{
                 Log("  [AVISO] Botão de cancelamento não encontrado. Usando ESC...", LogLevel.Warn);
                 Keyboard.Type(VirtualKeyShort.ESCAPE);
             }
-
-            // CORREÇÃO: apenas uma chamada ao Vision (o código original chamava duas vezes o mesmo método sem motivo)
-            VisionHelper.AguardarEstadoTela(
-                "Popup de atenção fechou e a lista de projetos importados está visível no Promob",
-                maxTentativas: 6,
-                intervaloMs: 1200,
-                fallbackMs: 1500);
         }
 
         //────────────────────────────────────────────────────────────────────
