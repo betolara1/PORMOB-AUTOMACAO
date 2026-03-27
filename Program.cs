@@ -133,11 +133,18 @@ namespace AutomacaoPromobTeste{
         // ────────────────────────────────────────────────────────────────────
         // Fluxo principal
         static void ProcessarArquivo(UIA3Automation automation, string caminhoArquivo){
-            InvalidarCacheUi();
-
             Log("  [1/8] Localizando janela do Promob...");
             var janela = AguardarJanelaPromob(automation, TimeoutLongo)
                 ?? throw new Exception("Janela do Promob não encontrada. O Promob está aberto?");
+            
+            // OPTIMIZAÇÃO: Só invalida o cache se o ProcessId mudou (Promob reiniciou)
+            int currentPid = janela.Properties.ProcessId.ValueOrDefault;
+            if (_cachedProcessIdPromob.HasValue && _cachedProcessIdPromob.Value != currentPid){
+                Log("  [INFO] Novo ProcessId detectado. Invalidando cache de UI.");
+                InvalidarCacheUi();
+            }
+            _cachedProcessIdPromob = currentPid;
+
             AtivarJanela(janela);
 
             // // LISTAR OS BOTÕES
@@ -303,35 +310,18 @@ namespace AutomacaoPromobTeste{
             else{
                 Log("  [AVISO] Botão 'Orçamento' não encontrado.", LogLevel.Warn);
             }
-
-            // Log("  [INFO] Procurando item 'Listagem'...");
-            // var itemListagem = EsperarAteRetorno(() =>{
-            //     var desktop = automation.GetDesktop();
-            //     var el = desktop.FindFirstDescendant(cf =>
-            //         cf.ByControlType(FlaUI.Core.Definitions.ControlType.MenuItem)
-            //           .And(cf.ByAutomationId("bListagem").Or(cf.ByName("Listagem"))));
-
-            //     if (el != null)
-            //         return el;
-
-            //     return janela.FindFirstDescendant(cf =>
-            //         cf.ByControlType(FlaUI.Core.Definitions.ControlType.MenuItem)
-            //           .And(cf.ByAutomationId("bListagem").Or(cf.ByName("Listagem"))));
-            // }, 4000);
-
-            // if (itemListagem != null){
-            //     Log("  [OK] Item 'Listagem' encontrado. Clicando...");
-            //     ClicarComFallback(itemListagem);
-            //     EsperarUiRespirar();
-            // }
-            // else{
-            //     Log("  [AVISO] Item 'Listagem' não encontrado.", LogLevel.Warn);
-            // }
         }
 
         // ────────────────────────────────────────────────────────────────────
         // Importação
         static void ClicarBotaoImportar(Window janelaPromob){
+            // OPTIMIZAÇÃO: Tenta usar o cache global primeiro
+            if (ElementoValido(_cachedBotaoImportar)){
+                Log("  [OK] Usando botão 'Importar' do cache.");
+                ClicarComFallback(_cachedBotaoImportar!);
+                return;
+            }
+
             Log("  [INFO] Iniciando busca persistente do botão 'Importar Projeto'...");
             
             AutomationElement? btnFound = null;
@@ -374,7 +364,7 @@ namespace AutomacaoPromobTeste{
                     Log($"  [INFO] Ainda procurando botão 'Importar' (tentativa {tentativas})...");
                 }
                 
-                Thread.Sleep(2000); 
+                Thread.Sleep(500); // OPTIMIZAÇÃO: Polling mais rápido (de 2s para 0.5s)
             }
 
             Log($"  [OK] Botão encontrado após {tentativas} tentativa(s)!");
@@ -641,19 +631,37 @@ namespace AutomacaoPromobTeste{
                 itemProjeto.DoubleClick();
             }
             else{
-                Log("  [AVISO] Elemento do projeto não encontrado. Tentando botão 'Abrir projeto'...", LogLevel.Warn);
+                Log("  [AVISO] Elemento do projeto não encontrado via nome. Tentando localizar o primeiro item da lista...", LogLevel.Warn);
 
-                var btnAbrir = janelaPromob.FindFirstDescendant(cf =>
-                    cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button)
-                      .And(cf.ByName("Abrir projeto").Or(cf.ByName("Abrir")).Or(cf.ByName("Acessar")).Or(cf.ByName("Editar"))));
+                // Busca por QUALQUER item de lista que possa ser um projeto
+                var qualquerItem = BuscarElementoComFallback(
+                    janelaPromob,
+                    cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.ListItem).Or(cf.ByControlType(FlaUI.Core.Definitions.ControlType.DataItem)),
+                    e => e.ControlType == FlaUI.Core.Definitions.ControlType.ListItem || e.ControlType == FlaUI.Core.Definitions.ControlType.DataItem,
+                    limitarAoMesmoProcesso: true,
+                    processId: _cachedProcessIdPromob
+                );
 
-                if (btnAbrir != null){
-                    ClicarComFallback(btnAbrir);
-                    Log("  [OK] Botão de abrir clicado.");
+                if (qualquerItem != null){
+                    Log($"  [OK] Item genérico encontrado ('{qualquerItem.Name}'). Executando duplo clique...");
+                    qualquerItem.DoubleClick();
+                    EsperarUiRespirar(800);
                 }
                 else{
-                    Log("  [AVISO] Nenhuma forma de abrir encontrada. Tentando ENTER...", LogLevel.Warn);
-                    Keyboard.Type(VirtualKeyShort.RETURN);
+                    Log("  [AVISO] Nenhum item de lista encontrado. Tentando botão 'Abrir projeto'...", LogLevel.Warn);
+
+                    var btnAbrir = janelaPromob.FindFirstDescendant(cf =>
+                        cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button)
+                          .And(cf.ByName("Abrir projeto").Or(cf.ByName("Abrir")).Or(cf.ByName("Acessar")).Or(cf.ByName("Editar"))));
+
+                    if (btnAbrir != null){
+                        Log("  [OK] Botão de abrir encontrado. Clicando...");
+                        ClicarComFallback(btnAbrir);
+                    }
+                    else{
+                        Log("  [AVISO] Nenhuma forma de abrir encontrada. Tentando ENTER...", LogLevel.Warn);
+                        Keyboard.Type(VirtualKeyShort.RETURN);
+                    }
                 }
             }
 
@@ -919,9 +927,21 @@ namespace AutomacaoPromobTeste{
             if (ElementoValido(_cachedHost))
                 return _cachedHost!;
 
-            _cachedHost = janela.FindFirstDescendant(AutomationIdHost);
+            // OPTIMIZAÇÃO: Busca o host apenas nos níveis superficiais do Promob (mais rápido)
+            // Geralmente elementHost1 está nos primeiros 3-4 níveis
+            _cachedHost = BuscarElementoComFallback(
+                janela,
+                cf => cf.ByAutomationId(AutomationIdHost),
+                e => (e.AutomationId ?? "").Equals(AutomationIdHost, StringComparison.OrdinalIgnoreCase),
+                limitarAoMesmoProcesso: true,
+                processId: _cachedProcessIdPromob
+            );
+
             if (_cachedHost != null)
-                Log("  [INFO] elementHost1 encontrado e cacheado.", LogLevel.Debug);
+                Log($"  [OK] {AutomationIdHost} localizado e cacheado para uso futuro.");
+            else{
+                Log($"  [AVISO] {AutomationIdHost} não encontrado. Usando janela principal.", LogLevel.Debug);
+            }
 
             return _cachedHost ?? janela;
         }

@@ -25,3 +25,4 @@ C:\Users\Ralf\Desktop\Programação\AutomacaoPromobTeste\bin\Debug\net8.0-window
 C:\Users\Ralf\Desktop\Programação\AutomacaoPromobTeste\bin\Debug\net8.0-windows\runtimes\win\lib\net8.0\System.Diagnostics.EventLog.dll
 C:\Users\Ralf\Desktop\Programação\AutomacaoPromobTeste\bin\Debug\net8.0-windows\runtimes\win\lib\net8.0\System.Diagnostics.PerformanceCounter.dll
 C:\Users\Ralf\Desktop\Programação\AutomacaoPromobTeste\bin\Debug\net8.0-windows\runtimes\win\lib\net8.0\System.Management.dll
+C:\Users\Ralf\Desktop\Programação\AutomacaoPromobTeste\obj\Debug\net8.0-windows\AutomacaoPromobTeste.sourcelink.json

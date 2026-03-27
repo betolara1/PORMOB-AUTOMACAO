@@ -16,20 +16,20 @@ graph TD
     GetFile -- Sim --> Process[Processar Arquivo]
     
     subgraph Passo a Passo do Processamento
-    Process --> FindPromob[1. Localizar/Focar Janela Promob]
-    FindPromob --> ClickImport[2. Acionar Botão Importar]
-    ClickImport --> SelectFile[3. Selecionar Arquivo no Windows]
-    SelectFile --> AdvWizard[4. Avançar Wizard de Importação]
-    AdvWizard --> HandlePopups[5. Tratar Popups de Novo Projeto]
-    HandlePopups --> OpenProj[6. Abrir Projeto e Validar Carga]
-    OpenProj --> Navigate[7. Navegar: Ferramentas > Orçamento]
-    Navigate --> CloseProj[8. Fechar Projeto (Ignorar Salvar)]
+    Process --> FindPromob["1. Localizar/Focar Janela Promob"]
+    FindPromob --> ClickImport["2. Acionar Botão Importar"]
+    ClickImport --> SelectFile["3. Selecionar Arquivo no Windows"]
+    SelectFile --> AdvWizard["4. Avançar Wizard de Importação"]
+    AdvWizard --> HandlePopups["5. Tratar Popups de Novo Projeto"]
+    HandlePopups --> OpenProj["6. Abrir Projeto e Validar Carga"]
+    OpenProj --> Navigate["7. Navegar: Ferramentas > Orçamento"]
+    Navigate --> CloseProj["8. Fechar Projeto (Ignorar Salvar)"]
     end
     
-    CloseProj --> Success[✅ Sucesso: Excluir Arquivo] --> MainLoop
+    CloseProj --> Success["✅ Sucesso: Excluir Arquivo"] --> MainLoop
     
     Process -.-> OnError{Ocorreu Erro?}
-    OnError -- Sim --> Recovery[⚠️ Recuperação: ESC + Reset UI]
+    OnError -- Sim --> Recovery["⚠️ Recuperação: ESC + Reset UI"]
     Recovery --> MainLoop
 ```
 
