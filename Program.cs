@@ -304,16 +304,21 @@ namespace AutomacaoPromobTeste{
         // ────────────────────────────────────────────────────────────────────
         // Importação
         static void ClicarBotaoImportar(Window janelaPromob){
+            int tentativas = 1;
             while (true){
+                var swTotal = Stopwatch.StartNew();
+                Log($"  [INFO] Procurando botão 'Importar' (Tentativa {tentativas})...");
+                
                 AutomationElement? btnFound = null;
 
                 // 1. Tenta usar o cache global primeiro
                 if (ElementoValido(_cachedBotaoImportar)){
-                    Log("  [OK] Usando botão 'Importar' do cache.");
+                    Log("    [CACHE] Usando botão 'Importar' do cache.");
                     btnFound = _cachedBotaoImportar;
                 }
                 else {
-                    Log("  [INFO] Iniciando busca persistente do botão 'Importar Projeto'...");
+                    var swBusca = Stopwatch.StartNew();
+                    Log("    [SEARCH] Iniciando busca persistente do botão 'Importar Projeto'...");
                     
                     // Tenta localizar o host (Ribbon) do botão de forma otimizada
                     var buscaEm = ObterHostOuJanela(janelaPromob);
@@ -327,6 +332,10 @@ namespace AutomacaoPromobTeste{
                         limitarAoMesmoProcesso: true,
                         processId: _cachedProcessIdPromob
                     );
+                    swBusca.Stop();
+
+                    if (btnFound != null) Log($"    [OK] Botão localizado em {swBusca.ElapsedMilliseconds}ms.");
+                    else Log($"    [AVISO] Botão não encontrado após {swBusca.ElapsedMilliseconds}ms.");
                 }
 
                 if (btnFound != null){
@@ -334,19 +343,21 @@ namespace AutomacaoPromobTeste{
                     AtivarJanela(janelaPromob);
 
                     // 3. Clicar no botão
+                    Log("    [ACTION] Clicando no botão 'Importar'...");
                     ClicarComFallback(btnFound);
-                    _cachedBotaoImportar = btnFound; // Garante que está em cache se foi achado agora
+                    _cachedBotaoImportar = btnFound; 
                     
-                    break; // Sucesso! Sai do loop.
-
-                    Log("  [AVISO] Clique não surtiu efeito após 5s. Invalidando cache e tentando novamente...", LogLevel.Warn);
-                    _cachedBotaoImportar = null; // Invalida para forçar nova busca se necessário
+                    swTotal.Stop();
+                    Log($"  [SUCESSO] Clique executado com sucesso (Tempo total: {swTotal.ElapsedMilliseconds}ms).");
+                    break; 
                 }
                 else {
-                    Log("  [AVISO] Botão 'Importar' não encontrado. Tentando novamente em 5s...", LogLevel.Warn);
+                    swTotal.Stop();
+                    Log($"  [AVISO] Tentativa {tentativas} falhou ({swTotal.ElapsedMilliseconds}ms). Aguardando 5s...", LogLevel.Warn);
                 }
 
-                Thread.Sleep(5000); // Aguarda 5 segundos conforme solicitado pelo usuário
+                tentativas++;
+                Thread.Sleep(5000); 
             }
         }
 
@@ -935,6 +946,9 @@ namespace AutomacaoPromobTeste{
             if (ElementoValido(_cachedHost))
                 return _cachedHost!;
 
+            Log($"    [DEBUG] Buscando {AutomationIdHost}...");
+            var swHost = Stopwatch.StartNew();
+            
             // OPTIMIZAÇÃO: Busca o host apenas nos níveis superficiais do Promob (mais rápido)
             // Geralmente elementHost1 está nos primeiros 3-4 níveis
             _cachedHost = BuscarElementoComFallback(
@@ -944,11 +958,12 @@ namespace AutomacaoPromobTeste{
                 limitarAoMesmoProcesso: true,
                 processId: _cachedProcessIdPromob
             );
+            swHost.Stop();
 
             if (_cachedHost != null)
-                Log($"  [OK] {AutomationIdHost} localizado e cacheado para uso futuro.");
+                Log($"    [OK] {AutomationIdHost} localizado ({swHost.ElapsedMilliseconds}ms) e cacheado.");
             else{
-                Log($"  [AVISO] {AutomationIdHost} não encontrado. Usando janela principal.", LogLevel.Debug);
+                Log($"    [AVISO] {AutomationIdHost} não encontrado após {swHost.ElapsedMilliseconds}ms. Usando janela principal.", LogLevel.Debug);
             }
 
             return _cachedHost ?? janela;
@@ -961,26 +976,43 @@ namespace AutomacaoPromobTeste{
             Func<AutomationElement, bool>? filtroFallback = null,
             bool limitarAoMesmoProcesso = false,
             int? processId = null){
-            var direto = raiz.FindFirstDescendant(buscaPrincipal);
-            if (direto != null)
-                return direto;
+            
+            // FASE 1: Varredura Rasa (BFS-like) — Muito mais rápido para elementos estruturais
+            var swFase1 = Stopwatch.StartNew();
+            if (filtroFallback != null){
+                var todos = BuscarAteNivel(raiz, maxNivel: 4);
+                var consulta = todos.AsEnumerable();
 
-            if (filtroFallback == null)
-                return null;
+                if (limitarAoMesmoProcesso && processId.HasValue){
+                    consulta = consulta.Where(e =>{
+                        try { return e.Properties.ProcessId.ValueOrDefault == processId.Value; }
+                        catch { return false; }
+                    });
+                }
 
-            // CORREÇÃO: FindAllDescendants() é muito caro — limita a profundidade máxima da busca
-            // usando FindAllChildren recursivo até 4 níveis, evitando varrer a árvore inteira
-            var todos = BuscarAteNivel(raiz, maxNivel: 4);
-            var consulta = todos.AsEnumerable();
+                var resultado = consulta.FirstOrDefault(filtroFallback);
+                swFase1.Stop();
 
-            if (limitarAoMesmoProcesso && processId.HasValue){
-                consulta = consulta.Where(e =>{
-                    try { return e.Properties.ProcessId.ValueOrDefault == processId.Value; }
-                    catch { return true; }
-                });
+                if (resultado != null) {
+                    Log($"      [PERF] Varredura Rasa encontrou o elemento em {swFase1.ElapsedMilliseconds}ms.");
+                    return resultado;
+                }
             }
 
-            return consulta.FirstOrDefault(filtroFallback);
+            // FASE 2: Busca Profunda (UIA Nativo) — Fallback se a rasa falhar
+            Log($"      [PERF] Varredura Rasa falhou ou ignorada ({swFase1.ElapsedMilliseconds}ms). Ativando Busca Profunda...");
+            
+            var swFase2 = Stopwatch.StartNew();
+            var direto = raiz.FindFirstDescendant(buscaPrincipal);
+            swFase2.Stop();
+
+            if (direto != null) {
+                Log($"      [PERF] Busca Profunda (UIA) encontrou em {swFase2.ElapsedMilliseconds}ms.");
+                return direto;
+            }
+
+            Log($"      [PERF] Ambas as buscas falharam (Total: {swFase1.ElapsedMilliseconds + swFase2.ElapsedMilliseconds}ms).");
+            return null;
         }
 
 
