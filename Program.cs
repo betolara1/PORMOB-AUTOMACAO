@@ -56,27 +56,10 @@ namespace AutomacaoPromobTeste{
         [DllImport("kernel32.dll")] static extern IntPtr GlobalLock(IntPtr hMem);
         [DllImport("kernel32.dll")] static extern bool GlobalUnlock(IntPtr hMem);
         [DllImport("user32.dll")] static extern IntPtr GetForegroundWindow();
-        [DllImport("kernel32.dll", SetLastError = true)] static extern IntPtr GetStdHandle(int nStdHandle);
-        [DllImport("kernel32.dll")] static extern bool GetConsoleMode(IntPtr hConsoleHandle, out uint lpMode);
-        [DllImport("kernel32.dll")] static extern bool SetConsoleMode(IntPtr hConsoleHandle, uint dwMode);
         const uint CF_UNICODETEXT = 13;
         const uint GMEM_MOVEABLE = 0x0002;
 
-        const int STD_INPUT_HANDLE = -10;
-        const uint ENABLE_QUICK_EDIT_MODE = 0x0040;
-        const uint ENABLE_EXTENDED_FLAGS = 0x0080;
-
-        static void DesativarQuickEdit(){
-            IntPtr conHandle = GetStdHandle(STD_INPUT_HANDLE);
-            if (GetConsoleMode(conHandle, out uint mode)){
-                mode &= ~ENABLE_QUICK_EDIT_MODE;
-                mode |= ENABLE_EXTENDED_FLAGS;
-                SetConsoleMode(conHandle, mode);
-            }
-        }
-
         static void Main(string[] args){
-            DesativarQuickEdit();
             Console.OutputEncoding = System.Text.Encoding.UTF8;
             Banner();
 
@@ -174,17 +157,6 @@ namespace AutomacaoPromobTeste{
             Log("  [2/8] Acionando Importar...");
             AtivarJanela(janela);
             Medir("Clicar botão Importar", () => ClicarBotaoImportar(janela));
-
-            // CORREÇÃO: timeout aumentado de 400ms para 4000ms antes de cair no Vision
-            // O Promob pode demorar mais de 400ms para abrir o wizard
-            if (!EsperarAte(() =>{
-                var wizard = EncontrarJanelaWizard(automation, janela);
-                return wizard != null || JanelaArquivoAberta(automation) != null;
-            }, 4000)){  // era 400 — muito curto, caía sempre no Vision
-                VisionHelper.AguardarEstadoTela(
-                    "Wizard de importação do Promob visível, com campo de caminho de arquivo ou botão '...' para procurar arquivo",
-                    maxTentativas: 8, intervaloMs: 1200, fallbackMs: 2000);
-            }
 
             Log("  [3/8] Abrindo busca de arquivo e preenchendo caminho...");
             var janelaWizard = EncontrarJanelaWizard(automation, janela) ?? janela;
@@ -332,61 +304,50 @@ namespace AutomacaoPromobTeste{
         // ────────────────────────────────────────────────────────────────────
         // Importação
         static void ClicarBotaoImportar(Window janelaPromob){
-            // OPTIMIZAÇÃO: Tenta usar o cache global primeiro
-            if (ElementoValido(_cachedBotaoImportar)){
-                Log("  [OK] Usando botão 'Importar' do cache.");
-                ClicarComFallback(_cachedBotaoImportar!);
-                return;
-            }
+            while (true){
+                AutomationElement? btnFound = null;
 
-            Log("  [INFO] Iniciando busca persistente do botão 'Importar Projeto'...");
-            
-            AutomationElement? btnFound = null;
-            int tentativas = 0;
+                // 1. Tenta usar o cache global primeiro
+                if (ElementoValido(_cachedBotaoImportar)){
+                    Log("  [OK] Usando botão 'Importar' do cache.");
+                    btnFound = _cachedBotaoImportar;
+                }
+                else {
+                    Log("  [INFO] Iniciando busca persistente do botão 'Importar Projeto'...");
+                    
+                    // Tenta localizar o host (Ribbon) do botão de forma otimizada
+                    var buscaEm = ObterHostOuJanela(janelaPromob);
 
-            while (btnFound == null){
-                tentativas++;
-                
-                // 1. Garante que o Promob está visível e focado em cada tentativa
-                // (Se estiver minimizado ou com algo na frente, traz para cima)
-                AtivarJanela(janelaPromob);
+                    // Busca pelo ID ou Fallback (limitado a 4 níveis)
+                    btnFound = BuscarElementoComFallback(
+                        buscaEm,
+                        cf => cf.ByAutomationId(AutomationIdImportar),
+                        e => (e.AutomationId ?? "").Equals(AutomationIdImportar, StringComparison.OrdinalIgnoreCase) ||
+                             (e.Name ?? "").Equals("Importar projeto", StringComparison.OrdinalIgnoreCase),
+                        limitarAoMesmoProcesso: true,
+                        processId: _cachedProcessIdPromob
+                    );
+                }
 
-                // 2. Verifica se algum popup lateral ou de aviso está bloqueando a busca
-                var desktop = janelaPromob.Automation.GetDesktop();
-                var popup = EncontrarPopupAtencao(desktop);
-                if (popup != null && popup.Properties.ProcessId == janelaPromob.Properties.ProcessId){
-                    Log($"  [AVISO] Popup detectado durante a busca de importar: '{popup.Name}'. Fechando...");
-                    TratarPopupGenerico(popup.AsWindow());
+                if (btnFound != null){
+                    // 2. Garante que o Promob está visível e focado
                     AtivarJanela(janelaPromob);
+
+                    // 3. Clicar no botão
+                    ClicarComFallback(btnFound);
+                    _cachedBotaoImportar = btnFound; // Garante que está em cache se foi achado agora
+                    
+                    break; // Sucesso! Sai do loop.
+
+                    Log("  [AVISO] Clique não surtiu efeito após 5s. Invalidando cache e tentando novamente...", LogLevel.Warn);
+                    _cachedBotaoImportar = null; // Invalida para forçar nova busca se necessário
+                }
+                else {
+                    Log("  [AVISO] Botão 'Importar' não encontrado. Tentando novamente em 5s...", LogLevel.Warn);
                 }
 
-                // 3. Tenta localizar o host (Ribbon) do botão
-                var buscaEm = ObterHostOuJanela(janelaPromob);
-
-                // 4. Busca pelo ID ou Fallback
-                btnFound = buscaEm.FindFirstDescendant(cf => cf.ByAutomationId(AutomationIdImportar)) ??
-                           BuscarElementoComFallback(
-                               buscaEm,
-                               cf => cf.ByName("Importar projeto").Or(cf.ByAutomationId(AutomationIdImportar)),
-                               e => (e.AutomationId ?? "").Equals(AutomationIdImportar, StringComparison.OrdinalIgnoreCase) ||
-                                    (e.Name ?? "").Equals("Importar projeto", StringComparison.OrdinalIgnoreCase),
-                               limitarAoMesmoProcesso: true,
-                               processId: _cachedProcessIdPromob
-                           );
-
-                if (btnFound != null) break;
-
-                // 5. Se não achou, informa e espera antes de tentar novamente
-                if (tentativas % 5 == 0){
-                    Log($"  [INFO] Ainda procurando botão 'Importar' (tentativa {tentativas})...");
-                }
-                
-                Thread.Sleep(500); // OPTIMIZAÇÃO: Polling mais rápido (de 2s para 0.5s)
+                Thread.Sleep(5000); // Aguarda 5 segundos conforme solicitado pelo usuário
             }
-
-            Log($"  [OK] Botão encontrado após {tentativas} tentativa(s)!");
-            _cachedBotaoImportar = btnFound;
-            ClicarComFallback(btnFound);
         }
 
         //────────────────────────────────────────────────────────────────────
@@ -676,7 +637,7 @@ namespace AutomacaoPromobTeste{
             }
 
             // Loop de espera dinâmico para garantir carregamento total (conforme solicitado pelo usuário)
-            int timeoutAtual = 60000;
+            int timeoutAtual = 5000;
             int tentativaLoop = 1;
 
             while (true){
@@ -689,7 +650,7 @@ namespace AutomacaoPromobTeste{
                     
                     // 2. Procura a mensagem de "carregando" (indicação de que o carregamento de módulos ainda ocorre)
                     var msgCarregando = janelaPromob.FindFirstDescendant(cf => 
-                        cf.ByName("Alguns itens ainda estão sendo carregados").Or(cf.ByName("Projeto com módulos invisíveis")));
+                        cf.ByName("Alguns itens ainda estão sendo carregados"));
 
                     // Só está pronto se a aba existir E a mensagem de carregamento não estiver presente
                     bool pronto = (aba != null) && (msgCarregando == null);
@@ -734,8 +695,8 @@ namespace AutomacaoPromobTeste{
                 }
 
                 tentativaLoop++;
-                timeoutAtual = 30000; // Ciclos subsequentes de 30s conforme solicitado
-                Log("  [INFO] Reiniciando verificação para novo ciclo de 30s...");
+                timeoutAtual = 10000; // Ciclos subsequentes de 30s conforme solicitado
+                Log("  [INFO] Reiniciando verificação para novo ciclo de 10s...");
             }
         }
 
