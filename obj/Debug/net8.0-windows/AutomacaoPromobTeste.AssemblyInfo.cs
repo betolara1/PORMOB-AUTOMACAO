@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("AutomacaoPromobTeste")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+f20d7f3e249816f4e388096d2ecd3c95b6352aad")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+f9bee679464ef5b4717a281576eb51cffc458d9e")]
 [assembly: System.Reflection.AssemblyProductAttribute("AutomacaoPromobTeste")]
 [assembly: System.Reflection.AssemblyTitleAttribute("AutomacaoPromobTeste")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
