@@ -637,38 +637,65 @@ namespace AutomacaoPromobTeste{
             }
 
             // Loop de espera dinâmico para garantir carregamento total (conforme solicitado pelo usuário)
-            int timeoutAtual = 5000;
+            int timeoutAtual = 10000;
             int tentativaLoop = 1;
 
             while (true){
                 Log($"  [INFO] Aguardando o carregamento do projeto (Tentativa {tentativaLoop}, timeout: {timeoutAtual/1000}s)...");
 
                 bool carregou = EsperarAte(() =>{
+                    var swTotal = Stopwatch.StartNew();
+                    Log("    [DEBUG] Iniciando ciclo de verificação UI...");
+                    
+                    // Otimização: obter o Host principal para reduzir o raio de busca
+                    var raizBusca = ObterHostOuJanela(janelaPromob);
+
                     // 1. Procura a aba Ferramentas (indicação de que a UI base carregou)
-                    var aba = janelaPromob.FindFirstDescendant(cf => 
-                        cf.ByAutomationId("ToolsTab").Or(cf.ByName("Ferramentas")));
+                    var swAba = Stopwatch.StartNew();
+                    Log("      -> Procurando aba 'Ferramentas' (TabItem)...");
+                    var aba = raizBusca.FindFirstDescendant(cf => 
+                        cf.ByControlType(FlaUI.Core.Definitions.ControlType.TabItem)
+                          .And(cf.ByAutomationId("ToolsTab").Or(cf.ByName("Ferramentas"))));
+                    swAba.Stop();
+                    
+                    if (aba != null) Log($"      [OK] Aba encontrada em {swAba.ElapsedMilliseconds}ms.");
+                    else Log($"      [AGUARDE] Aba não visível após {swAba.ElapsedMilliseconds}ms.");
                     
                     // 2. Procura a mensagem de "carregando" (indicação de que o carregamento de módulos ainda ocorre)
-                    var msgCarregando = janelaPromob.FindFirstDescendant(cf => 
+                    var swMsg = Stopwatch.StartNew();
+                    Log("      -> Verificando mensagem de carregamento (Text/Label)...");
+                    var msgCarregando = raizBusca.FindFirstDescendant(cf => 
                         cf.ByName("Alguns itens ainda estão sendo carregados"));
+                    swMsg.Stop();
+
+                    if (msgCarregando != null) Log($"      [LOADING] Módulos carregando ({swMsg.ElapsedMilliseconds}ms).");
+                    else Log($"      [READY] Sem mensagem de carregamento ({swMsg.ElapsedMilliseconds}ms).");
 
                     // Só está pronto se a aba existir E a mensagem de carregamento não estiver presente
                     bool pronto = (aba != null) && (msgCarregando == null);
                     
                     if (!pronto){
-                        // Trata popups que podem bloquear o carregamento
+                        var swPopup = Stopwatch.StartNew();
+                        Log("    [INFO] Procurando popups de bloqueio...");
                         var desktop = janelaPromob.Automation.GetDesktop();
-                        var popup = EncontrarPopupAtencao(desktop);
+                        var popup = EncontrarPopupAtencao(desktop, _cachedProcessIdPromob);
+                        swPopup.Stop();
+
                         if (popup != null) {
-                            Log($"  [AVISO] Popup detectado durante carregamento: '{popup.Name}'. Tratando...");
+                            Log($"    [AVISO] Popup '{popup.Name}' tratado ({swPopup.ElapsedMilliseconds}ms).");
                             TratarPopupGenerico(popup);
+                        }
+                        else {
+                            Log($"    [INFO] Sem popups detectados em {swPopup.ElapsedMilliseconds}ms.");
                         }
                     }
                     else {
-                        Log("  [OK] Aba 'Ferramentas' detectada e sem mensagens de carregamento pendente.");
+                        Log("    [SUCESSO] Condições de carregamento concluídas.");
                         SelecionarOuClicar(aba!);
                     }
 
+                    swTotal.Stop();
+                    Log($"    [DEBUG] Ciclo finalizado em {swTotal.ElapsedMilliseconds}ms total.");
                     return pronto;
                 }, timeoutMs: timeoutAtual, intervaloMs: 2500);
 
@@ -679,18 +706,21 @@ namespace AutomacaoPromobTeste{
                 }
 
                 // Se chegou aqui, deu timeout na tentativa atual
-                Log($"  [AVISO] Timeout de {timeoutAtual/1000}s atingido sem concluir o carregamento.", LogLevel.Warn);
+                Log($"  [AVISO] Timeout de {timeoutAtual/1000}s atingido sem concluir o carregamento por UIA.", LogLevel.Warn);
                 
                 // Realiza uma varredura visual final como "voto de Minerva" antes de resetar o loop
                 if (VisionHelper.Habilitado){
-                    Log("  [VISION] Consultando se a tela parece carregada...");
+                    Log("  [VISION] Iniciando verificação visual (IA) como fallback final para este ciclo...");
                     var visao = VisionHelper.AguardarEstadoTela(
                         "A aba 'Ferramentas' está visível e não há mensagens de 'Carregando' ou 'Módulos Invisíveis' na parte inferior da tela.",
                         maxTentativas: 1, fallbackMs: 500);
                     
                     if (visao){
-                        Log("  [VISION] IA confirmou que o projeto parece carregado. Prosseguindo.");
+                        Log("  [VISION] IA detectou que a tela parece estar pronta (carregada). Prosseguindo.");
                         break;
+                    }
+                    else {
+                        Log("  [VISION] IA confirmou que o projeto ainda parece estar carregando ou em estado inconsistente.");
                     }
                 }
 
@@ -852,11 +882,20 @@ namespace AutomacaoPromobTeste{
         }
 
         //────────────────────────────────────────────────────────────────────
-        static Window? JanelaArquivoAberta(UIA3Automation automation){
+        static Window? JanelaArquivoAberta(UIA3Automation automation, int? targetProcessId = null){
             var desktop = automation.GetDesktop();
 
             var janelas = desktop.FindAllChildren(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Window));
-            var dialogo = janelas.FirstOrDefault(j =>
+            
+            var consulta = janelas.AsEnumerable();
+            if (targetProcessId.HasValue){
+                consulta = consulta.Where(j => {
+                    try { return j.Properties.ProcessId.ValueOrDefault == targetProcessId.Value; }
+                    catch { return false; }
+                });
+            }
+
+            var dialogo = consulta.FirstOrDefault(j =>
                 ContemQualquer(j.Name, "Abrir", "Open", "Salvar Como", "Save As"));
 
             if (dialogo != null)
@@ -871,26 +910,24 @@ namespace AutomacaoPromobTeste{
 
 
         //────────────────────────────────────────────────────────────────────
-        static Window? EncontrarPopupAtencao(AutomationElement desktop){
+        static Window? EncontrarPopupAtencao(AutomationElement desktop, int? targetProcessId = null){
             var janelas = desktop.FindAllChildren(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Window));
 
-            var popup = janelas.FirstOrDefault(j =>
-                ContemQualquer(j.Name, "Atenção", "Atencao", "Atençao", "Confirmação", "Confirmacao", "Salvar", "Save"));
+            var consulta = janelas.AsEnumerable();
+            if (targetProcessId.HasValue){
+                consulta = consulta.Where(j => {
+                    try { return j.Properties.ProcessId.ValueOrDefault == targetProcessId.Value; }
+                    catch { return false; }
+                });
+            }
+
+            var popup = consulta.FirstOrDefault(j =>
+                ContemQualquer(j.Name, "Atenção", "Atencao", "Atençao", "Confirmação", "Confirmacao", "Salvar", "Save", "Promob"));
 
             if (popup != null)
                 return popup.AsWindow();
 
-            var profundo = desktop.FindFirstDescendant(cf =>
-                cf.ByControlType(FlaUI.Core.Definitions.ControlType.Window)
-                  .And(cf.ByName("Atenção")
-                  .Or(cf.ByName("Atencao"))
-                  .Or(cf.ByName("Confirmação"))
-                  .Or(cf.ByName("Confirmacao"))
-                  .Or(cf.ByName("Salvar"))
-                  .Or(cf.ByName("Save"))
-                  .Or(cf.ByName("Promob"))));
-
-            return profundo?.AsWindow();
+            return null;
         }
 
         //────────────────────────────────────────────────────────────────────
