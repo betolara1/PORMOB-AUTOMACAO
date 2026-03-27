@@ -56,10 +56,27 @@ namespace AutomacaoPromobTeste{
         [DllImport("kernel32.dll")] static extern IntPtr GlobalLock(IntPtr hMem);
         [DllImport("kernel32.dll")] static extern bool GlobalUnlock(IntPtr hMem);
         [DllImport("user32.dll")] static extern IntPtr GetForegroundWindow();
+        [DllImport("kernel32.dll", SetLastError = true)] static extern IntPtr GetStdHandle(int nStdHandle);
+        [DllImport("kernel32.dll")] static extern bool GetConsoleMode(IntPtr hConsoleHandle, out uint lpMode);
+        [DllImport("kernel32.dll")] static extern bool SetConsoleMode(IntPtr hConsoleHandle, uint dwMode);
         const uint CF_UNICODETEXT = 13;
         const uint GMEM_MOVEABLE = 0x0002;
 
+        const int STD_INPUT_HANDLE = -10;
+        const uint ENABLE_QUICK_EDIT_MODE = 0x0040;
+        const uint ENABLE_EXTENDED_FLAGS = 0x0080;
+
+        static void DesativarQuickEdit(){
+            IntPtr conHandle = GetStdHandle(STD_INPUT_HANDLE);
+            if (GetConsoleMode(conHandle, out uint mode)){
+                mode &= ~ENABLE_QUICK_EDIT_MODE;
+                mode |= ENABLE_EXTENDED_FLAGS;
+                SetConsoleMode(conHandle, mode);
+            }
+        }
+
         static void Main(string[] args){
+            DesativarQuickEdit();
             Console.OutputEncoding = System.Text.Encoding.UTF8;
             Banner();
 
