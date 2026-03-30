@@ -67,10 +67,10 @@ namespace AutomacaoPromobTeste.Promob{
             var abaArquivo = WindowFinder.BuscarElementoComFallback(
                 raizBusca,
                 cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.TabItem)
-                        .And(cf.ByAutomationId("FileTab").Or(cf.ByName("Arquivo"))),
+                        .And(cf.ByAutomationId(PromobConfig.IdFileTab).Or(cf.ByName(PromobConfig.AbaArquivo))),
                 e => e.ControlType == FlaUI.Core.Definitions.ControlType.TabItem &&
-                     ((e.Properties.AutomationId.ValueOrDefault ?? "").Equals("FileTab", StringComparison.OrdinalIgnoreCase) ||
-                      (e.Properties.Name.ValueOrDefault ?? "").Equals("Arquivo", StringComparison.OrdinalIgnoreCase)),
+                     ((e.Properties.AutomationId.ValueOrDefault ?? "").Equals(PromobConfig.IdFileTab, StringComparison.OrdinalIgnoreCase) ||
+                      (e.Properties.Name.ValueOrDefault ?? "").Equals(PromobConfig.AbaArquivo, StringComparison.OrdinalIgnoreCase)),
                 limitarAoMesmoProcesso: true,
                 processId: PromobWindowHelper.CachedProcessIdPromob
             );
@@ -90,10 +90,10 @@ namespace AutomacaoPromobTeste.Promob{
             var btnFechar = WindowFinder.BuscarElementoComFallback(
                 raizBusca,
                 cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button)
-                        .And(cf.ByAutomationId("ProjectClose").Or(cf.ByName("Fechar"))),
+                        .And(cf.ByAutomationId(PromobConfig.IdProjectClose).Or(cf.ByName(PromobConfig.BtnFechar))),
                 e => e.ControlType == FlaUI.Core.Definitions.ControlType.Button &&
-                     ((e.Properties.AutomationId.ValueOrDefault ?? "").Equals("ProjectClose", StringComparison.OrdinalIgnoreCase) ||
-                      (e.Properties.Name.ValueOrDefault ?? "").Equals("Fechar", StringComparison.OrdinalIgnoreCase)),
+                     ((e.Properties.AutomationId.ValueOrDefault ?? "").Equals(PromobConfig.IdProjectClose, StringComparison.OrdinalIgnoreCase) ||
+                      (e.Properties.Name.ValueOrDefault ?? "").Equals(PromobConfig.BtnFechar, StringComparison.OrdinalIgnoreCase)),
                 limitarAoMesmoProcesso: true,
                 processId: PromobWindowHelper.CachedProcessIdPromob
             );
@@ -124,12 +124,12 @@ namespace AutomacaoPromobTeste.Promob{
 
                 var btnNao = popup.FindFirstChild(cf =>
                     cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button)
-                      .And(cf.ByName("Não").Or(cf.ByName("Nao")).Or(cf.ByName("No"))));
+                      .And(cf.ByName(PromobConfig.BtnNao).Or(cf.ByName(PromobConfig.BtnNaoAlt)).Or(cf.ByName(PromobConfig.BtnNo))));
 
                 if (btnNao == null){
                     btnNao = popup.FindFirstDescendant(cf =>
                         cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button)
-                          .And(cf.ByName("Não").Or(cf.ByName("Nao")).Or(cf.ByName("No"))));
+                          .And(cf.ByName(PromobConfig.BtnNao).Or(cf.ByName(PromobConfig.BtnNaoAlt)).Or(cf.ByName(PromobConfig.BtnNo))));
                 }
 
                 if (btnNao != null){
@@ -172,10 +172,10 @@ namespace AutomacaoPromobTeste.Promob{
             var abaFerramentas = WindowFinder.BuscarElementoComFallback(
                 raizBusca,
                 cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.TabItem)
-                        .And(cf.ByAutomationId("ToolsTab").Or(cf.ByName("Ferramentas"))),
+                        .And(cf.ByAutomationId(PromobConfig.IdToolsTab).Or(cf.ByName(PromobConfig.AbaFerramentas))),
                 e => e.ControlType == FlaUI.Core.Definitions.ControlType.TabItem &&
-                     ((e.Properties.AutomationId.ValueOrDefault ?? "").Equals("ToolsTab", StringComparison.OrdinalIgnoreCase) ||
-                      (e.Properties.Name.ValueOrDefault ?? "").Equals("Ferramentas", StringComparison.OrdinalIgnoreCase)),
+                     ((e.Properties.AutomationId.ValueOrDefault ?? "").Equals(PromobConfig.IdToolsTab, StringComparison.OrdinalIgnoreCase) ||
+                      (e.Properties.Name.ValueOrDefault ?? "").Equals(PromobConfig.AbaFerramentas, StringComparison.OrdinalIgnoreCase)),
                 limitarAoMesmoProcesso: true,
                 processId: PromobWindowHelper.CachedProcessIdPromob
             );
@@ -193,18 +193,18 @@ namespace AutomacaoPromobTeste.Promob{
             var btnOrcamento = WindowFinder.BuscarElementoComFallback(
                 raizBusca,
                 cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button)
-                        .And(cf.ByName("Orçamento").Or(cf.ByName("Orcamento")))
-                        .And(cf.ByAutomationId("PART_ToggleButton")),
-                e => (e.Properties.AutomationId.ValueOrDefault ?? "") == "PART_ToggleButton" &&
-                     ((e.Properties.Name.ValueOrDefault ?? "").Equals("Orçamento", StringComparison.OrdinalIgnoreCase) ||
-                      (e.Properties.Name.ValueOrDefault ?? "").Equals("Orcamento", StringComparison.OrdinalIgnoreCase)),
+                        .And(cf.ByName(PromobConfig.SecaoOrcamento).Or(cf.ByName(PromobConfig.SecaoOrcamentoAlt)))
+                        .And(cf.ByAutomationId(PromobConfig.IdOrcamentoToggle)),
+                e => (e.Properties.AutomationId.ValueOrDefault ?? "") == PromobConfig.IdOrcamentoToggle &&
+                     ((e.Properties.Name.ValueOrDefault ?? "").Equals(PromobConfig.SecaoOrcamento, StringComparison.OrdinalIgnoreCase) ||
+                      (e.Properties.Name.ValueOrDefault ?? "").Equals(PromobConfig.SecaoOrcamentoAlt, StringComparison.OrdinalIgnoreCase)),
                 limitarAoMesmoProcesso: true,
                 processId: PromobWindowHelper.CachedProcessIdPromob
             );
 
             btnOrcamento ??= raizBusca.FindFirstDescendant(cf =>
                 cf.ByControlType(FlaUI.Core.Definitions.ControlType.MenuBar)
-                  .And(cf.ByAutomationId("bOrçamento").Or(cf.ByAutomationId("bOrcamento"))));
+                  .And(cf.ByAutomationId(PromobConfig.IdOrcamentoMenu).Or(cf.ByAutomationId(PromobConfig.IdOrcamentoMenuAlt))));
 
             if (btnOrcamento != null){
                 Logger.Log("  [OK] Botão 'Orçamento' encontrado. Clicando...");
@@ -236,9 +236,9 @@ namespace AutomacaoPromobTeste.Promob{
 
                     btnFound = WindowFinder.BuscarElementoComFallback(
                         buscaEm,
-                        cf => cf.ByAutomationId(PromobConfig.AutomationIdImportar),
-                        e => (e.Properties.AutomationId.ValueOrDefault ?? "").Equals(PromobConfig.AutomationIdImportar, StringComparison.OrdinalIgnoreCase) ||
-                             (e.Properties.Name.ValueOrDefault ?? "").Equals("Importar projeto", StringComparison.OrdinalIgnoreCase),
+                        cf => cf.ByAutomationId(PromobConfig.IdImportarBotao),
+                        e => (e.Properties.AutomationId.ValueOrDefault ?? "").Equals(PromobConfig.IdImportarBotao, StringComparison.OrdinalIgnoreCase) ||
+                             (e.Properties.Name.ValueOrDefault ?? "").Equals(PromobConfig.NomeJanelaWizardImportacao, StringComparison.OrdinalIgnoreCase),
                         limitarAoMesmoProcesso: true,
                         processId: PromobWindowHelper.CachedProcessIdPromob
                     );
@@ -274,15 +274,15 @@ namespace AutomacaoPromobTeste.Promob{
 
             var btnBrowse = janelaPromob.FindFirstDescendant(cf =>
                 cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button)
-                  .And(cf.ByName("...").Or(cf.ByName("Procurar")).Or(cf.ByAutomationId("BrowseButton"))));
+                  .And(cf.ByName(PromobConfig.BtnProcurar).Or(cf.ByName(PromobConfig.BtnProcurarTexto)).Or(cf.ByAutomationId(PromobConfig.IdBrowseButton))));
 
             if (btnBrowse == null){
                 btnBrowse = WindowFinder.BuscarElementoComFallback(
                     janelaPromob,
                     cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button)
-                            .And(cf.ByName("...")),
+                            .And(cf.ByName(PromobConfig.BtnProcurar)),
                     e => e.ControlType == FlaUI.Core.Definitions.ControlType.Button &&
-                         (((e.Properties.Name.ValueOrDefault ?? "").Contains("...")) ||
+                         (((e.Properties.Name.ValueOrDefault ?? "").Contains(PromobConfig.BtnProcurar)) ||
                           ((e.Properties.AutomationId.ValueOrDefault ?? "").Contains("Browse", StringComparison.OrdinalIgnoreCase)))
                 );
             }
@@ -311,18 +311,19 @@ namespace AutomacaoPromobTeste.Promob{
             Logger.Log($"  [OK] Diálogo encontrado: {dialogo.Name}");
             InteractionHelper.AtivarJanela(dialogo);
 
-            var nomeArquivo = Path.GetFileName(caminhoCompleto);
-            Logger.Log($"  [INFO] Preenchendo campo 'Nome' via UIA: {nomeArquivo}");
+            // LOGICA ALTERADA: Usamos o caminho completo (Path) para garantir que o Windows encontre o arquivo, 
+            // mesmo se o diálogo abrir na pasta errada.
+            Logger.Log($"  [INFO] Preenchendo caminho completo via UIA: {caminhoCompleto}");
 
             bool preenchidoViaUia = false;
             AutomationElement? campoNome =
-                dialogo.FindFirstDescendant(cf => cf.ByAutomationId("1148")) ??
+                dialogo.FindFirstDescendant(cf => cf.ByAutomationId(PromobConfig.IdCampoArquivoWin)) ??
                 dialogo.FindFirstDescendant(cf =>
                     cf.ByControlType(FlaUI.Core.Definitions.ControlType.ComboBox)
-                      .And(cf.ByAutomationId("FileNameControlHost"))) ??
+                      .And(cf.ByAutomationId(PromobConfig.IdHostCampoArquivo))) ??
                 dialogo.FindFirstDescendant(cf =>
                     cf.ByControlType(FlaUI.Core.Definitions.ControlType.Edit)
-                      .And(cf.ByAutomationId("1148")));
+                      .And(cf.ByAutomationId(PromobConfig.IdCampoArquivoWin)));
 
             if (campoNome == null){
                 var combos = dialogo.FindAllDescendants(cf =>
@@ -337,7 +338,7 @@ namespace AutomacaoPromobTeste.Promob{
                 var alvo = editInterno ?? campoNome;
                 if (editInterno != null) Logger.Log("  [INFO] Usando elemento 'Edit' interno do ComboBox para SetValue.");
 
-                if (InteractionHelper.TentarDefinirValor(alvo, nomeArquivo)){
+                if (InteractionHelper.TentarDefinirValor(alvo, caminhoCompleto)){
                     preenchidoViaUia = true;
                     Logger.Log("  [OK] Valor definido via UIA (SetValue).");
                 }
@@ -348,8 +349,10 @@ namespace AutomacaoPromobTeste.Promob{
                         InteractionHelper.EsperarUiRespirar(200);
                         Keyboard.TypeSimultaneously(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_A);
                         InteractionHelper.EsperarUiRespirar(100);
-                        Keyboard.Type(nomeArquivo);
-                        InteractionHelper.EsperarUiRespirar(400);
+                        Keyboard.Type(caminhoCompleto);
+                        InteractionHelper.EsperarUiRespirar(600); // Aumentado para garantir registro
+                        Keyboard.Type(VirtualKeyShort.RETURN); // Adiciona um RETURN extra para forçar atualização
+                        InteractionHelper.EsperarUiRespirar(400); 
                         preenchidoViaUia = true;
                     }
                     catch (Exception ex){
@@ -364,7 +367,7 @@ namespace AutomacaoPromobTeste.Promob{
             if (!preenchidoViaUia){
                 Logger.Log("  [AVISO] Usando clipboard como último recurso...", LogLevel.Warn);
                 InteractionHelper.AtivarJanela(dialogo);
-                NativeClipboard.CopiarParaClipboardNativo(nomeArquivo);
+                NativeClipboard.CopiarParaClipboardNativo(caminhoCompleto);
                 InteractionHelper.EsperarUiRespirar(400);
                 Keyboard.TypeSimultaneously(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_V);
                 InteractionHelper.EsperarUiRespirar(800);
@@ -374,10 +377,10 @@ namespace AutomacaoPromobTeste.Promob{
             }
 
             var btnAbrir =
-                dialogo.FindFirstDescendant(cf => cf.ByAutomationId("1").And(cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button))) ??
+                dialogo.FindFirstDescendant(cf => cf.ByAutomationId(PromobConfig.IdBtnAbrirWin).And(cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button))) ??
                 dialogo.FindFirstDescendant(cf =>
                     cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button)
-                      .And(cf.ByName("Abrir").Or(cf.ByName("Open"))));
+                      .And(cf.ByName(PromobConfig.BtnAbrir).Or(cf.ByName(PromobConfig.BtnOpen))));
 
             if (btnAbrir != null){
                 Logger.Log("  [OK] Clicando em 'Abrir' via Clique Físico (UIA).");
@@ -405,7 +408,7 @@ namespace AutomacaoPromobTeste.Promob{
                     var janelas = desktop.FindAllChildren(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Window));
                     var popupOS = janelas.FirstOrDefault(j =>
                         j.Properties.ProcessId == dialogo.Properties.ProcessId &&
-                        InteractionHelper.ContemQualquer(j.Name, "Aviso", "Erro", "Atenção", "Atencao") &&
+                        InteractionHelper.ContemQualquer(j.Name, PromobConfig.TitulosAviso) &&
                         j.Name != dialogo.Name);
 
                     if (popupOS != null){
@@ -425,16 +428,57 @@ namespace AutomacaoPromobTeste.Promob{
             InteractionHelper.EsperarUiRespirar(500);
         }
 
+        private static bool ValidarCamposWizard(Window janelaWizard){
+            Logger.Log("  [INFO] Validando preenchimento dos campos obrigatórios no Wizard...");
+            
+            // Pequena espera para dar tempo da UI atualizar após o fechamento do diálogo
+            InteractionHelper.EsperarUiRespirar(800);
+
+            var campoCaminho = janelaWizard.FindFirstDescendant(cf => 
+                cf.ByControlType(FlaUI.Core.Definitions.ControlType.Edit)
+                  .And(cf.ByName(PromobConfig.NameCampoCaminho).Or(cf.ByAutomationId(PromobConfig.NameCampoCaminho))));
+
+            if (campoCaminho == null){
+                // Tenta buscar por proximidade ou nome parcial se falhar
+                var labels = janelaWizard.FindAllDescendants(cf => cf.ByName(PromobConfig.NameCampoCaminho));
+                if (labels.Any()){
+                    campoCaminho = janelaWizard.FindFirstDescendant(cf => 
+                        cf.ByControlType(FlaUI.Core.Definitions.ControlType.Edit)); // Pega o primeiro Edit que encontrar se houver label
+                }
+            }
+
+            if (campoCaminho != null){
+                var valor = campoCaminho.AsTextBox().Text;
+                if (string.IsNullOrWhiteSpace(valor)){
+                    Logger.Log("  [ERRO] O campo 'Caminho' está vazio no Wizard.", LogLevel.Error);
+                    return false;
+                }
+                Logger.Log($"  [OK] Campo 'Caminho' preenchido: {valor}");
+                return true;
+            }
+
+            Logger.Log("  [AVISO] Não foi possível encontrar o campo 'Caminho' para validação. Prosseguindo no escuro...", LogLevel.Warn);
+            return true; // Retorna true para não travar se não achar o elemento, mas loga o aviso
+        }
+
         private static void ClicarAvancarWizard(UIA3Automation automation, Window janelaWizard){
             InteractionHelper.AtivarJanela(janelaWizard);
 
             for (int tentativa = 1; tentativa <= 3; tentativa++){
+                // Validação antes de avançar
+                if (tentativa == 1 && !ValidarCamposWizard(janelaWizard)){
+                    Logger.Log("  [AVISO] Campos obrigatórios parecem estar vazios. Tentando avançar mesmo assim para ver o erro do Promob...");
+                }
+
                 Logger.Log($"  [INFO] Procurando botão 'Avançar' (Tentativa {tentativa}/3)...");
                 var btnAvancar = janelaWizard.FindFirstDescendant(cf =>
                     cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button)
-                      .And(cf.ByName("Avançar").Or(cf.ByName("Avancar")).Or(cf.ByName("Next"))));
+                      .And(cf.ByName(PromobConfig.BtnAvancar).Or(cf.ByName(PromobConfig.BtnAvancarAlt)).Or(cf.ByName(PromobConfig.BtnNext))));
 
                 if (btnAvancar != null){
+                    if (!btnAvancar.IsEnabled){
+                        Logger.Log("  [ERRO] O botão 'Avançar' está desabilitado. Provavelmente faltam campos obrigatórios.", LogLevel.Error);
+                    }
                     InteractionHelper.ClicarComFallback(btnAvancar);
                     Logger.Log("  [OK] Botão 'Avançar' clicado.");
                 }
@@ -453,64 +497,56 @@ namespace AutomacaoPromobTeste.Promob{
                 var janelas = desktop.FindAllChildren(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Window));
 
                 foreach (var popup in janelas){
+                    // Filtro crítico: ignora a própria janela principal do Promob para não confundir com popup
                     if (popup.Properties.ProcessId != PromobWindowHelper.CachedProcessIdPromob) continue;
+                    if (popup.Name == WindowFinder.CachedHost?.Name) continue; // Ignora o host principal
                     
                     var name = popup.Name ?? "";
 
-                    // Tratamento para popup de Atenção ("Deseja cancelara a operação?")
-                    if (InteractionHelper.ContemQualquer(name, "Atenção", "Atencao")){
-                        var popupAte = popup.AsWindow();
-                        Logger.Log($"  [AVISO] Popup de Atenção interceptado. Cancelando seu fechamento...");
-
-                        var btnNao = popupAte.FindFirstDescendant(cf => 
-                            cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button).And(cf.ByName("Não").Or(cf.ByName("Nao"))));
+                    // Tratamento para popup de Atenção ("Deseja cancelar a operação?")
+                    if (InteractionHelper.ContemQualquer(name, PromobConfig.TitulosAviso)){
+                        // Verifica se o texto do popup contém "cancelar"
+                        var textElement = popup.FindFirstDescendant(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Text));
+                        var texto = textElement?.Properties.Name.ValueOrDefault ?? "";
                         
-                        if (btnNao != null){
-                            InteractionHelper.ClicarComFallback(btnNao);
-                            Logger.Log("  [ACTION] Clicado em 'Não'.");
-                        } else {
-                            Keyboard.Type("n");
+                        if (texto.Contains(PromobConfig.MsgConfirmarCancelamento, StringComparison.OrdinalIgnoreCase)){
+                            Logger.Log($"  [AVISO] Popup de cancelamento interceptado: '{texto}'. Clicando em '{PromobConfig.BtnNao}'...");
+                            
+                            var btnNao = popup.FindFirstDescendant(cf => 
+                                cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button).And(cf.ByName(PromobConfig.BtnNao).Or(cf.ByName(PromobConfig.BtnNaoAlt))));
+                            
+                            if (btnNao != null) InteractionHelper.ClicarComFallback(btnNao);
+                            else Keyboard.Type("n");
+                        }
+                        else {
+                            Logger.Log($"  [INFO] Popup de Atenção detectado ('{texto}'). Tratando como informativo (OK/Nao).");
+                            TratarPopupGenerico(popup.AsWindow());
                         }
                         precisouTentarDenovo = true;
                         InteractionHelper.EsperarUiRespirar(800);
                     }
 
                     // Tratamento para popup de Aviso ("Não é possível salvar enquanto há erros...")
-                    if (InteractionHelper.ContemQualquer(name, "Aviso", "Erro")){
-                        var popupAviso = popup.AsWindow();
-                        Logger.Log($"  [AVISO] Popup de Aviso interceptado. Entendida a notificação...");
+                    if (InteractionHelper.ContemQualquer(name, PromobConfig.TitulosAviso)){
+                        var textElement = popup.FindFirstDescendant(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Text));
+                        var texto = textElement?.Properties.Name.ValueOrDefault ?? "";
+                        Logger.Log($"  [ERRO] O Promob exibiu um erro/aviso: '{texto}'", LogLevel.Error);
 
-                        var btnOk = popupAviso.FindFirstDescendant(cf => 
-                            cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button).And(cf.ByName("OK").Or(cf.ByName("Ok")).Or(cf.ByName("Concluir"))));
+                        var btnOk = popup.FindFirstDescendant(cf => 
+                            cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button).And(cf.ByName(PromobConfig.BtnOk).Or(cf.ByName(PromobConfig.BtnOkAlt)).Or(cf.ByName(PromobConfig.BtnConcluir))));
                         
-                        if (btnOk != null){
-                            InteractionHelper.ClicarComFallback(btnOk);
-                            Logger.Log("  [ACTION] Clicado em 'OK'.");
-                        } else {
-                            Keyboard.Type(VirtualKeyShort.RETURN);
-                        }
+                        if (btnOk != null) InteractionHelper.ClicarComFallback(btnOk);
+                        else Keyboard.Type(VirtualKeyShort.RETURN);
+                        
                         precisouTentarDenovo = true;
                         InteractionHelper.EsperarUiRespirar(800);
                     }
                 }
 
                 if (precisouTentarDenovo){
-                    Logger.Log("  [INFO] Tratamos popups do Promob. Voltando a acionar o Avançar para concluir.");
+                    Logger.Log("  [INFO] Voltando ao loop para tentar resolver campos ou avançar novamente.");
                     continue; 
                 }
-
-                // var mudou = InteractionHelper.EsperarAte(() =>{
-                //     var projetoOuLista = janelaWizard.FindFirstDescendant(cf =>
-                //         cf.ByControlType(FlaUI.Core.Definitions.ControlType.ListItem)
-                //           .Or(cf.ByControlType(FlaUI.Core.Definitions.ControlType.DataItem)));
-                //     return projetoOuLista != null;
-                // }, 3000);
-
-                // if (!mudou && VisionHelper.Habilitado){
-                //     VisionHelper.AguardarEstadoTela(
-                //         "Lista de projetos importados apareceu ou Wizard mudou de página",
-                //         maxTentativas: 4, intervaloMs: 1500, fallbackMs: 2000);
-                // }
 
                 break; // Sai do loop se não houve popups interceptados
             }
@@ -530,7 +566,7 @@ namespace AutomacaoPromobTeste.Promob{
 
             var btnCancelar = popup.FindFirstDescendant(cf =>
                 cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button)
-                  .And(cf.ByName("Cancelar").Or(cf.ByName("Não")).Or(cf.ByName("Nao")).Or(cf.ByName("No"))));
+                  .And(cf.ByName(PromobConfig.BtnCancelar).Or(cf.ByName(PromobConfig.BtnNao)).Or(cf.ByName(PromobConfig.BtnNaoAlt)).Or(cf.ByName(PromobConfig.BtnNo))));
 
             if (btnCancelar != null){
                 InteractionHelper.ClicarComFallback(btnCancelar);
@@ -581,7 +617,7 @@ namespace AutomacaoPromobTeste.Promob{
 
                     var btnAbrir = janelaPromob.FindFirstDescendant(cf =>
                         cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button)
-                          .And(cf.ByName("Abrir projeto").Or(cf.ByName("Abrir")).Or(cf.ByName("Acessar")).Or(cf.ByName("Editar"))));
+                          .And(cf.ByName(PromobConfig.BtnAbrirProjeto).Or(cf.ByName(PromobConfig.BtnAbrir)).Or(cf.ByName("Acessar")).Or(cf.ByName("Editar"))));
 
                     if (btnAbrir != null){
                         Logger.Log("  [OK] Botão de abrir encontrado. Clicando...");
@@ -610,7 +646,7 @@ namespace AutomacaoPromobTeste.Promob{
                     Logger.Log("      -> Procurando aba 'Ferramentas' (TabItem)...");
                     var aba = raizBusca.FindFirstDescendant(cf =>
                         cf.ByControlType(FlaUI.Core.Definitions.ControlType.TabItem)
-                          .And(cf.ByAutomationId("ToolsTab").Or(cf.ByName("Ferramentas"))));
+                          .And(cf.ByAutomationId(PromobConfig.IdToolsTab).Or(cf.ByName(PromobConfig.AbaFerramentas))));
                     swAba.Stop();
 
                     if (aba != null) Logger.Log($"      [OK] Aba encontrada em {swAba.ElapsedMilliseconds}ms.");
@@ -619,7 +655,7 @@ namespace AutomacaoPromobTeste.Promob{
                     var swMsg = Stopwatch.StartNew();
                     Logger.Log("      -> Verificando mensagem de carregamento (Text/Label)...");
                     var msgCarregando = raizBusca.FindFirstDescendant(cf =>
-                        cf.ByName("Alguns itens ainda estão sendo carregados"));
+                        cf.ByName(PromobConfig.MsgCarregandoItens));
                     swMsg.Stop();
 
                     if (msgCarregando != null) Logger.Log($"      [LOADING] Módulos carregando ({swMsg.ElapsedMilliseconds}ms).");
@@ -685,10 +721,15 @@ namespace AutomacaoPromobTeste.Promob{
             Logger.Log($"  [INFO] Tratando popup: '{popup.Name}'");
             InteractionHelper.AtivarJanela(popup);
 
-            if (InteractionHelper.ContemQualquer(popup.Name, "Aviso", "Erro", "Atencao", "Atenção")){
-                var btnOk = popup.FindFirstDescendant(cf => cf.ByName("OK").Or(cf.ByName("Ok")).Or(cf.ByName("Concluir")));
+            if (InteractionHelper.ContemQualquer(popup.Name, PromobConfig.TitulosAviso)){
+                var btnOk = popup.FindFirstDescendant(cf => 
+                    cf.ByName(PromobConfig.BtnOk)
+                      .Or(cf.ByName(PromobConfig.BtnOkAlt))
+                      .Or(cf.ByName(PromobConfig.BtnConcluir))
+                      .Or(cf.ByName(PromobConfig.BtnSim))); // Adicionado Sim
+
                 if (btnOk != null){
-                    Logger.Log("  [OK] Clicando em OK no popup.");
+                    Logger.Log($"  [OK] Clicando em '{btnOk.Name}' no popup.");
                     InteractionHelper.ClicarComFallback(btnOk);
                 }
                 else{
@@ -716,12 +757,26 @@ namespace AutomacaoPromobTeste.Promob{
 
                 foreach (var j in janelas){
                     var titulo = j.Name ?? "";
-                    if (titulo.Contains("Erro", StringComparison.OrdinalIgnoreCase) ||
-                        titulo.Contains("Atenção", StringComparison.OrdinalIgnoreCase) ||
-                        titulo.Contains("Atencao", StringComparison.OrdinalIgnoreCase)){
+                    if (InteractionHelper.ContemQualquer(titulo, PromobConfig.TitulosAviso)){
                         try{
-                            j.AsWindow().SetForeground();
-                            Keyboard.Press(VirtualKeyShort.ESCAPE);
+                            var popup = j.AsWindow();
+                            popup.SetForeground();
+                            
+                            // Verifica se é o popup de "Deseja cancelar a operação?"
+                            var textElement = popup.FindFirstDescendant(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Text));
+                            var texto = textElement?.Properties.Name.ValueOrDefault ?? "";
+
+                            if (texto.Contains(PromobConfig.MsgConfirmarCancelamento, StringComparison.OrdinalIgnoreCase)){
+                                Logger.Log($"    [RECOVERY] Popup de cancelamento detectado. Clicando em '{PromobConfig.BtnNao}' para manter a aplicação aberta.");
+                                var btnNao = popup.FindFirstDescendant(cf => 
+                                    cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button).And(cf.ByName(PromobConfig.BtnNao).Or(cf.ByName(PromobConfig.BtnNaoAlt))));
+                                
+                                if (btnNao != null) InteractionHelper.ClicarComFallback(btnNao);
+                                else Keyboard.Type("n");
+                            }
+                            else {
+                                Keyboard.Press(VirtualKeyShort.ESCAPE);
+                            }
                             InteractionHelper.EsperarUiRespirar(200);
                         }
                         catch{
