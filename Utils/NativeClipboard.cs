@@ -8,13 +8,49 @@ namespace AutomacaoPromobTeste.Utils{
         [DllImport("user32.dll")] static extern bool OpenClipboard(IntPtr hWnd);
         [DllImport("user32.dll")] static extern bool CloseClipboard();
         [DllImport("user32.dll")] static extern bool EmptyClipboard();
+        [DllImport("user32.dll")] static extern IntPtr GetClipboardData(uint uFormat);
+        [DllImport("user32.dll")] static extern bool IsClipboardFormatAvailable(uint format);
         [DllImport("user32.dll")] static extern IntPtr SetClipboardData(uint uFormat, IntPtr hMem);
         [DllImport("kernel32.dll")] static extern IntPtr GlobalAlloc(uint uFlags, UIntPtr dwBytes);
         [DllImport("kernel32.dll")] static extern IntPtr GlobalLock(IntPtr hMem);
         [DllImport("kernel32.dll")] static extern bool GlobalUnlock(IntPtr hMem);
+        [DllImport("kernel32.dll")] static extern UIntPtr GlobalSize(IntPtr hMem);
 
         const uint CF_UNICODETEXT = 13;
         const uint GMEM_MOVEABLE = 0x0002;
+
+        public static string? ObterTexto(){
+            try{
+                for (int tentativa = 0; tentativa < 5; tentativa++){
+                    if (OpenClipboard(IntPtr.Zero)){
+                        try{
+                            if (!IsClipboardFormatAvailable(CF_UNICODETEXT)) return null;
+
+                            IntPtr hGlobal = GetClipboardData(CF_UNICODETEXT);
+                            if (hGlobal == IntPtr.Zero) return null;
+
+                            IntPtr pGlobal = GlobalLock(hGlobal);
+                            if (pGlobal == IntPtr.Zero) return null;
+
+                            try{
+                                return Marshal.PtrToStringUni(pGlobal);
+                            }
+                            finally{
+                                GlobalUnlock(hGlobal);
+                            }
+                        }
+                        finally{
+                            CloseClipboard();
+                        }
+                    }
+                    Thread.Sleep(50);
+                }
+            }
+            catch (Exception ex){
+                Logger.Log($"  [AVISO] Falha ao ler do clipboard: {ex.Message}", LogLevel.Debug);
+            }
+            return null;
+        }
 
         public static void CopiarParaClipboardNativo(string texto){
             try{

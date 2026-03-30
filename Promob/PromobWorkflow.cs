@@ -367,10 +367,21 @@ namespace AutomacaoPromobTeste.Promob{
             if (!preenchidoViaUia){
                 Logger.Log("  [AVISO] Usando clipboard como último recurso...", LogLevel.Warn);
                 InteractionHelper.AtivarJanela(dialogo);
+
+                // Preserva o estado atual do clipboard do usuário
+                string? conteudoAnterior = NativeClipboard.ObterTexto();
+
                 NativeClipboard.CopiarParaClipboardNativo(caminhoCompleto);
                 InteractionHelper.EsperarUiRespirar(400);
                 Keyboard.TypeSimultaneously(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_V);
                 InteractionHelper.EsperarUiRespirar(800);
+
+                // Restaura o conteúdo original imediatamente após o uso
+                if (conteudoAnterior != null){
+                    NativeClipboard.CopiarParaClipboardNativo(conteudoAnterior);
+                    Logger.Log("  [OK] Clipboard do usuário restaurado.");
+                }
+
                 Keyboard.Type(VirtualKeyShort.RETURN);
                 InteractionHelper.EsperarUiRespirar(500);
                 return;
