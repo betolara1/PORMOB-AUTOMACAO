@@ -143,16 +143,20 @@ namespace AutomacaoPromobTeste.Promob{
                     Keyboard.Type("n");
                 }
 
-                InteractionHelper.EsperarUiRespirar(800);
+                Logger.Log("    [INFO] Aguardando fechamento do popup...");
+                bool fechou = InteractionHelper.EsperarAte(() => 
+                    PromobWindowHelper.EncontrarPopupAtencao(automation.GetDesktop(), PromobWindowHelper.CachedProcessIdPromob) == null, 3000, 200);
 
-                // Verificar se o popup realmente fechou
-                var popupAinda = PromobWindowHelper.EncontrarPopupAtencao(automation.GetDesktop(), PromobWindowHelper.CachedProcessIdPromob);
-                if (popupAinda != null){
-                    Logger.Log("    [AVISO] Popup ainda aberto após primeira tentativa. Tentando novamente...");
-                    InteractionHelper.AtivarJanela(popupAinda.AsWindow());
-                    InteractionHelper.EsperarUiRespirar(300);
-                    Keyboard.Type("n");
-                    InteractionHelper.EsperarUiRespirar(800);
+                if (!fechou){
+                    var popupAinda = PromobWindowHelper.EncontrarPopupAtencao(automation.GetDesktop(), PromobWindowHelper.CachedProcessIdPromob);
+                    if (popupAinda != null){
+                        Logger.Log("    [AVISO] Popup ainda aberto após primeira tentativa. Tentando atalho alternativo...");
+                        InteractionHelper.AtivarJanela(popupAinda.AsWindow());
+                        InteractionHelper.EsperarUiRespirar(300);
+                        Keyboard.Type("n");
+                        InteractionHelper.EsperarAte(() => 
+                            PromobWindowHelper.EncontrarPopupAtencao(automation.GetDesktop(), PromobWindowHelper.CachedProcessIdPromob) == null, 3000, 200);
+                    }
                 }
             }
             else{
@@ -350,7 +354,15 @@ namespace AutomacaoPromobTeste.Promob{
                         Keyboard.TypeSimultaneously(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_A);
                         InteractionHelper.EsperarUiRespirar(100);
                         Keyboard.Type(caminhoCompleto);
-                        InteractionHelper.EsperarUiRespirar(600); // Aumentado para garantir registro
+                        
+                        Logger.Log("  [INFO] Aguardando campo refletir a digitação...");
+                        InteractionHelper.EsperarAte(() => {
+                            try{
+                                string? txt = campoNome.Patterns.Value.IsSupported ? campoNome.Patterns.Value.Pattern.Value.ValueOrDefault : campoNome.AsTextBox().Text;
+                                return txt == caminhoCompleto;
+                            } catch { return false; }
+                        }, 3000, 100);
+
                         Keyboard.Type(VirtualKeyShort.RETURN); // Adiciona um RETURN extra para forçar atualização
                         InteractionHelper.EsperarUiRespirar(400); 
                         preenchidoViaUia = true;
@@ -374,7 +386,15 @@ namespace AutomacaoPromobTeste.Promob{
                 NativeClipboard.CopiarParaClipboardNativo(caminhoCompleto);
                 InteractionHelper.EsperarUiRespirar(400);
                 Keyboard.TypeSimultaneously(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_V);
-                InteractionHelper.EsperarUiRespirar(800);
+                
+                Logger.Log("  [INFO] Aguardando o Ctrl+V surtir efeito...");
+                InteractionHelper.EsperarAte(() => {
+                    try{
+                        var edit = dialogo.FindFirstDescendant(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Edit));
+                        if (edit != null) return edit.AsTextBox().Text == caminhoCompleto;
+                        return false;
+                    } catch { return false; }
+                }, 3000, 100);
 
                 // Restaura o conteúdo original imediatamente após o uso
                 if (conteudoAnterior != null){
