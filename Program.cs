@@ -185,10 +185,13 @@ namespace AutomacaoPromobTeste{
         // ────────────────────────────────────────────────────────────────────
         // Fechamento de projeto
         static void FecharProjeto(UIA3Automation automation, Window janela){
+            var swTotal = Stopwatch.StartNew();
+            Log("  [INFO] Iniciando sequência de fechamento do projeto...");
             AtivarJanela(janela);
             var raizBusca = ObterHostOuJanela(janela);
 
-            Log("  [INFO] Procurando aba 'Arquivo' (FileTab)...");
+            var swAba = Stopwatch.StartNew();
+            Log("    -> Procurando aba 'Arquivo' (FileTab)...");
             var abaArquivo = BuscarElementoComFallback(
                 raizBusca,
                 cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.TabItem)
@@ -199,14 +202,19 @@ namespace AutomacaoPromobTeste{
                 limitarAoMesmoProcesso: true,
                 processId: _cachedProcessIdPromob
             );
+            swAba.Stop();
 
             if (abaArquivo != null){
-                Log("  [OK] Aba 'Arquivo' encontrada. Clicando...");
+                Log($"    [OK] Aba 'Arquivo' localizada ({swAba.ElapsedMilliseconds}ms). Clicando...");
                 SelecionarOuClicar(abaArquivo);
                 EsperarUiRespirar(400);
             }
+            else {
+                Log($"    [AVISO] Aba 'Arquivo' não encontrada após {swAba.ElapsedMilliseconds}ms.", LogLevel.Warn);
+            }
 
-            Log("  [INFO] Procurando botão 'Fechar' (ProjectClose)...");
+            var swBtn = Stopwatch.StartNew();
+            Log("    -> Procurando botão 'Fechar' (ProjectClose)...");
             var btnFechar = BuscarElementoComFallback(
                 raizBusca,
                 cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button)
@@ -217,33 +225,56 @@ namespace AutomacaoPromobTeste{
                 limitarAoMesmoProcesso: true,
                 processId: _cachedProcessIdPromob
             );
+            swBtn.Stop();
 
             if (btnFechar != null){
-                Log("  [OK] Botão 'Fechar' encontrado. Clicando...");
+                Log($"    [OK] Botão 'Fechar' localizado ({swBtn.ElapsedMilliseconds}ms). Clicando...");
+                AtivarJanela(janela); // Garante foco antes de clicar
                 ClicarComFallback(btnFechar);
                 
                 // Aguardar um momento para o popup de salvar
-                Log("  [INFO] Aguardando possível popup 'Deseja salvar?'...");
-                var popup = EsperarAteRetorno(() => EncontrarPopupAtencao(automation.GetDesktop()), 3000);
+                Log("    [INFO] Aguardando possível popup 'Deseja salvar?'...");
+                var swPopup = Stopwatch.StartNew();
+                var popup = EsperarAteRetorno(() => EncontrarPopupAtencao(automation.GetDesktop(), _cachedProcessIdPromob), 3000);
+                swPopup.Stop();
                 
                 if (popup != null){
-                    Log($"  [OK] Popup detectado: '{popup.Name}'. Clicando em 'Não'...");
-                    var btnNao = popup.FindFirstDescendant(cf => 
+                    var swNao = Stopwatch.StartNew();
+                    Log($"    [OK] Popup '{popup.Name}' detectado ({swPopup.ElapsedMilliseconds}ms). Clicando em 'Não'...");
+                    
+                    // Otimização: busca rasa pelo botão 'Não' para não travar se o popup for grande (falso positivo)
+                    var btnNao = popup.FindFirstChild(cf => 
                         cf.ByName("Não").Or(cf.ByName("Nao")).Or(cf.ByName("No")));
                     
-                    if (btnNao != null)
+                    if (btnNao == null) {
+                        btnNao = popup.FindFirstDescendant(cf => 
+                            cf.ByName("Não").Or(cf.ByName("Nao")).Or(cf.ByName("No")));
+                    }
+                    swNao.Stop();
+                    
+                    if (btnNao != null) {
+                        Log($"    [ACTION] Botão 'Não' localizado em {swNao.ElapsedMilliseconds}ms. Clicando...");
                         ClicarComFallback(btnNao);
-                    else
+                    }
+                    else {
+                        Log($"    [AVISO] Botão 'Não' não encontrado após {swNao.ElapsedMilliseconds}ms. Usando atalho teclado...");
                         Keyboard.Type("n");
+                    }
                     
                     EsperarUiRespirar(800);
                 }
+                else {
+                    Log($"    [INFO] Nenhum popup de salvamento detectado em {swPopup.ElapsedMilliseconds}ms.");
+                }
             }
             else{
-                Log("  [AVISO] Botão 'Fechar' não encontrado. Tentando atalho Alt+F...", LogLevel.Warn);
+                Log($"    [AVISO] Botão 'Fechar' não encontrado após {swBtn.ElapsedMilliseconds}ms. Tentando atalho Alt+F...", LogLevel.Warn);
                 Keyboard.TypeSimultaneously(VirtualKeyShort.ALT, VirtualKeyShort.KEY_F);
                 EsperarUiRespirar(800);
             }
+
+            swTotal.Stop();
+            Log($"  [SUCESSO] Sequência de fechamento concluída em {swTotal.ElapsedMilliseconds}ms.");
         }
 
         // ────────────────────────────────────────────────────────────────────

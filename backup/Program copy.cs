@@ -158,17 +158,6 @@ namespace AutomacaoPromobTeste{
             AtivarJanela(janela);
             Medir("Clicar botão Importar", () => ClicarBotaoImportar(janela));
 
-            // CORREÇÃO: timeout aumentado de 400ms para 4000ms antes de cair no Vision
-            // O Promob pode demorar mais de 400ms para abrir o wizard
-            if (!EsperarAte(() =>{
-                var wizard = EncontrarJanelaWizard(automation, janela);
-                return wizard != null || JanelaArquivoAberta(automation) != null;
-            }, 4000)){  // era 400 — muito curto, caía sempre no Vision
-                VisionHelper.AguardarEstadoTela(
-                    "Wizard de importação do Promob visível, com campo de caminho de arquivo ou botão '...' para procurar arquivo",
-                    maxTentativas: 8, intervaloMs: 1200, fallbackMs: 2000);
-            }
-
             Log("  [3/8] Abrindo busca de arquivo e preenchendo caminho...");
             var janelaWizard = EncontrarJanelaWizard(automation, janela) ?? janela;
             Medir("Selecionar arquivo", () => AbrirDialogoEPreencher(automation, janelaWizard, caminhoArquivo));
@@ -196,10 +185,13 @@ namespace AutomacaoPromobTeste{
         // ────────────────────────────────────────────────────────────────────
         // Fechamento de projeto
         static void FecharProjeto(UIA3Automation automation, Window janela){
+            var swTotal = Stopwatch.StartNew();
+            Log("  [INFO] Iniciando sequência de fechamento do projeto...");
             AtivarJanela(janela);
             var raizBusca = ObterHostOuJanela(janela);
 
-            Log("  [INFO] Procurando aba 'Arquivo' (FileTab)...");
+            var swAba = Stopwatch.StartNew();
+            Log("    -> Procurando aba 'Arquivo' (FileTab)...");
             var abaArquivo = BuscarElementoComFallback(
                 raizBusca,
                 cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.TabItem)
@@ -210,14 +202,19 @@ namespace AutomacaoPromobTeste{
                 limitarAoMesmoProcesso: true,
                 processId: _cachedProcessIdPromob
             );
+            swAba.Stop();
 
             if (abaArquivo != null){
-                Log("  [OK] Aba 'Arquivo' encontrada. Clicando...");
+                Log($"    [OK] Aba 'Arquivo' localizada ({swAba.ElapsedMilliseconds}ms). Clicando...");
                 SelecionarOuClicar(abaArquivo);
                 EsperarUiRespirar(400);
             }
+            else {
+                Log($"    [AVISO] Aba 'Arquivo' não encontrada após {swAba.ElapsedMilliseconds}ms.", LogLevel.Warn);
+            }
 
-            Log("  [INFO] Procurando botão 'Fechar' (ProjectClose)...");
+            var swBtn = Stopwatch.StartNew();
+            Log("    -> Procurando botão 'Fechar' (ProjectClose)...");
             var btnFechar = BuscarElementoComFallback(
                 raizBusca,
                 cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button)
@@ -228,33 +225,56 @@ namespace AutomacaoPromobTeste{
                 limitarAoMesmoProcesso: true,
                 processId: _cachedProcessIdPromob
             );
+            swBtn.Stop();
 
             if (btnFechar != null){
-                Log("  [OK] Botão 'Fechar' encontrado. Clicando...");
+                Log($"    [OK] Botão 'Fechar' localizado ({swBtn.ElapsedMilliseconds}ms). Clicando...");
+                AtivarJanela(janela); // Garante foco antes de clicar
                 ClicarComFallback(btnFechar);
                 
                 // Aguardar um momento para o popup de salvar
-                Log("  [INFO] Aguardando possível popup 'Deseja salvar?'...");
-                var popup = EsperarAteRetorno(() => EncontrarPopupAtencao(automation.GetDesktop()), 3000);
+                Log("    [INFO] Aguardando possível popup 'Deseja salvar?'...");
+                var swPopup = Stopwatch.StartNew();
+                var popup = EsperarAteRetorno(() => EncontrarPopupAtencao(automation.GetDesktop(), _cachedProcessIdPromob), 3000);
+                swPopup.Stop();
                 
                 if (popup != null){
-                    Log($"  [OK] Popup detectado: '{popup.Name}'. Clicando em 'Não'...");
-                    var btnNao = popup.FindFirstDescendant(cf => 
+                    var swNao = Stopwatch.StartNew();
+                    Log($"    [OK] Popup '{popup.Name}' detectado ({swPopup.ElapsedMilliseconds}ms). Clicando em 'Não'...");
+                    
+                    // Otimização: busca rasa pelo botão 'Não' para não travar se o popup for grande (falso positivo)
+                    var btnNao = popup.FindFirstChild(cf => 
                         cf.ByName("Não").Or(cf.ByName("Nao")).Or(cf.ByName("No")));
                     
-                    if (btnNao != null)
+                    if (btnNao == null) {
+                        btnNao = popup.FindFirstDescendant(cf => 
+                            cf.ByName("Não").Or(cf.ByName("Nao")).Or(cf.ByName("No")));
+                    }
+                    swNao.Stop();
+                    
+                    if (btnNao != null) {
+                        Log($"    [ACTION] Botão 'Não' localizado em {swNao.ElapsedMilliseconds}ms. Clicando...");
                         ClicarComFallback(btnNao);
-                    else
+                    }
+                    else {
+                        Log($"    [AVISO] Botão 'Não' não encontrado após {swNao.ElapsedMilliseconds}ms. Usando atalho teclado...");
                         Keyboard.Type("n");
+                    }
                     
                     EsperarUiRespirar(800);
                 }
+                else {
+                    Log($"    [INFO] Nenhum popup de salvamento detectado em {swPopup.ElapsedMilliseconds}ms.");
+                }
             }
             else{
-                Log("  [AVISO] Botão 'Fechar' não encontrado. Tentando atalho Alt+F...", LogLevel.Warn);
+                Log($"    [AVISO] Botão 'Fechar' não encontrado após {swBtn.ElapsedMilliseconds}ms. Tentando atalho Alt+F...", LogLevel.Warn);
                 Keyboard.TypeSimultaneously(VirtualKeyShort.ALT, VirtualKeyShort.KEY_F);
                 EsperarUiRespirar(800);
             }
+
+            swTotal.Stop();
+            Log($"  [SUCESSO] Sequência de fechamento concluída em {swTotal.ElapsedMilliseconds}ms.");
         }
 
         // ────────────────────────────────────────────────────────────────────
@@ -315,61 +335,61 @@ namespace AutomacaoPromobTeste{
         // ────────────────────────────────────────────────────────────────────
         // Importação
         static void ClicarBotaoImportar(Window janelaPromob){
-            // OPTIMIZAÇÃO: Tenta usar o cache global primeiro
-            if (ElementoValido(_cachedBotaoImportar)){
-                Log("  [OK] Usando botão 'Importar' do cache.");
-                ClicarComFallback(_cachedBotaoImportar!);
-                return;
-            }
-
-            Log("  [INFO] Iniciando busca persistente do botão 'Importar Projeto'...");
-            
-            AutomationElement? btnFound = null;
-            int tentativas = 0;
-
-            while (btnFound == null){
-                tentativas++;
+            int tentativas = 1;
+            while (true){
+                var swTotal = Stopwatch.StartNew();
+                Log($"  [INFO] Procurando botão 'Importar' (Tentativa {tentativas})...");
                 
-                // 1. Garante que o Promob está visível e focado em cada tentativa
-                // (Se estiver minimizado ou com algo na frente, traz para cima)
-                AtivarJanela(janelaPromob);
+                AutomationElement? btnFound = null;
 
-                // 2. Verifica se algum popup lateral ou de aviso está bloqueando a busca
-                var desktop = janelaPromob.Automation.GetDesktop();
-                var popup = EncontrarPopupAtencao(desktop);
-                if (popup != null && popup.Properties.ProcessId == janelaPromob.Properties.ProcessId){
-                    Log($"  [AVISO] Popup detectado durante a busca de importar: '{popup.Name}'. Fechando...");
-                    TratarPopupGenerico(popup.AsWindow());
+                // 1. Tenta usar o cache global primeiro
+                if (ElementoValido(_cachedBotaoImportar)){
+                    Log("    [CACHE] Usando botão 'Importar' do cache.");
+                    btnFound = _cachedBotaoImportar;
+                }
+                else {
+                    var swBusca = Stopwatch.StartNew();
+                    Log("    [SEARCH] Iniciando busca persistente do botão 'Importar Projeto'...");
+                    
+                    // Tenta localizar o host (Ribbon) do botão de forma otimizada
+                    var buscaEm = ObterHostOuJanela(janelaPromob);
+
+                    // Busca pelo ID ou Fallback (limitado a 4 níveis)
+                    btnFound = BuscarElementoComFallback(
+                        buscaEm,
+                        cf => cf.ByAutomationId(AutomationIdImportar),
+                        e => (e.AutomationId ?? "").Equals(AutomationIdImportar, StringComparison.OrdinalIgnoreCase) ||
+                             (e.Name ?? "").Equals("Importar projeto", StringComparison.OrdinalIgnoreCase),
+                        limitarAoMesmoProcesso: true,
+                        processId: _cachedProcessIdPromob
+                    );
+                    swBusca.Stop();
+
+                    if (btnFound != null) Log($"    [OK] Botão localizado em {swBusca.ElapsedMilliseconds}ms.");
+                    else Log($"    [AVISO] Botão não encontrado após {swBusca.ElapsedMilliseconds}ms.");
+                }
+
+                if (btnFound != null){
+                    // 2. Garante que o Promob está visível e focado
                     AtivarJanela(janelaPromob);
+
+                    // 3. Clicar no botão
+                    Log("    [ACTION] Clicando no botão 'Importar'...");
+                    ClicarComFallback(btnFound);
+                    _cachedBotaoImportar = btnFound; 
+                    
+                    swTotal.Stop();
+                    Log($"  [SUCESSO] Clique executado com sucesso (Tempo total: {swTotal.ElapsedMilliseconds}ms).");
+                    break; 
+                }
+                else {
+                    swTotal.Stop();
+                    Log($"  [AVISO] Tentativa {tentativas} falhou ({swTotal.ElapsedMilliseconds}ms). Aguardando 5s...", LogLevel.Warn);
                 }
 
-                // 3. Tenta localizar o host (Ribbon) do botão
-                var buscaEm = ObterHostOuJanela(janelaPromob);
-
-                // 4. Busca pelo ID ou Fallback
-                btnFound = buscaEm.FindFirstDescendant(cf => cf.ByAutomationId(AutomationIdImportar)) ??
-                           BuscarElementoComFallback(
-                               buscaEm,
-                               cf => cf.ByName("Importar projeto").Or(cf.ByAutomationId(AutomationIdImportar)),
-                               e => (e.AutomationId ?? "").Equals(AutomationIdImportar, StringComparison.OrdinalIgnoreCase) ||
-                                    (e.Name ?? "").Equals("Importar projeto", StringComparison.OrdinalIgnoreCase),
-                               limitarAoMesmoProcesso: true,
-                               processId: _cachedProcessIdPromob
-                           );
-
-                if (btnFound != null) break;
-
-                // 5. Se não achou, informa e espera antes de tentar novamente
-                if (tentativas % 5 == 0){
-                    Log($"  [INFO] Ainda procurando botão 'Importar' (tentativa {tentativas})...");
-                }
-                
-                Thread.Sleep(500); // OPTIMIZAÇÃO: Polling mais rápido (de 2s para 0.5s)
+                tentativas++;
+                Thread.Sleep(5000); 
             }
-
-            Log($"  [OK] Botão encontrado após {tentativas} tentativa(s)!");
-            _cachedBotaoImportar = btnFound;
-            ClicarComFallback(btnFound);
         }
 
         //────────────────────────────────────────────────────────────────────
@@ -533,7 +553,7 @@ namespace AutomacaoPromobTeste{
 
                     return false;
                 } catch { return true; }
-            }, 10000);
+            }, 2000);
 
             if (fechou) Log("  [OK] Diálogo de arquivo fechado com sucesso.");
             else Log("  [AVISO] Diálogo não fechou no tempo esperado.", LogLevel.Warn);
@@ -659,38 +679,65 @@ namespace AutomacaoPromobTeste{
             }
 
             // Loop de espera dinâmico para garantir carregamento total (conforme solicitado pelo usuário)
-            int timeoutAtual = 60000;
+            int timeoutAtual = 10000;
             int tentativaLoop = 1;
 
             while (true){
                 Log($"  [INFO] Aguardando o carregamento do projeto (Tentativa {tentativaLoop}, timeout: {timeoutAtual/1000}s)...");
 
                 bool carregou = EsperarAte(() =>{
+                    var swTotal = Stopwatch.StartNew();
+                    Log("    [DEBUG] Iniciando ciclo de verificação UI...");
+                    
+                    // Otimização: obter o Host principal para reduzir o raio de busca
+                    var raizBusca = ObterHostOuJanela(janelaPromob);
+
                     // 1. Procura a aba Ferramentas (indicação de que a UI base carregou)
-                    var aba = janelaPromob.FindFirstDescendant(cf => 
-                        cf.ByAutomationId("ToolsTab").Or(cf.ByName("Ferramentas")));
+                    var swAba = Stopwatch.StartNew();
+                    Log("      -> Procurando aba 'Ferramentas' (TabItem)...");
+                    var aba = raizBusca.FindFirstDescendant(cf => 
+                        cf.ByControlType(FlaUI.Core.Definitions.ControlType.TabItem)
+                          .And(cf.ByAutomationId("ToolsTab").Or(cf.ByName("Ferramentas"))));
+                    swAba.Stop();
+                    
+                    if (aba != null) Log($"      [OK] Aba encontrada em {swAba.ElapsedMilliseconds}ms.");
+                    else Log($"      [AGUARDE] Aba não visível após {swAba.ElapsedMilliseconds}ms.");
                     
                     // 2. Procura a mensagem de "carregando" (indicação de que o carregamento de módulos ainda ocorre)
-                    var msgCarregando = janelaPromob.FindFirstDescendant(cf => 
-                        cf.ByName("Alguns itens ainda estão sendo carregados").Or(cf.ByName("Projeto com módulos invisíveis")));
+                    var swMsg = Stopwatch.StartNew();
+                    Log("      -> Verificando mensagem de carregamento (Text/Label)...");
+                    var msgCarregando = raizBusca.FindFirstDescendant(cf => 
+                        cf.ByName("Alguns itens ainda estão sendo carregados"));
+                    swMsg.Stop();
+
+                    if (msgCarregando != null) Log($"      [LOADING] Módulos carregando ({swMsg.ElapsedMilliseconds}ms).");
+                    else Log($"      [READY] Sem mensagem de carregamento ({swMsg.ElapsedMilliseconds}ms).");
 
                     // Só está pronto se a aba existir E a mensagem de carregamento não estiver presente
                     bool pronto = (aba != null) && (msgCarregando == null);
                     
                     if (!pronto){
-                        // Trata popups que podem bloquear o carregamento
+                        var swPopup = Stopwatch.StartNew();
+                        Log("    [INFO] Procurando popups de bloqueio...");
                         var desktop = janelaPromob.Automation.GetDesktop();
-                        var popup = EncontrarPopupAtencao(desktop);
+                        var popup = EncontrarPopupAtencao(desktop, _cachedProcessIdPromob);
+                        swPopup.Stop();
+
                         if (popup != null) {
-                            Log($"  [AVISO] Popup detectado durante carregamento: '{popup.Name}'. Tratando...");
+                            Log($"    [AVISO] Popup '{popup.Name}' tratado ({swPopup.ElapsedMilliseconds}ms).");
                             TratarPopupGenerico(popup);
+                        }
+                        else {
+                            Log($"    [INFO] Sem popups detectados em {swPopup.ElapsedMilliseconds}ms.");
                         }
                     }
                     else {
-                        Log("  [OK] Aba 'Ferramentas' detectada e sem mensagens de carregamento pendente.");
+                        Log("    [SUCESSO] Condições de carregamento concluídas.");
                         SelecionarOuClicar(aba!);
                     }
 
+                    swTotal.Stop();
+                    Log($"    [DEBUG] Ciclo finalizado em {swTotal.ElapsedMilliseconds}ms total.");
                     return pronto;
                 }, timeoutMs: timeoutAtual, intervaloMs: 2500);
 
@@ -701,24 +748,27 @@ namespace AutomacaoPromobTeste{
                 }
 
                 // Se chegou aqui, deu timeout na tentativa atual
-                Log($"  [AVISO] Timeout de {timeoutAtual/1000}s atingido sem concluir o carregamento.", LogLevel.Warn);
+                Log($"  [AVISO] Timeout de {timeoutAtual/1000}s atingido sem concluir o carregamento por UIA.", LogLevel.Warn);
                 
                 // Realiza uma varredura visual final como "voto de Minerva" antes de resetar o loop
                 if (VisionHelper.Habilitado){
-                    Log("  [VISION] Consultando se a tela parece carregada...");
+                    Log("  [VISION] Iniciando verificação visual (IA) como fallback final para este ciclo...");
                     var visao = VisionHelper.AguardarEstadoTela(
                         "A aba 'Ferramentas' está visível e não há mensagens de 'Carregando' ou 'Módulos Invisíveis' na parte inferior da tela.",
                         maxTentativas: 1, fallbackMs: 500);
                     
                     if (visao){
-                        Log("  [VISION] IA confirmou que o projeto parece carregado. Prosseguindo.");
+                        Log("  [VISION] IA detectou que a tela parece estar pronta (carregada). Prosseguindo.");
                         break;
+                    }
+                    else {
+                        Log("  [VISION] IA confirmou que o projeto ainda parece estar carregando ou em estado inconsistente.");
                     }
                 }
 
                 tentativaLoop++;
-                timeoutAtual = 30000; // Ciclos subsequentes de 30s conforme solicitado
-                Log("  [INFO] Reiniciando verificação para novo ciclo de 30s...");
+                timeoutAtual = 10000; // Ciclos subsequentes de 30s conforme solicitado
+                Log("  [INFO] Reiniciando verificação para novo ciclo de 10s...");
             }
         }
 
@@ -874,11 +924,20 @@ namespace AutomacaoPromobTeste{
         }
 
         //────────────────────────────────────────────────────────────────────
-        static Window? JanelaArquivoAberta(UIA3Automation automation){
+        static Window? JanelaArquivoAberta(UIA3Automation automation, int? targetProcessId = null){
             var desktop = automation.GetDesktop();
 
             var janelas = desktop.FindAllChildren(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Window));
-            var dialogo = janelas.FirstOrDefault(j =>
+            
+            var consulta = janelas.AsEnumerable();
+            if (targetProcessId.HasValue){
+                consulta = consulta.Where(j => {
+                    try { return j.Properties.ProcessId.ValueOrDefault == targetProcessId.Value; }
+                    catch { return false; }
+                });
+            }
+
+            var dialogo = consulta.FirstOrDefault(j =>
                 ContemQualquer(j.Name, "Abrir", "Open", "Salvar Como", "Save As"));
 
             if (dialogo != null)
@@ -893,26 +952,24 @@ namespace AutomacaoPromobTeste{
 
 
         //────────────────────────────────────────────────────────────────────
-        static Window? EncontrarPopupAtencao(AutomationElement desktop){
+        static Window? EncontrarPopupAtencao(AutomationElement desktop, int? targetProcessId = null){
             var janelas = desktop.FindAllChildren(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Window));
 
-            var popup = janelas.FirstOrDefault(j =>
-                ContemQualquer(j.Name, "Atenção", "Atencao", "Atençao", "Confirmação", "Confirmacao", "Salvar", "Save"));
+            var consulta = janelas.AsEnumerable();
+            if (targetProcessId.HasValue){
+                consulta = consulta.Where(j => {
+                    try { return j.Properties.ProcessId.ValueOrDefault == targetProcessId.Value; }
+                    catch { return false; }
+                });
+            }
+
+            var popup = consulta.FirstOrDefault(j =>
+                ContemQualquer(j.Name, "Atenção", "Atencao", "Atençao", "Confirmação", "Confirmacao", "Salvar", "Save", "Promob"));
 
             if (popup != null)
                 return popup.AsWindow();
 
-            var profundo = desktop.FindFirstDescendant(cf =>
-                cf.ByControlType(FlaUI.Core.Definitions.ControlType.Window)
-                  .And(cf.ByName("Atenção")
-                  .Or(cf.ByName("Atencao"))
-                  .Or(cf.ByName("Confirmação"))
-                  .Or(cf.ByName("Confirmacao"))
-                  .Or(cf.ByName("Salvar"))
-                  .Or(cf.ByName("Save"))
-                  .Or(cf.ByName("Promob"))));
-
-            return profundo?.AsWindow();
+            return null;
         }
 
         //────────────────────────────────────────────────────────────────────
@@ -920,6 +977,9 @@ namespace AutomacaoPromobTeste{
             if (ElementoValido(_cachedHost))
                 return _cachedHost!;
 
+            Log($"    [DEBUG] Buscando {AutomationIdHost}...");
+            var swHost = Stopwatch.StartNew();
+            
             // OPTIMIZAÇÃO: Busca o host apenas nos níveis superficiais do Promob (mais rápido)
             // Geralmente elementHost1 está nos primeiros 3-4 níveis
             _cachedHost = BuscarElementoComFallback(
@@ -929,11 +989,12 @@ namespace AutomacaoPromobTeste{
                 limitarAoMesmoProcesso: true,
                 processId: _cachedProcessIdPromob
             );
+            swHost.Stop();
 
             if (_cachedHost != null)
-                Log($"  [OK] {AutomationIdHost} localizado e cacheado para uso futuro.");
+                Log($"    [OK] {AutomationIdHost} localizado ({swHost.ElapsedMilliseconds}ms) e cacheado.");
             else{
-                Log($"  [AVISO] {AutomationIdHost} não encontrado. Usando janela principal.", LogLevel.Debug);
+                Log($"    [AVISO] {AutomationIdHost} não encontrado após {swHost.ElapsedMilliseconds}ms. Usando janela principal.", LogLevel.Debug);
             }
 
             return _cachedHost ?? janela;
@@ -946,26 +1007,43 @@ namespace AutomacaoPromobTeste{
             Func<AutomationElement, bool>? filtroFallback = null,
             bool limitarAoMesmoProcesso = false,
             int? processId = null){
-            var direto = raiz.FindFirstDescendant(buscaPrincipal);
-            if (direto != null)
-                return direto;
+            
+            // FASE 1: Varredura Rasa (BFS-like) — Muito mais rápido para elementos estruturais
+            var swFase1 = Stopwatch.StartNew();
+            if (filtroFallback != null){
+                var todos = BuscarAteNivel(raiz, maxNivel: 4);
+                var consulta = todos.AsEnumerable();
 
-            if (filtroFallback == null)
-                return null;
+                if (limitarAoMesmoProcesso && processId.HasValue){
+                    consulta = consulta.Where(e =>{
+                        try { return e.Properties.ProcessId.ValueOrDefault == processId.Value; }
+                        catch { return false; }
+                    });
+                }
 
-            // CORREÇÃO: FindAllDescendants() é muito caro — limita a profundidade máxima da busca
-            // usando FindAllChildren recursivo até 4 níveis, evitando varrer a árvore inteira
-            var todos = BuscarAteNivel(raiz, maxNivel: 4);
-            var consulta = todos.AsEnumerable();
+                var resultado = consulta.FirstOrDefault(filtroFallback);
+                swFase1.Stop();
 
-            if (limitarAoMesmoProcesso && processId.HasValue){
-                consulta = consulta.Where(e =>{
-                    try { return e.Properties.ProcessId.ValueOrDefault == processId.Value; }
-                    catch { return true; }
-                });
+                if (resultado != null) {
+                    Log($"      [PERF] Varredura Rasa encontrou o elemento em {swFase1.ElapsedMilliseconds}ms.");
+                    return resultado;
+                }
             }
 
-            return consulta.FirstOrDefault(filtroFallback);
+            // FASE 2: Busca Profunda (UIA Nativo) — Fallback se a rasa falhar
+            Log($"      [PERF] Varredura Rasa falhou ou ignorada ({swFase1.ElapsedMilliseconds}ms). Ativando Busca Profunda...");
+            
+            var swFase2 = Stopwatch.StartNew();
+            var direto = raiz.FindFirstDescendant(buscaPrincipal);
+            swFase2.Stop();
+
+            if (direto != null) {
+                Log($"      [PERF] Busca Profunda (UIA) encontrou em {swFase2.ElapsedMilliseconds}ms.");
+                return direto;
+            }
+
+            Log($"      [PERF] Ambas as buscas falharam (Total: {swFase1.ElapsedMilliseconds + swFase2.ElapsedMilliseconds}ms).");
+            return null;
         }
 
 
