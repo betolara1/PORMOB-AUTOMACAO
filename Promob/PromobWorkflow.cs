@@ -109,57 +109,64 @@ namespace AutomacaoPromobTeste.Promob{
                 InteractionHelper.EsperarUiRespirar(800);
             }
 
-            // Obrigatoriamente aguardar e tratar popup de salvar (até 10 segundos)
-            Logger.Log("    [INFO] Aguardando possível popup 'Deseja salvar?' (até 10s)...");
-            var swPopup = Stopwatch.StartNew();
-            var popup = InteractionHelper.EsperarAteRetorno(
-                () => PromobWindowHelper.EncontrarPopupAtencao(automation.GetDesktop(), PromobWindowHelper.CachedProcessIdPromob),
-                10000, intervaloMs: 500);
-            swPopup.Stop();
+            // Aguardar ativamente o fechamento do projeto
+            Logger.Log("    [INFO] Aguardando fechamento do projeto (e possível popup 'Deseja salvar?')...");
+            var swFechamento = Stopwatch.StartNew();
+            bool projetoFechado = false;
+            
+            while (swFechamento.ElapsedMilliseconds < 60000)
+            {
+                // 1. Verifica se retornou à tela inicial (botão Importar visível)
+                var raizNova = WindowFinder.ObterHostOuJanela(janela, PromobConfig.AutomationIdHost, PromobWindowHelper.CachedProcessIdPromob);
+                var btnImportar = WindowFinder.BuscarElementoComFallback(
+                    raizNova,
+                    cf => cf.ByAutomationId(PromobConfig.IdImportarBotao),
+                    e => (e.Properties.AutomationId.ValueOrDefault ?? "").Equals(PromobConfig.IdImportarBotao, StringComparison.OrdinalIgnoreCase) ||
+                         (e.Properties.Name.ValueOrDefault ?? "").Equals(PromobConfig.NomeJanelaWizardImportacao, StringComparison.OrdinalIgnoreCase),
+                    limitarAoMesmoProcesso: true,
+                    processId: PromobWindowHelper.CachedProcessIdPromob
+                );
 
-            if (popup != null){
-                Logger.Log($"    [OK] Popup '{popup.Name}' detectado ({swPopup.ElapsedMilliseconds}ms). Clicando em 'Não'...");
-                InteractionHelper.AtivarJanela(popup.AsWindow());
+                if (btnImportar != null && !btnImportar.Properties.IsOffscreen.ValueOrDefault)
+                {
+                    Logger.Log($"    [SUCESSO] Botão 'Importar' detectado! Projeto fechado ({swFechamento.ElapsedMilliseconds}ms).");
+                    projetoFechado = true;
+                    break;
+                }
 
-                var btnNao = popup.FindFirstChild(cf =>
-                    cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button)
-                      .And(cf.ByName(PromobConfig.BtnNao).Or(cf.ByName(PromobConfig.BtnNaoAlt)).Or(cf.ByName(PromobConfig.BtnNo))));
+                // 2. Verifica se existe o popup de Salvar aberto
+                var desktop = automation.GetDesktop();
+                var popup = PromobWindowHelper.EncontrarPopupAtencao(desktop, PromobWindowHelper.CachedProcessIdPromob);
 
-                if (btnNao == null){
-                    btnNao = popup.FindFirstDescendant(cf =>
+                if (popup != null)
+                {
+                    // Previne prender no fallback da janela principal avaliando se o botão "Não" existe
+                    var btnNao = popup.FindFirstDescendant(cf =>
                         cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button)
                           .And(cf.ByName(PromobConfig.BtnNao).Or(cf.ByName(PromobConfig.BtnNaoAlt)).Or(cf.ByName(PromobConfig.BtnNo))));
-                }
 
-                if (btnNao != null){
-                    Logger.Log($"    [ACTION] Botão 'Não' encontrado. Clicando...");
-                    InteractionHelper.ClicarComFallback(btnNao);
-                }
-                else{
-                    Logger.Log($"    [AVISO] Botão 'Não' não encontrado via UIA. Usando atalho teclado 'N'...");
-                    popup.AsWindow().SetForeground();
-                    InteractionHelper.EsperarUiRespirar(200);
-                    Keyboard.Type("n");
-                }
+                    if (btnNao == null)
+                    {
+                        btnNao = popup.FindFirstChild(cf =>
+                            cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button)
+                              .And(cf.ByName(PromobConfig.BtnNao).Or(cf.ByName(PromobConfig.BtnNaoAlt)).Or(cf.ByName(PromobConfig.BtnNo))));
+                    }
 
-                Logger.Log("    [INFO] Aguardando fechamento do popup...");
-                bool fechou = InteractionHelper.EsperarAte(() => 
-                    PromobWindowHelper.EncontrarPopupAtencao(automation.GetDesktop(), PromobWindowHelper.CachedProcessIdPromob) == null, 3000, 200);
-
-                if (!fechou){
-                    var popupAinda = PromobWindowHelper.EncontrarPopupAtencao(automation.GetDesktop(), PromobWindowHelper.CachedProcessIdPromob);
-                    if (popupAinda != null){
-                        Logger.Log("    [AVISO] Popup ainda aberto após primeira tentativa. Tentando atalho alternativo...");
-                        InteractionHelper.AtivarJanela(popupAinda.AsWindow());
-                        InteractionHelper.EsperarUiRespirar(300);
-                        Keyboard.Type("n");
-                        InteractionHelper.EsperarAte(() => 
-                            PromobWindowHelper.EncontrarPopupAtencao(automation.GetDesktop(), PromobWindowHelper.CachedProcessIdPromob) == null, 3000, 200);
+                    if (btnNao != null)
+                    {
+                        Logger.Log($"    [OK] Popup de salvamento detectado. Clicando em 'Não'...");
+                        InteractionHelper.AtivarJanela(popup.AsWindow());
+                        InteractionHelper.ClicarComFallback(btnNao);
+                        InteractionHelper.EsperarUiRespirar(1000); // Dá tempo para o popup fechar e o projeto começar a fechar
                     }
                 }
+
+                Thread.Sleep(500);
             }
-            else{
-                Logger.Log($"    [INFO] Nenhum popup de salvamento detectado em {swPopup.ElapsedMilliseconds}ms. Prosseguindo...");
+
+            if (!projetoFechado)
+            {
+                Logger.Log($"    [AVISO] Timeout de 60s atingido e botão 'Importar' não foi detectado. O Promob pode estar travado.", LogLevel.Warn);
             }
 
             swTotal.Stop();
