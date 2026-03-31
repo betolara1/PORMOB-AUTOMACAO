@@ -46,8 +46,8 @@ namespace AutomacaoPromobTeste.Promob{
             var nomeProjeto = Path.GetFileNameWithoutExtension(caminhoArquivo);
             Diagnostics.Medir("Abrir projeto", () => AbrirProjetoSelecionado(janela, nomeProjeto));
 
-            Logger.Log("  [7/8] Navegando até Ferramentas > Orçamento > Listagem...");
-            Diagnostics.Medir("Abrir listagem", () => AbrirListagem(automation, janela));
+            Logger.Log("  [7/8] Navegando até Ferramentas > Integradores > Promob ERP...");
+            Diagnostics.Medir("Abrir Promob ERP", () => AbrirIntegradorErp(automation, janela));
 
             Logger.Log("  [8/8] Fechando o projeto atual...");
             Diagnostics.Medir("Fechar projeto", () => FecharProjeto(automation, janela));
@@ -173,7 +173,7 @@ namespace AutomacaoPromobTeste.Promob{
             Logger.Log($"  [SUCESSO] Sequência de fechamento concluída em {swTotal.ElapsedMilliseconds}ms.");
         }
 
-        private static void AbrirListagem(UIA3Automation automation, Window janela){
+        private static void AbrirIntegradorErp(UIA3Automation automation, Window janela){
             InteractionHelper.AtivarJanela(janela);
 
             var raizBusca = WindowFinder.ObterHostOuJanela(janela, PromobConfig.AutomationIdHost, PromobWindowHelper.CachedProcessIdPromob);
@@ -193,36 +193,43 @@ namespace AutomacaoPromobTeste.Promob{
             if (abaFerramentas != null){
                 Logger.Log("  [OK] Aba 'Ferramentas' encontrada. Clicando...");
                 InteractionHelper.SelecionarOuClicar(abaFerramentas);
-                InteractionHelper.EsperarUiRespirar();
+                InteractionHelper.EsperarUiRespirar(800);
             }
             else{
                 Logger.Log("  [AVISO] Aba 'Ferramentas' não encontrada.", LogLevel.Warn);
             }
 
-            Logger.Log("  [INFO] Procurando botão de 'Orçamento'...");
-            var btnOrcamento = WindowFinder.BuscarElementoComFallback(
+            Logger.Log("  [INFO] Procurando botão 'Integradores'...");
+            var btnIntegradores = WindowFinder.BuscarElementoComFallback(
                 raizBusca,
-                cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button)
-                        .And(cf.ByName(PromobConfig.SecaoOrcamento).Or(cf.ByName(PromobConfig.SecaoOrcamentoAlt)))
-                        .And(cf.ByAutomationId(PromobConfig.IdOrcamentoToggle)),
-                e => (e.Properties.AutomationId.ValueOrDefault ?? "") == PromobConfig.IdOrcamentoToggle &&
-                     ((e.Properties.Name.ValueOrDefault ?? "").Equals(PromobConfig.SecaoOrcamento, StringComparison.OrdinalIgnoreCase) ||
-                      (e.Properties.Name.ValueOrDefault ?? "").Equals(PromobConfig.SecaoOrcamentoAlt, StringComparison.OrdinalIgnoreCase)),
+                cf => cf.ByName(PromobConfig.BotaoIntegradores).Or(cf.ByName(PromobConfig.BotaoIntegradores.ToUpperInvariant())),
+                e => (e.Properties.Name.ValueOrDefault ?? "").Equals(PromobConfig.BotaoIntegradores, StringComparison.OrdinalIgnoreCase),
                 limitarAoMesmoProcesso: true,
                 processId: PromobWindowHelper.CachedProcessIdPromob
             );
 
-            btnOrcamento ??= raizBusca.FindFirstDescendant(cf =>
-                cf.ByControlType(FlaUI.Core.Definitions.ControlType.MenuBar)
-                  .And(cf.ByAutomationId(PromobConfig.IdOrcamentoMenu).Or(cf.ByAutomationId(PromobConfig.IdOrcamentoMenuAlt))));
+            if (btnIntegradores != null){
+                Logger.Log("  [OK] Botão 'Integradores' encontrado. Clicando para abrir o menu...");
+                InteractionHelper.ClicarComFallback(btnIntegradores);
+                InteractionHelper.EsperarUiRespirar(1000); // Aguarda o dropdown abrir
 
-            if (btnOrcamento != null){
-                Logger.Log("  [OK] Botão 'Orçamento' encontrado. Clicando...");
-                InteractionHelper.ClicarComFallback(btnOrcamento);
-                InteractionHelper.EsperarUiRespirar();
+                Logger.Log("  [INFO] Procurando opção 'Promob ERP'...");
+                
+                // Em WPF, menus dropdown geralmente flutuam no Desktop como Popups ou MenuItems
+                var desktop = automation.GetDesktop();
+                var optErp = janela.FindFirstDescendant(cf => cf.ByName(PromobConfig.MenuPromobErp)) 
+                          ?? desktop.FindFirstDescendant(cf => cf.ByName(PromobConfig.MenuPromobErp));
+
+                if (optErp != null) {
+                    Logger.Log("  [OK] Opção 'Promob ERP' encontrada. Clicando...");
+                    InteractionHelper.ClicarComFallback(optErp);
+                    InteractionHelper.EsperarUiRespirar();
+                } else {
+                    Logger.Log("  [ERRO] Opção 'Promob ERP' não encontrada no menu dropdown.", LogLevel.Error);
+                }
             }
             else{
-                Logger.Log("  [AVISO] Botão 'Orçamento' não encontrado.", LogLevel.Warn);
+                Logger.Log("  [AVISO] Botão 'Integradores' não encontrado.", LogLevel.Warn);
             }
         }
 

@@ -35,6 +35,8 @@ namespace AutomacaoPromobTeste.Promob{
         public const string AbaFerramentas = "Ferramentas";
         public const string SecaoOrcamento = "Orçamento";
         public const string SecaoOrcamentoAlt = "Orcamento";
+        public const string BotaoIntegradores = "Integradores";
+        public const string MenuPromobErp = "Promob ERP";
         
         public const string BtnFechar = "Fechar";
         public const string BtnAvancar = "Avançar";
