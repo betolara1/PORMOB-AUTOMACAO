@@ -297,10 +297,13 @@ namespace AutomacaoPromobTeste.Promob{
             }
             else{
                 Logger.Log("  [AVISO] Botão de busca não encontrado. Usando TAB + SPACE...", LogLevel.Warn);
+                InteractionHelper.AtivarJanela(janelaPromob);
                 Keyboard.Press(VirtualKeyShort.TAB);
                 InteractionHelper.EsperarUiRespirar();
+                InteractionHelper.AtivarJanela(janelaPromob);
                 Keyboard.Press(VirtualKeyShort.TAB);
                 InteractionHelper.EsperarUiRespirar();
+                InteractionHelper.AtivarJanela(janelaPromob);
                 Keyboard.Press(VirtualKeyShort.SPACE);
             }
 
@@ -349,10 +352,13 @@ namespace AutomacaoPromobTeste.Promob{
                 else{
                     Logger.Log("  [INFO] SetValue falhou. Tentando foco + seleção + digitação...");
                     try{
+                        InteractionHelper.AtivarJanela(dialogo);
                         campoNome.Focus();
                         InteractionHelper.EsperarUiRespirar(200);
+                        InteractionHelper.AtivarJanela(dialogo);
                         Keyboard.TypeSimultaneously(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_A);
                         InteractionHelper.EsperarUiRespirar(100);
+                        InteractionHelper.AtivarJanela(dialogo);
                         Keyboard.Type(caminhoCompleto);
                         
                         Logger.Log("  [INFO] Aguardando campo refletir a digitação...");
@@ -363,6 +369,7 @@ namespace AutomacaoPromobTeste.Promob{
                             } catch { return false; }
                         }, 3000, 100);
 
+                        InteractionHelper.AtivarJanela(dialogo);
                         Keyboard.Type(VirtualKeyShort.RETURN); // Adiciona um RETURN extra para forçar atualização
                         InteractionHelper.EsperarUiRespirar(400); 
                         preenchidoViaUia = true;
@@ -385,6 +392,7 @@ namespace AutomacaoPromobTeste.Promob{
 
                 NativeClipboard.CopiarParaClipboardNativo(caminhoCompleto);
                 InteractionHelper.EsperarUiRespirar(400);
+                InteractionHelper.AtivarJanela(dialogo);
                 Keyboard.TypeSimultaneously(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_V);
                 
                 Logger.Log("  [INFO] Aguardando o Ctrl+V surtir efeito...");
@@ -402,6 +410,7 @@ namespace AutomacaoPromobTeste.Promob{
                     Logger.Log("  [OK] Clipboard do usuário restaurado.");
                 }
 
+                InteractionHelper.AtivarJanela(dialogo);
                 Keyboard.Type(VirtualKeyShort.RETURN);
                 InteractionHelper.EsperarUiRespirar(500);
                 return;
@@ -413,48 +422,57 @@ namespace AutomacaoPromobTeste.Promob{
                     cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button)
                       .And(cf.ByName(PromobConfig.BtnAbrir).Or(cf.ByName(PromobConfig.BtnOpen))));
 
-            if (btnAbrir != null){
-                Logger.Log("  [OK] Clicando em 'Abrir' via Clique Físico (UIA).");
-                try{
+            bool fechou = false;
+            for (int tentativa = 1; tentativa <= 3; tentativa++){
+                if (btnAbrir != null) {
+                    Logger.Log($"  [INFO] Tentativa {tentativa} de clicar no botão 'Abrir'...");
+                    InteractionHelper.ClicarComFallback(btnAbrir); // Usa Invoke Pattern preferencialmente
+                } else {
+                    Logger.Log($"  [INFO] Tentativa {tentativa} de confirmar diálogo (ENTER)...");
                     InteractionHelper.AtivarJanela(dialogo);
-                    btnAbrir.AsButton().Click();
+                    Keyboard.Type(VirtualKeyShort.RETURN);
                 }
-                catch{
-                    Logger.Log("  [AVISO] Falha no Clique Físico. Tentando Invoke...", LogLevel.Warn);
-                    InteractionHelper.ClicarComFallback(btnAbrir);
-                }
-            }
-            else{
-                Logger.Log("  [AVISO] Botão 'Abrir' não encontrado. Usando Enter...", LogLevel.Warn);
-                InteractionHelper.AtivarJanela(dialogo);
-                Keyboard.Type(VirtualKeyShort.RETURN);
-            }
 
-            Logger.Log("  [INFO] Aguardando fechamento do diálogo...");
-            bool fechou = InteractionHelper.EsperarAte(() =>{
-                try{
-                    if (dialogo.Properties.IsOffscreen.ValueOrDefault) return true;
+                Logger.Log("  [INFO] Aguardando fechamento do diálogo...");
+                var swAguardar = System.Diagnostics.Stopwatch.StartNew();
+                bool popupInterceptado = false;
+                
+                while (swAguardar.ElapsedMilliseconds < 4000) {
+                    try {
+                        if (dialogo.Properties.IsOffscreen.ValueOrDefault) {
+                            fechou = true;
+                            break;
+                        }
 
-                    var desktop = automation.GetDesktop();
-                    var janelas = desktop.FindAllChildren(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Window));
-                    var popupOS = janelas.FirstOrDefault(j =>
-                        j.Properties.ProcessId == dialogo.Properties.ProcessId &&
-                        InteractionHelper.ContemQualquer(j.Name, PromobConfig.TitulosAviso) &&
-                        j.Name != dialogo.Name);
-
-                    if (popupOS != null){
-                        Logger.Log($"  [AVISO] Popup detectado bloqueando o diálogo: '{popupOS.Name}'. Fechando...");
-                        TratarPopupGenerico(popupOS.AsWindow());
-                        InteractionHelper.AtivarJanela(dialogo);
+                        var desktop = automation.GetDesktop();
+                        var popup = PromobWindowHelper.EncontrarPopupAtencao(desktop, PromobWindowHelper.CachedProcessIdPromob);
+                        
+                        if (popup != null && popup.Name != dialogo.Name) {
+                            Logger.Log($"  [AVISO] Notificação do Promob roubou o foco do clique: '{popup.Name}'. Fechando...");
+                            TratarPopupGenerico(popup);
+                            InteractionHelper.AtivarJanela(dialogo);
+                            popupInterceptado = true;
+                            break; // Retorna ao loop principal para clicar em Abrir novamente
+                        }
+                    } catch { 
+                        fechou = true; 
+                        break; 
                     }
-
-                    return false;
+                    System.Threading.Thread.Sleep(200);
                 }
-                catch { return true; }
-            }, 2000);
 
-            if (fechou) Logger.Log("  [OK] Diálogo de arquivo fechado com sucesso.");
-            else Logger.Log("  [AVISO] Diálogo não fechou no tempo esperado.", LogLevel.Warn);
+                if (fechou) break;
+
+                if (!popupInterceptado) {
+                    Logger.Log($"  [AVISO] Diálogo não fechou após 4s. O clique pode ter sido ignorado.", LogLevel.Warn);
+                }
+            }
+
+            if (fechou) {
+                Logger.Log("  [OK] Diálogo de arquivo fechado e projeto selecionado com sucesso.");
+            } else {
+                throw new Exception("Falha Crítica: O Diálogo nativo de abrir arquivo não fechou, impedindo o carregamento ao Wizard.");
+            }
 
             InteractionHelper.EsperarUiRespirar(500);
         }
@@ -515,6 +533,7 @@ namespace AutomacaoPromobTeste.Promob{
                 }
                 else{
                     Logger.Log("  [AVISO] Botão 'Avançar' não encontrado. Tentando ENTER...", LogLevel.Warn);
+                    InteractionHelper.AtivarJanela(janelaWizard);
                     Keyboard.Type(VirtualKeyShort.RETURN);
                 }
 
@@ -547,7 +566,10 @@ namespace AutomacaoPromobTeste.Promob{
                                 cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button).And(cf.ByName(PromobConfig.BtnNao).Or(cf.ByName(PromobConfig.BtnNaoAlt))));
                             
                             if (btnNao != null) InteractionHelper.ClicarComFallback(btnNao);
-                            else Keyboard.Type("n");
+                            else {
+                                InteractionHelper.AtivarJanela(popup.AsWindow());
+                                Keyboard.Type("n");
+                            }
                         }
                         else {
                             Logger.Log($"  [INFO] Popup de Atenção detectado ('{texto}'). Tratando como informativo (OK/Nao).");
@@ -567,7 +589,10 @@ namespace AutomacaoPromobTeste.Promob{
                             cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button).And(cf.ByName(PromobConfig.BtnOk).Or(cf.ByName(PromobConfig.BtnOkAlt)).Or(cf.ByName(PromobConfig.BtnConcluir))));
                         
                         if (btnOk != null) InteractionHelper.ClicarComFallback(btnOk);
-                        else Keyboard.Type(VirtualKeyShort.RETURN);
+                        else {
+                            InteractionHelper.AtivarJanela(popup.AsWindow());
+                            Keyboard.Type(VirtualKeyShort.RETURN);
+                        }
                         
                         precisouTentarDenovo = true;
                         InteractionHelper.EsperarUiRespirar(800);
@@ -586,7 +611,7 @@ namespace AutomacaoPromobTeste.Promob{
         private static void CancelarPopupNovoProjeto(UIA3Automation automation){
             Logger.Log("  [INFO] Aguardando popup 'Atenção'...");
 
-            var popup = InteractionHelper.EsperarAteRetorno(() => PromobWindowHelper.EncontrarPopupAtencao(automation.GetDesktop()), 5000);
+            var popup = InteractionHelper.EsperarAteRetorno(() => PromobWindowHelper.EncontrarPopupAtencao(automation.GetDesktop(), PromobWindowHelper.CachedProcessIdPromob), 5000);
             if (popup == null){
                 Logger.Log("  [INFO] Popup de novo projeto não apareceu.");
                 return;
@@ -600,11 +625,13 @@ namespace AutomacaoPromobTeste.Promob{
                   .And(cf.ByName(PromobConfig.BtnCancelar).Or(cf.ByName(PromobConfig.BtnNao)).Or(cf.ByName(PromobConfig.BtnNaoAlt)).Or(cf.ByName(PromobConfig.BtnNo))));
 
             if (btnCancelar != null){
+                InteractionHelper.AtivarJanela(popup);
                 InteractionHelper.ClicarComFallback(btnCancelar);
                 Logger.Log("  [OK] Botão de cancelamento clicado no popup.");
             }
             else{
                 Logger.Log("  [AVISO] Botão de cancelamento não encontrado. Usando ESC...", LogLevel.Warn);
+                InteractionHelper.AtivarJanela(popup);
                 Keyboard.Type(VirtualKeyShort.ESCAPE);
             }
         }
@@ -656,6 +683,7 @@ namespace AutomacaoPromobTeste.Promob{
                     }
                     else{
                         Logger.Log("  [AVISO] Nenhuma forma de abrir encontrada. Tentando ENTER...", LogLevel.Warn);
+                        InteractionHelper.AtivarJanela(janelaPromob);
                         Keyboard.Type(VirtualKeyShort.RETURN);
                     }
                 }
@@ -761,10 +789,12 @@ namespace AutomacaoPromobTeste.Promob{
 
                 if (btnOk != null){
                     Logger.Log($"  [OK] Clicando em '{btnOk.Name}' no popup.");
+                    InteractionHelper.AtivarJanela(popup);
                     InteractionHelper.ClicarComFallback(btnOk);
                 }
                 else{
                     Logger.Log("  [OK] Enviando ALT+F4 para fechar o popup.");
+                    InteractionHelper.AtivarJanela(popup);
                     Keyboard.TypeSimultaneously(VirtualKeyShort.ALT, VirtualKeyShort.F4);
                 }
                 InteractionHelper.EsperarUiRespirar(500);
@@ -777,9 +807,12 @@ namespace AutomacaoPromobTeste.Promob{
             try{
                 InvalidarCacheUi();
 
+                var janelaBase = PromobWindowHelper.AguardarJanelaPromob(automation, 1000);
+                if (janelaBase != null) InteractionHelper.AtivarJanela(janelaBase);
                 Keyboard.Press(VirtualKeyShort.ESCAPE);
                 InteractionHelper.EsperarUiRespirar(250);
 
+                if (janelaBase != null) InteractionHelper.AtivarJanela(janelaBase);
                 Keyboard.Press(VirtualKeyShort.ESCAPE);
                 InteractionHelper.EsperarUiRespirar(250);
 
@@ -803,9 +836,13 @@ namespace AutomacaoPromobTeste.Promob{
                                     cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button).And(cf.ByName(PromobConfig.BtnNao).Or(cf.ByName(PromobConfig.BtnNaoAlt))));
                                 
                                 if (btnNao != null) InteractionHelper.ClicarComFallback(btnNao);
-                                else Keyboard.Type("n");
+                                else {
+                                    InteractionHelper.AtivarJanela(popup);
+                                    Keyboard.Type("n");
+                                }
                             }
                             else {
+                                InteractionHelper.AtivarJanela(popup);
                                 Keyboard.Press(VirtualKeyShort.ESCAPE);
                             }
                             InteractionHelper.EsperarUiRespirar(200);
@@ -829,16 +866,50 @@ namespace AutomacaoPromobTeste.Promob{
         }
 
         private static void FecharProjetoEIgnorarSalvar(Window janelaPromob){
+            Logger.Log("  [RECOVERY] Tentando fechar projeto atual de forma segura...");
             InteractionHelper.AtivarJanela(janelaPromob);
 
-            Keyboard.TypeSimultaneously(VirtualKeyShort.ALT, VirtualKeyShort.KEY_A);
-            InteractionHelper.EsperarUiRespirar();
+            var raizBusca = WindowFinder.ObterHostOuJanela(janelaPromob, PromobConfig.AutomationIdHost, PromobWindowHelper.CachedProcessIdPromob);
+            var btnFechar = WindowFinder.BuscarElementoComFallback(
+                raizBusca,
+                cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button).And(cf.ByAutomationId(PromobConfig.IdProjectClose).Or(cf.ByName(PromobConfig.BtnFechar))),
+                e => e.ControlType == FlaUI.Core.Definitions.ControlType.Button && ((e.Properties.AutomationId.ValueOrDefault ?? "") == PromobConfig.IdProjectClose || (e.Properties.Name.ValueOrDefault ?? "") == PromobConfig.BtnFechar),
+                limitarAoMesmoProcesso: true,
+                processId: PromobWindowHelper.CachedProcessIdPromob
+            );
 
-            Keyboard.Type("f");
-            InteractionHelper.EsperarUiRespirar(800);
+            if (btnFechar != null) {
+                Logger.Log("    [RECOVERY] Fechando projeto via UIA Pattern (Background)...");
+                InteractionHelper.ClicarComFallback(btnFechar);
+            } else {
+                Logger.Log("    [RECOVERY] Fallback de teclado para fechar projeto...");
+                InteractionHelper.AtivarJanela(janelaPromob);
+                Keyboard.TypeSimultaneously(VirtualKeyShort.ALT, VirtualKeyShort.KEY_A);
+                InteractionHelper.EsperarUiRespirar(300);
 
-            Keyboard.Type("n");
-            InteractionHelper.EsperarUiRespirar(800);
+                InteractionHelper.AtivarJanela(janelaPromob);
+                Keyboard.Type("f");
+            }
+
+            Logger.Log("    [RECOVERY] Tratando popup de salvamento...");
+            bool fechou = InteractionHelper.EsperarAte(() => {
+                var popup = PromobWindowHelper.EncontrarPopupAtencao(janelaPromob.Automation.GetDesktop(), PromobWindowHelper.CachedProcessIdPromob);
+                if (popup != null) {
+                    var btnNao = popup.FindFirstDescendant(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button).And(cf.ByName(PromobConfig.BtnNao).Or(cf.ByName(PromobConfig.BtnNaoAlt))));
+                    if (btnNao != null) InteractionHelper.ClicarComFallback(btnNao);
+                    else {
+                        InteractionHelper.AtivarJanela(popup.AsWindow());
+                        Keyboard.Type("n");
+                    }
+                    return true;
+                }
+                return false;
+            }, 3000, 200);
+
+            if (!fechou) {
+                 InteractionHelper.AtivarJanela(janelaPromob);
+                 Keyboard.Type("n");
+            }
         }
 
         private static void InvalidarCacheUi(){

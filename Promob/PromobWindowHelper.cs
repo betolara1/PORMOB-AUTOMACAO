@@ -112,8 +112,13 @@ namespace AutomacaoPromobTeste.Promob{
                 });
             }
 
-            var popup = consulta.FirstOrDefault(j =>
-                InteractionHelper.ContemQualquer(j.Name, "Atenção", "Atencao", "Atençao", "Confirmação", "Confirmacao", "Salvar", "Save", "Promob"));
+            var termosPrioritarios = new[] { "Atenção", "Atencao", "Atençao", "Confirmação", "Confirmacao", "Salvar", "Save" };
+            var popup = consulta.FirstOrDefault(j => InteractionHelper.ContemQualquer(j.Name, termosPrioritarios));
+
+            if (popup == null){
+                // Somente como fallback, se soubermos o ProcessId
+                popup = consulta.FirstOrDefault(j => (j.Name ?? "").Contains("Promob", StringComparison.OrdinalIgnoreCase));
+            }
 
             if (popup != null)
                 return popup.AsWindow();
