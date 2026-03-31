@@ -89,14 +89,14 @@ namespace AutomacaoPromobTeste.Promob{
             }
 
             var dialogo = consulta.FirstOrDefault(j =>
-                InteractionHelper.ContemQualquer(j.Name, "Abrir", "Open", "Salvar Como", "Save As"));
+                InteractionHelper.ContemQualquer(j.Name, PromobConfig.TermosDialogoArquivo));
 
             if (dialogo != null)
                 return dialogo.AsWindow();
 
             var profundo = desktop.FindFirstDescendant(cf =>
                 cf.ByControlType(FlaUI.Core.Definitions.ControlType.Window)
-                  .And(cf.ByName("Abrir").Or(cf.ByName("Open")).Or(cf.ByName("Salvar Como")).Or(cf.ByName("Save As"))));
+                  .And(cf.ByName(PromobConfig.BtnAbrir).Or(cf.ByName(PromobConfig.BtnOpen)).Or(cf.ByName(PromobConfig.BtnSalvarComo)).Or(cf.ByName(PromobConfig.BtnSaveAs))));
 
             return profundo?.AsWindow();
         }
@@ -112,8 +112,7 @@ namespace AutomacaoPromobTeste.Promob{
                 });
             }
 
-            var termosPrioritarios = new[] { "Atenção", "Atencao", "Atençao", "Confirmação", "Confirmacao", "Salvar", "Save" };
-            var popup = consulta.FirstOrDefault(j => InteractionHelper.ContemQualquer(j.Name, termosPrioritarios));
+            var popup = consulta.FirstOrDefault(j => InteractionHelper.ContemQualquer(j.Name, PromobConfig.TitulosAviso));
 
             if (popup == null){
                 // Somente como fallback, se soubermos o ProcessId

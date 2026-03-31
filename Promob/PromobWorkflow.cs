@@ -12,7 +12,6 @@ using FlaUI.UIA3;
 
 namespace AutomacaoPromobTeste.Promob{
     public static class PromobWorkflow{
-        private static AutomationElement? _cachedBotaoImportar;
 
         public static void ProcessarArquivo(UIA3Automation automation, string caminhoArquivo){
             Logger.Log("  [1/8] Localizando janela do Promob...");
@@ -226,38 +225,29 @@ namespace AutomacaoPromobTeste.Promob{
                 var swTotal = Stopwatch.StartNew();
                 Logger.Log($"  [INFO] Procurando botão 'Importar' (Tentativa {tentativas})...");
 
-                AutomationElement? btnFound = null;
+                var swBusca = Stopwatch.StartNew();
+                Logger.Log("    [SEARCH] Iniciando busca persistente do botão 'Importar Projeto'...");
 
-                if (InteractionHelper.ElementoValido(_cachedBotaoImportar)){
-                    Logger.Log("    [CACHE] Usando botão 'Importar' do cache.");
-                    btnFound = _cachedBotaoImportar;
-                }
-                else{
-                    var swBusca = Stopwatch.StartNew();
-                    Logger.Log("    [SEARCH] Iniciando busca persistente do botão 'Importar Projeto'...");
+                var buscaEm = WindowFinder.ObterHostOuJanela(janelaPromob, PromobConfig.AutomationIdHost, PromobWindowHelper.CachedProcessIdPromob);
 
-                    var buscaEm = WindowFinder.ObterHostOuJanela(janelaPromob, PromobConfig.AutomationIdHost, PromobWindowHelper.CachedProcessIdPromob);
+                AutomationElement? btnFound = WindowFinder.BuscarElementoComFallback(
+                    buscaEm,
+                    cf => cf.ByAutomationId(PromobConfig.IdImportarBotao),
+                    e => (e.Properties.AutomationId.ValueOrDefault ?? "").Equals(PromobConfig.IdImportarBotao, StringComparison.OrdinalIgnoreCase) ||
+                         (e.Properties.Name.ValueOrDefault ?? "").Equals(PromobConfig.NomeJanelaWizardImportacao, StringComparison.OrdinalIgnoreCase),
+                    limitarAoMesmoProcesso: true,
+                    processId: PromobWindowHelper.CachedProcessIdPromob
+                );
+                swBusca.Stop();
 
-                    btnFound = WindowFinder.BuscarElementoComFallback(
-                        buscaEm,
-                        cf => cf.ByAutomationId(PromobConfig.IdImportarBotao),
-                        e => (e.Properties.AutomationId.ValueOrDefault ?? "").Equals(PromobConfig.IdImportarBotao, StringComparison.OrdinalIgnoreCase) ||
-                             (e.Properties.Name.ValueOrDefault ?? "").Equals(PromobConfig.NomeJanelaWizardImportacao, StringComparison.OrdinalIgnoreCase),
-                        limitarAoMesmoProcesso: true,
-                        processId: PromobWindowHelper.CachedProcessIdPromob
-                    );
-                    swBusca.Stop();
-
-                    if (btnFound != null) Logger.Log($"    [OK] Botão localizado em {swBusca.ElapsedMilliseconds}ms.");
-                    else Logger.Log($"    [AVISO] Botão não encontrado após {swBusca.ElapsedMilliseconds}ms.");
-                }
+                if (btnFound != null) Logger.Log($"    [OK] Botão localizado em {swBusca.ElapsedMilliseconds}ms.");
+                else Logger.Log($"    [AVISO] Botão não encontrado após {swBusca.ElapsedMilliseconds}ms.");
 
                 if (btnFound != null){
                     InteractionHelper.AtivarJanela(janelaPromob);
 
                     Logger.Log("    [ACTION] Clicando no botão 'Importar'...");
                     InteractionHelper.ClicarComFallback(btnFound);
-                    _cachedBotaoImportar = btnFound;
 
                     swTotal.Stop();
                     Logger.Log($"  [SUCESSO] Clique executado com sucesso (Tempo total: {swTotal.ElapsedMilliseconds}ms).");
@@ -913,7 +903,6 @@ namespace AutomacaoPromobTeste.Promob{
         }
 
         private static void InvalidarCacheUi(){
-            _cachedBotaoImportar = null;
             WindowFinder.CachedHost = null;
         }
     }

@@ -64,7 +64,8 @@ namespace AutomacaoPromobTeste.Promob{
         public const string MsgCarregandoItens = "Alguns itens ainda estão sendo carregados";
         public const string MsgConfirmarCancelamento = "cancelar";
         
-        // Filtros de Títulos de Janelas de Aviso
+        // Filtros de Títulos de Janelas e Diálogos
         public static readonly string[] TitulosAviso = { "Aviso", "Erro", "Atenção", "Atencao", "Atençao", "Confirmação", "Confirmacao", "Salvar", "Save" };
+        public static readonly string[] TermosDialogoArquivo = { "Abrir", "Open", "Salvar Como", "Save As" };
     }
 }
