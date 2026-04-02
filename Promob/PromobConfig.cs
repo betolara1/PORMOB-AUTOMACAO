@@ -12,6 +12,7 @@ namespace AutomacaoPromobTeste.Promob{
         public const int TimeoutCurto = 2000;
         public const int TimeoutPadrao = 5000;
         public const int TimeoutLongo = 10000;
+        public const int TimeoutExportacaoErp = 35 * 60 * 1000; // 35 minutos (projetos grandes podem levar até 30min)
         public const int PollMs = 200;
         public const int DelayMinimo = 150;
 
@@ -37,6 +38,8 @@ namespace AutomacaoPromobTeste.Promob{
         public const string SecaoOrcamentoAlt = "Orcamento";
         public const string BotaoIntegradores = "Integradores";
         public const string MenuPromobErp = "Promob ERP";
+        public const string MsgExportacaoSucesso = "completado com sucesso";
+        public const string NomePastaXmlExport = "01_XML";
         
         public const string BtnFechar = "Fechar";
         public const string BtnAvancar = "Avançar";

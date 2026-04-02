@@ -12,9 +12,12 @@ namespace AutomacaoPromobTeste.Promob{
         public static Window? AguardarJanelaPromob(UIA3Automation automation, int timeoutMs = PromobConfig.TimeoutPadrao){
             Window? encontrada = null;
 
+            var currentProcId = System.Diagnostics.Process.GetCurrentProcess().Id;
             var promobProc = System.Diagnostics.Process.GetProcesses()
-                .FirstOrDefault(p => p.ProcessName.Contains("Promob", StringComparison.OrdinalIgnoreCase) &&
-                                   !p.ProcessName.Contains("Uploader", StringComparison.OrdinalIgnoreCase));
+                .FirstOrDefault(p => p.Id != currentProcId &&
+                                     p.ProcessName.Contains("Promob", StringComparison.OrdinalIgnoreCase) &&
+                                     !p.ProcessName.Contains("Uploader", StringComparison.OrdinalIgnoreCase) &&
+                                     !p.ProcessName.Contains("Automacao", StringComparison.OrdinalIgnoreCase));
 
             if (promobProc != null)
                 CachedProcessIdPromob = promobProc.Id;

@@ -42,14 +42,17 @@ namespace AutomacaoPromobTeste.Promob{
             Logger.Log("  [5/8] Tratando popup de Novo Projeto...");
             Diagnostics.Medir("Tratar popup", () => CancelarPopupNovoProjeto(automation));
 
-            Logger.Log("  [6/8] Abrindo o projeto selecionado...");
+            Logger.Log("  [6/9] Abrindo o projeto selecionado...");
             var nomeProjeto = Path.GetFileNameWithoutExtension(caminhoArquivo);
             Diagnostics.Medir("Abrir projeto", () => AbrirProjetoSelecionado(janela, nomeProjeto));
 
-            Logger.Log("  [7/8] Navegando até Ferramentas > Integradores > Promob ERP...");
+            Logger.Log("  [7/9] Navegando até Ferramentas > Integradores > Promob ERP...");
             Diagnostics.Medir("Abrir Promob ERP", () => AbrirIntegradorErp(automation, janela));
 
-            Logger.Log("  [8/8] Fechando o projeto atual...");
+            Logger.Log("  [8/9] Aguardando exportação XML do Promob ERP...");
+            Diagnostics.Medir("Exportação ERP", () => AguardarExportacaoErp(automation, janela));
+
+            Logger.Log("  [9/9] Fechando o projeto atual...");
             Diagnostics.Medir("Fechar projeto", () => FecharProjeto(automation, janela));
 
             Logger.Log("  [INFO] Fluxo concluído para este arquivo.");
@@ -191,7 +194,7 @@ namespace AutomacaoPromobTeste.Promob{
             );
 
             if (abaFerramentas != null){
-                Logger.Log("  [OK] Aba 'Ferramentas' encontrada. Clicando...");
+                Logger.Log("  [OK] Aba 'Ferramentas' encontrada. Selecionando...");
                 InteractionHelper.SelecionarOuClicar(abaFerramentas);
                 InteractionHelper.EsperarUiRespirar(800);
             }
@@ -209,28 +212,242 @@ namespace AutomacaoPromobTeste.Promob{
             );
 
             if (btnIntegradores != null){
-                Logger.Log("  [OK] Botão 'Integradores' encontrado. Clicando para abrir o menu...");
-                InteractionHelper.ClicarComFallback(btnIntegradores);
-                InteractionHelper.EsperarUiRespirar(1000); // Aguarda o dropdown abrir
+                Logger.Log("  [OK] Botão 'Integradores' encontrado. Acionando via UIA (sem mouse)...");
+                AcionarElementoSemMouse(btnIntegradores);
 
-                Logger.Log("  [INFO] Procurando opção 'Promob ERP'...");
-                
-                // Em WPF, menus dropdown geralmente flutuam no Desktop como Popups ou MenuItems
-                var desktop = automation.GetDesktop();
-                var optErp = janela.FindFirstDescendant(cf => cf.ByName(PromobConfig.MenuPromobErp)) 
-                          ?? desktop.FindFirstDescendant(cf => cf.ByName(PromobConfig.MenuPromobErp));
+                Logger.Log("  [INFO] Aguardando menu dropdown e procurando 'Promob ERP'...");
+                AutomationElement? optErp = null;
 
-                if (optErp != null) {
-                    Logger.Log("  [OK] Opção 'Promob ERP' encontrada. Clicando...");
-                    InteractionHelper.ClicarComFallback(optErp);
-                    InteractionHelper.EsperarUiRespirar();
-                } else {
+                bool encontrou = InteractionHelper.EsperarAte(() => {
+                    try {
+                        var desktop = automation.GetDesktop();
+
+                        // Busca primeiro na janela principal (pode ser descendente direto)
+                        optErp = janela.FindFirstDescendant(cf =>
+                            cf.ByName(PromobConfig.MenuPromobErp));
+
+                        // Se não achou, busca no Desktop (menus flutuantes WPF)
+                        if (optErp == null){
+                            optErp = desktop.FindFirstDescendant(cf =>
+                                cf.ByName(PromobConfig.MenuPromobErp));
+                        }
+
+                        return optErp != null;
+                    } catch { return false; }
+                }, timeoutMs: 5000, intervaloMs: 500);
+
+                if (encontrou && optErp != null){
+                    Logger.Log($"  [OK] Opção 'Promob ERP' encontrada (Tipo: {optErp.ControlType}). Acionando via UIA (sem mouse)...");
+                    AcionarElementoSemMouse(optErp);
+                    InteractionHelper.EsperarUiRespirar(500);
+                }
+                else{
                     Logger.Log("  [ERRO] Opção 'Promob ERP' não encontrada no menu dropdown.", LogLevel.Error);
                 }
             }
             else{
                 Logger.Log("  [AVISO] Botão 'Integradores' não encontrado.", LogLevel.Warn);
             }
+        }
+
+        /// <summary>
+        /// Aciona um elemento usando apenas padrões UIA (sem mover o mouse).
+        /// Ordem: Invoke → Toggle → ExpandCollapse → SelectionItem → Focus+SPACE.
+        /// Mouse só como último recurso absoluto.
+        /// </summary>
+        private static void AcionarElementoSemMouse(AutomationElement el){
+            if (el == null) return;
+
+            // 1. Invoke Pattern (botão padrão, menu item)
+            try {
+                if (el.Patterns.Invoke.IsSupported){
+                    Logger.Log("    [UIA] Acionando via Invoke Pattern.");
+                    el.Patterns.Invoke.Pattern.Invoke();
+                    return;
+                }
+            } catch { }
+
+            // 2. Toggle Pattern (RibbonToggleButton, como Integradores)
+            try {
+                if (el.Patterns.Toggle.IsSupported){
+                    Logger.Log("    [UIA] Acionando via Toggle Pattern.");
+                    el.Patterns.Toggle.Pattern.Toggle();
+                    return;
+                }
+            } catch { }
+
+            // 3. ExpandCollapse Pattern (menus que expandem)
+            try {
+                if (el.Patterns.ExpandCollapse.IsSupported){
+                    Logger.Log("    [UIA] Acionando via ExpandCollapse Pattern.");
+                    el.Patterns.ExpandCollapse.Pattern.Expand();
+                    return;
+                }
+            } catch { }
+
+            // 4. SelectionItem Pattern (itens de lista/menu)
+            try {
+                if (el.Patterns.SelectionItem.IsSupported){
+                    Logger.Log("    [UIA] Acionando via SelectionItem Pattern.");
+                    el.Patterns.SelectionItem.Pattern.Select();
+                    return;
+                }
+            } catch { }
+
+            // 5. Focus + SPACE (simula ação sem mouse)
+            try {
+                Logger.Log("    [UIA] Nenhum Pattern suportado. Tentando Focus + SPACE...");
+                el.Focus();
+                InteractionHelper.EsperarUiRespirar(200);
+                Keyboard.Type(VirtualKeyShort.SPACE);
+                return;
+            } catch { }
+
+            // 6. Último recurso: mouse
+            Logger.Log("    [FALLBACK] Usando clique de mouse como último recurso.", LogLevel.Warn);
+            try { el.Click(); } catch { }
+        }
+
+        private static void AguardarExportacaoErp(UIA3Automation automation, Window janela){
+            var swTotal = Stopwatch.StartNew();
+            Logger.Log("  [INFO] Aguardando a exportação do Promob ERP finalizar (timeout: 35min)...");
+
+            // ====================================================================
+            // FASE 1: Aguardar a mensagem "completado com sucesso"
+            // O popup de carregamento e a janela de exportação vão aparecer e sumir
+            // sozinhos. Só precisamos ficar monitorando até o texto de sucesso surgir.
+            // ====================================================================
+            AutomationElement? textoSucesso = null;
+            Window? janelaExportacao = null;
+            int logIntervalMs = 30000; // Log de progresso a cada 30s
+            var swUltimoLog = Stopwatch.StartNew();
+
+            bool exportouComSucesso = InteractionHelper.EsperarAte(() => {
+                // Log de progresso periódico para não parecer travado
+                if (swUltimoLog.ElapsedMilliseconds >= logIntervalMs){
+                    Logger.Log($"    [AGUARDE] Exportação em andamento... ({swTotal.ElapsedMilliseconds / 1000}s decorridos)");
+                    swUltimoLog.Restart();
+                }
+
+                try {
+                    var desktop = automation.GetDesktop();
+                    var todasJanelas = desktop.FindAllChildren(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Window));
+
+                    foreach (var win in todasJanelas){
+                        try {
+                            // Filtra apenas janelas do processo Promob
+                            if (PromobWindowHelper.CachedProcessIdPromob.HasValue &&
+                                win.Properties.ProcessId.ValueOrDefault != PromobWindowHelper.CachedProcessIdPromob.Value)
+                                continue;
+
+                            // Procura o texto "completado com sucesso" dentro da janela
+                            var txtSucesso = win.FindFirstDescendant(cf =>
+                                cf.ByControlType(FlaUI.Core.Definitions.ControlType.Text));
+
+                            if (txtSucesso != null){
+                                // Verifica todos os textos dentro da janela
+                                var todosTextos = win.FindAllDescendants(cf =>
+                                    cf.ByControlType(FlaUI.Core.Definitions.ControlType.Text));
+
+                                foreach (var txt in todosTextos){
+                                    try {
+                                        var conteudo = txt.Properties.Name.ValueOrDefault ?? "";
+                                        if (conteudo.Contains(PromobConfig.MsgExportacaoSucesso, StringComparison.OrdinalIgnoreCase)){
+                                            textoSucesso = txt;
+                                            janelaExportacao = win.AsWindow();
+                                            return true;
+                                        }
+                                    } catch { }
+                                }
+                            }
+                        } catch { }
+                    }
+                } catch { }
+
+                return false;
+            }, timeoutMs: PromobConfig.TimeoutExportacaoErp, intervaloMs: 5000);
+
+            if (!exportouComSucesso){
+                Logger.Log($"  [ERRO] Timeout de 35 minutos atingido sem detectar 'completado com sucesso'. Exportação pode ter falhado.", LogLevel.Error);
+                return;
+            }
+
+            Logger.Log($"  [SUCESSO] Mensagem 'completado com sucesso' detectada após {swTotal.ElapsedMilliseconds / 1000}s!");
+
+            // ====================================================================
+            // FASE 2: Clicar no botão "Fechar" da janela de exportação
+            // ====================================================================
+            if (janelaExportacao != null){
+                Logger.Log("  [INFO] Procurando botão 'Fechar' na janela de exportação...");
+                InteractionHelper.EsperarUiRespirar(500);
+
+                AutomationElement? btnFechar = null;
+                bool achouFechar = InteractionHelper.EsperarAte(() => {
+                    try {
+                        btnFechar = janelaExportacao.FindFirstDescendant(cf =>
+                            cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button)
+                              .And(cf.ByName(PromobConfig.BtnFechar)));
+
+                        btnFechar ??= janelaExportacao.FindFirstDescendant(cf =>
+                            cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button)
+                              .And(cf.ByName("Close")));
+
+                        return btnFechar != null && btnFechar.Properties.IsEnabled.ValueOrDefault;
+                    } catch { return false; }
+                }, timeoutMs: 10000, intervaloMs: 500);
+
+                if (achouFechar && btnFechar != null){
+                    Logger.Log("  [OK] Botão 'Fechar' encontrado e habilitado. Clicando...");
+                    InteractionHelper.ClicarComFallback(btnFechar);
+                    InteractionHelper.EsperarUiRespirar(1500);
+                }
+                else{
+                    Logger.Log("  [AVISO] Botão 'Fechar' não encontrado. Tentando ALT+F4...", LogLevel.Warn);
+                    InteractionHelper.AtivarJanela(janelaExportacao);
+                    Keyboard.TypeSimultaneously(VirtualKeyShort.ALT, VirtualKeyShort.F4);
+                    InteractionHelper.EsperarUiRespirar(1500);
+                }
+            }
+
+            // ====================================================================
+            // FASE 3: Fechar a pasta 01_XML que abre automaticamente no Explorer
+            // ====================================================================
+            Logger.Log("  [INFO] Procurando janela do Explorer (pasta 01_XML) para fechar...");
+            bool fechouExplorer = InteractionHelper.EsperarAte(() => {
+                try {
+                    var desktop = automation.GetDesktop();
+                    var janelas = desktop.FindAllChildren(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Window));
+
+                    foreach (var win in janelas){
+                        try {
+                            var nome = win.Properties.Name.ValueOrDefault ?? "";
+                            if (nome.Contains(PromobConfig.NomePastaXmlExport, StringComparison.OrdinalIgnoreCase)){
+                                Logger.Log($"  [OK] Janela do Explorer encontrada: '{nome}'. Fechando...");
+                                var winExplorer = win.AsWindow();
+                                InteractionHelper.AtivarJanela(winExplorer);
+                                Keyboard.TypeSimultaneously(VirtualKeyShort.ALT, VirtualKeyShort.F4);
+                                InteractionHelper.EsperarUiRespirar(800);
+                                return true;
+                            }
+                        } catch { }
+                    }
+                } catch { }
+                return false;
+            }, timeoutMs: 10000, intervaloMs: 1000);
+
+            if (!fechouExplorer){
+                Logger.Log("  [AVISO] Janela do Explorer com '01_XML' não foi detectada. Prosseguindo...", LogLevel.Warn);
+            }
+
+            // ====================================================================
+            // FASE 4: Retornar o foco para o Promob
+            // ====================================================================
+            Logger.Log("  [INFO] Retornando foco para o Promob...");
+            InteractionHelper.AtivarJanela(janela);
+            InteractionHelper.EsperarUiRespirar(500);
+
+            swTotal.Stop();
+            Logger.Log($"  [SUCESSO] Exportação ERP concluída em {swTotal.ElapsedMilliseconds / 1000}s.");
         }
 
         private static void ClicarBotaoImportar(Window janelaPromob){
