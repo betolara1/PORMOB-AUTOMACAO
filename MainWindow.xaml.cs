@@ -23,6 +23,7 @@ namespace AutomacaoPromobTeste
         
         private int _processadosCount = 0;
         private int _errosCount = 0;
+        private System.Windows.Threading.DispatcherTimer? _statusTimer;
 
         public MainWindow()
         {
@@ -42,10 +43,22 @@ namespace AutomacaoPromobTeste
             Logger.Log("║   Painel de Controle de Automação      ║");
             Logger.Log("║   Pronto para iniciar o monitoramento. ║");
             Logger.Log("══════════════════════════════════════════");
+
+            // Inicializar timer de monitoramento do estado do Promob
+            _statusTimer = new System.Windows.Threading.DispatcherTimer();
+            _statusTimer.Interval = TimeSpan.FromSeconds(1.5);
+            _statusTimer.Tick += StatusTimer_Tick;
+            _statusTimer.Start();
+
+            // Executa verificação inicial imediata
+            AtualizarBotaoIniciar();
         }
 
         protected override void OnClosed(EventArgs e)
         {
+            // Para o timer de verificação de processos
+            _statusTimer?.Stop();
+
             // Garante a parada da automação se fechar a janela
             if (_isMonitoring)
             {
@@ -139,9 +152,10 @@ namespace AutomacaoPromobTeste
                     {
                         FileName = caminhoExe,
                         WorkingDirectory = Path.GetDirectoryName(caminhoExe) ?? "",
-                        UseShellExecute = true,
+                        UseShellExecute = false, // Necessário para modificar variáveis de ambiente
                         WindowStyle = ProcessWindowStyle.Normal
                     };
+                    info.EnvironmentVariables["__COMPAT_LAYER"] = "RunAsInvoker";
                     Process.Start(info);
                 }
                 else
@@ -358,7 +372,7 @@ namespace AutomacaoPromobTeste
 
                 btnToggleAutomacao.Content = "Iniciar Automação";
                 btnToggleAutomacao.Background = new SolidColorBrush(Color.FromRgb(16, 185, 129)); // Verde
-                btnToggleAutomacao.IsEnabled = true;
+                btnToggleAutomacao.IsEnabled = IsPromobRunning();
                 btnAbrirPromob.IsEnabled = true;
 
                 Logger.Log("[INFO] Monitoramento parado. Automação inativa.");
@@ -432,6 +446,55 @@ namespace AutomacaoPromobTeste
             }
 
             return null;
+        }
+
+        // ==========================================
+        // --- PROMOB MONITORING LOGIC ---
+        // ==========================================
+
+        private async void StatusTimer_Tick(object? sender, EventArgs e)
+        {
+            if (_isMonitoring)
+            {
+                btnToggleAutomacao.IsEnabled = true;
+                return;
+            }
+
+            bool promobAberto = await Task.Run(() => IsPromobRunning());
+            
+            // Só atualiza se o estado do monitoramento não tiver mudado nesse meio tempo
+            if (!_isMonitoring)
+            {
+                btnToggleAutomacao.IsEnabled = promobAberto;
+            }
+        }
+
+        private void AtualizarBotaoIniciar()
+        {
+            if (_isMonitoring)
+            {
+                btnToggleAutomacao.IsEnabled = true;
+                return;
+            }
+
+            btnToggleAutomacao.IsEnabled = IsPromobRunning();
+        }
+
+        private bool IsPromobRunning()
+        {
+            try
+            {
+                var currentProcId = Process.GetCurrentProcess().Id;
+                return Process.GetProcesses()
+                    .Any(p => p.Id != currentProcId &&
+                              p.ProcessName.Contains("Promob", StringComparison.OrdinalIgnoreCase) &&
+                              !p.ProcessName.Contains("Uploader", StringComparison.OrdinalIgnoreCase) &&
+                              !p.ProcessName.Contains("Automacao", StringComparison.OrdinalIgnoreCase));
+            }
+            catch
+            {
+                return false;
+            }
         }
     }
 }

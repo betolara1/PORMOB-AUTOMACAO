@@ -274,5 +274,66 @@ namespace AutomacaoPromobTeste.Automation{
                 return false;
             }
         }
+
+        //--------------------------------------------------------------------------------------
+            /// <summary>
+            /// Aciona um elemento de automação visual usando estritamente padrões UIA corporativos
+            /// (Invoke, Toggle, Expand, Selection) sem usar interações físicas de mouse.
+            /// O mouse físico só é empregado como último recurso absoluto de segurança.
+            /// </summary>
+            /// <param name="el">O elemento visual a ser disparado.</param>
+        //--------------------------------------------------------------------------------------
+        public static void AcionarElementoSemMouse(AutomationElement el){
+            if (el == null) return;
+
+            // 1. Invoke Pattern (botão padrão, menu item)
+            try {
+                if (el.Patterns.Invoke.IsSupported){
+                    Logger.Log("    [UIA] Acionando via Invoke Pattern.");
+                    el.Patterns.Invoke.Pattern.Invoke();
+                    return;
+                }
+            } catch { }
+
+            // 2. Toggle Pattern (RibbonToggleButton, como Integradores)
+            try {
+                if (el.Patterns.Toggle.IsSupported){
+                    Logger.Log("    [UIA] Acionando via Toggle Pattern.");
+                    el.Patterns.Toggle.Pattern.Toggle();
+                    return;
+                }
+            } catch { }
+
+            // 3. ExpandCollapse Pattern (menus que expandem)
+            try {
+                if (el.Patterns.ExpandCollapse.IsSupported){
+                    Logger.Log("    [UIA] Acionando via ExpandCollapse Pattern.");
+                    el.Patterns.ExpandCollapse.Pattern.Expand();
+                    return;
+                }
+            } catch { }
+
+            // 4. SelectionItem Pattern (itens de lista/menu)
+            try {
+                if (el.Patterns.SelectionItem.IsSupported){
+                    Logger.Log("    [UIA] Acionando via SelectionItem Pattern.");
+                    el.Patterns.SelectionItem.Pattern.Select();
+                    return;
+                }
+            } catch { }
+
+            // 5. Focus + SPACE (simula ação sem mouse)
+            try {
+                Logger.Log("    [UIA] Nenhum Pattern suportado. Tentando Focus + SPACE...");
+                el.Focus();
+                EsperarUiRespirar(200);
+                Keyboard.Type(VirtualKeyShort.SPACE);
+                return;
+            } catch { }
+
+            // 6. Último recurso: mouse
+            Logger.Log("    [FALLBACK] Usando clique de mouse como último recurso.", LogLevel.Warn);
+            try { el.Click(); } catch { }
+        }
     }
 }
