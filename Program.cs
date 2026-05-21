@@ -21,6 +21,7 @@ namespace AutomacaoPromobTeste{
             }
 
             Directory.CreateDirectory(PromobConfig.PastaXml);
+            Directory.CreateDirectory(PromobConfig.PastaPromobErro);
 
             using var automation = new UIA3Automation();
 
@@ -80,6 +81,32 @@ namespace AutomacaoPromobTeste{
                         }
                         catch (Exception exDel){
                             Logger.Log($"  [AVISO] Não foi possível excluir '{nome}': {exDel.Message}", LogLevel.Warn);
+                        }
+                    }
+                    catch (AutomacaoPromobTeste.Promob.PromobExportException exErp){
+                        // ===================================================================
+                        // Erro de exportação ERP ("Abortado com erro!")
+                        // O projeto já foi fechado pelo FecharProjeto dentro de ProcessarArquivo.
+                        // Aqui só movemos o arquivo para "promob erro" e continuamos.
+                        // ===================================================================
+                        erros++;
+                        Console.WriteLine($"\n[ERRO EXPORTAÇÃO] {nome}: {exErp.Message}");
+                        Logger.RegistrarErro(nome, exErp);
+
+                        // Move o arquivo para a pasta "promob erro"
+                        try{
+                            var destino = Path.Combine(PromobConfig.PastaPromobErro, nome);
+                            // Se já existe um arquivo com mesmo nome, adiciona timestamp
+                            if (File.Exists(destino)){
+                                var semExtensao = Path.GetFileNameWithoutExtension(nome);
+                                var extensao = Path.GetExtension(nome);
+                                destino = Path.Combine(PromobConfig.PastaPromobErro, $"{semExtensao}_{DateTime.Now:yyyyMMdd_HHmmss}{extensao}");
+                            }
+                            File.Move(arquivo, destino);
+                            Logger.Log($"  [OK] Arquivo '{nome}' movido para '{PromobConfig.PastaPromobErro}'.");
+                        }
+                        catch (Exception exMove){
+                            Logger.Log($"  [AVISO] Não foi possível mover '{nome}' para 'promob erro': {exMove.Message}", LogLevel.Warn);
                         }
                     }
                     catch (Exception ex){

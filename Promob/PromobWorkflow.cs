@@ -11,14 +11,31 @@ using FlaUI.Core.WindowsAPI;
 using FlaUI.UIA3;
 
 namespace AutomacaoPromobTeste.Promob{
+    //--------------------------------------------------------------------------------------
+        /// <summary>
+        /// Classe central (Orquestradora) responsável por executar todo o fluxo de automação (Workflow)
+        /// do Promob, desde a importação do projeto 3D até a exportação final de dados para o ERP.
+        /// </summary>
+    //--------------------------------------------------------------------------------------
     public static class PromobWorkflow{
 
+        //--------------------------------------------------------------------------------------
+            /// <summary>
+            /// Executa a rotina completa de automação para um arquivo específico de projeto 3D.
+            /// Coordena as etapas de inicialização, preenchimento de wizard, abertura de projeto, exportação e fechamento.
+            /// </summary>
+            /// <param name="automation">A instância ativa do motor de automação UIA3.</param>
+            /// <param name="caminhoArquivo">O caminho absoluto do arquivo do projeto a ser processado.</param>
+        //--------------------------------------------------------------------------------------
         public static void ProcessarArquivo(UIA3Automation automation, string caminhoArquivo){
             Logger.Log("  [1/8] Localizando janela do Promob...");
             var janela = PromobWindowHelper.AguardarJanelaPromob(automation, PromobConfig.TimeoutLongo)
                 ?? throw new Exception("Janela do Promob não encontrada. O Promob está aberto?");
 
             int currentPid = janela.Properties.ProcessId.ValueOrDefault;
+            
+            // Se o Promob foi reiniciado ou fechado entre execuções, o ID do processo muda.
+            // Nesse caso, limpamos as referências do cache da árvore visual para evitar erros de ponteiro antigo.
             if (PromobWindowHelper.CachedProcessIdPromob.HasValue && PromobWindowHelper.CachedProcessIdPromob.Value != currentPid){
                 Logger.Log("  [INFO] Novo ProcessId detectado. Invalidando cache de UI.");
                 InvalidarCacheUi();
@@ -42,22 +59,50 @@ namespace AutomacaoPromobTeste.Promob{
             Logger.Log("  [5/8] Tratando popup de Novo Projeto...");
             Diagnostics.Medir("Tratar popup", () => CancelarPopupNovoProjeto(automation));
 
+            // LISTAR OS BOTÕES
+            // Console.WriteLine("[INFO] Procurando janela do Promob para listar botões...");
+            // var janelaInicial = PromobWindowHelper.AguardarJanelaPromob(automation, 5000);
+            // if (janelaInicial != null){
+            //     ListarTodosBotoes(janelaInicial);
+            // }
+
             Logger.Log("  [6/9] Abrindo o projeto selecionado...");
             var nomeProjeto = Path.GetFileNameWithoutExtension(caminhoArquivo);
             Diagnostics.Medir("Abrir projeto", () => AbrirProjetoSelecionado(janela, nomeProjeto));
 
+/*
             Logger.Log("  [7/9] Navegando até Ferramentas > Integradores > Promob ERP...");
             Diagnostics.Medir("Abrir Promob ERP", () => AbrirIntegradorErp(automation, janela));
 
             Logger.Log("  [8/9] Aguardando exportação XML do Promob ERP...");
-            Diagnostics.Medir("Exportação ERP", () => AguardarExportacaoErp(automation, janela));
-
+            PromobExportException? erroExportacao = null;
+            try{
+                Diagnostics.Medir("Exportação ERP", () => AguardarExportacaoErp(automation, janela));
+            }
+            catch (PromobExportException ex){
+                erroExportacao = ex;
+                Logger.Log("  [AVISO] Exportação falhou. Fechando o projeto normalmente antes de sinalizar o erro...", LogLevel.Warn);
+            }
+*/
             Logger.Log("  [9/9] Fechando o projeto atual...");
             Diagnostics.Medir("Fechar projeto", () => FecharProjeto(automation, janela));
+
+            // Se houve erro na exportação, relança a exceção APÓS fechar o projeto
+            // if (erroExportacao != null){
+            //     throw erroExportacao;
+            // }
 
             Logger.Log("  [INFO] Fluxo concluído para este arquivo.");
         }
 
+        //--------------------------------------------------------------------------------------
+            /// <summary>
+            /// Realiza o fechamento seguro do projeto atualmente aberto no Promob,
+            /// tratando popups de confirmação de salvamento de forma a rejeitar alterações.
+            /// </summary>
+            /// <param name="automation">A instância ativa do motor de automação UIA3.</param>
+            /// <param name="janela">A janela principal ativa do Promob.</param>
+        //--------------------------------------------------------------------------------------
         private static void FecharProjeto(UIA3Automation automation, Window janela){
             var swTotal = Stopwatch.StartNew();
             Logger.Log("  [INFO] Iniciando sequência de fechamento do projeto...");
@@ -176,6 +221,14 @@ namespace AutomacaoPromobTeste.Promob{
             Logger.Log($"  [SUCESSO] Sequência de fechamento concluída em {swTotal.ElapsedMilliseconds}ms.");
         }
 
+        //--------------------------------------------------------------------------------------
+            /// <summary>
+            /// Navega pela interface gráfica do Promob ativando o menu 'Ferramentas', abrindo a opção
+            /// 'Integradores' e disparando o integrador 'Promob ERP'.
+            /// </summary>
+            /// <param name="automation">A instância ativa do motor de automação UIA3.</param>
+            /// <param name="janela">A janela principal ativa do Promob.</param>
+        //--------------------------------------------------------------------------------------
         private static void AbrirIntegradorErp(UIA3Automation automation, Window janela){
             InteractionHelper.AtivarJanela(janela);
 
@@ -226,7 +279,7 @@ namespace AutomacaoPromobTeste.Promob{
                         optErp = janela.FindFirstDescendant(cf =>
                             cf.ByName(PromobConfig.MenuPromobErp));
 
-                        // Se não achou, busca no Desktop (menus flutuantes WPF)
+                        // Se não achou, busca no Desktop (menus dropdown de WPF flutuam fora da hierarquia da janela)
                         if (optErp == null){
                             optErp = desktop.FindFirstDescendant(cf =>
                                 cf.ByName(PromobConfig.MenuPromobErp));
@@ -250,11 +303,14 @@ namespace AutomacaoPromobTeste.Promob{
             }
         }
 
-        /// <summary>
-        /// Aciona um elemento usando apenas padrões UIA (sem mover o mouse).
-        /// Ordem: Invoke → Toggle → ExpandCollapse → SelectionItem → Focus+SPACE.
-        /// Mouse só como último recurso absoluto.
-        /// </summary>
+        //--------------------------------------------------------------------------------------
+            /// <summary>
+            /// Aciona um elemento de automação visual usando estritamente padrões UIA corporativos
+            /// (Invoke, Toggle, Expand, Selection) sem usar interações físicas de mouse.
+            /// O mouse físico só é empregado como último recurso absoluto de segurança.
+            /// </summary>
+            /// <param name="el">O elemento visual a ser disparado.</param>
+        //--------------------------------------------------------------------------------------
         private static void AcionarElementoSemMouse(AutomationElement el){
             if (el == null) return;
 
@@ -308,21 +364,30 @@ namespace AutomacaoPromobTeste.Promob{
             try { el.Click(); } catch { }
         }
 
+        //--------------------------------------------------------------------------------------
+            /// <summary>
+            /// Monitora ativamente o processamento pesado de exportação do Promob ERP, aguardando que o
+            /// texto de sucesso apareça, fechando a janela de status e fechando o Explorer que abre ao fim.
+            /// </summary>
+            /// <param name="automation">A instância ativa do motor de automação UIA3.</param>
+            /// <param name="janela">A janela principal ativa do Promob.</param>
+        //--------------------------------------------------------------------------------------
         private static void AguardarExportacaoErp(UIA3Automation automation, Window janela){
             var swTotal = Stopwatch.StartNew();
             Logger.Log("  [INFO] Aguardando a exportação do Promob ERP finalizar (timeout: 35min)...");
 
             // ====================================================================
-            // FASE 1: Aguardar a mensagem "completado com sucesso"
+            // FASE 1: Aguardar a mensagem de sucesso OU erro
             // O popup de carregamento e a janela de exportação vão aparecer e sumir
-            // sozinhos. Só precisamos ficar monitorando até o texto de sucesso surgir.
+            // sozinhos. Monitoramos até o texto de sucesso ou erro surgir.
             // ====================================================================
             AutomationElement? textoSucesso = null;
             Window? janelaExportacao = null;
+            bool detectouErro = false;
             int logIntervalMs = 30000; // Log de progresso a cada 30s
             var swUltimoLog = Stopwatch.StartNew();
 
-            bool exportouComSucesso = InteractionHelper.EsperarAte(() => {
+            bool exportouComResultado = InteractionHelper.EsperarAte(() => {
                 // Log de progresso periódico para não parecer travado
                 if (swUltimoLog.ElapsedMilliseconds >= logIntervalMs){
                     Logger.Log($"    [AGUARDE] Exportação em andamento... ({swTotal.ElapsedMilliseconds / 1000}s decorridos)");
@@ -340,7 +405,7 @@ namespace AutomacaoPromobTeste.Promob{
                                 win.Properties.ProcessId.ValueOrDefault != PromobWindowHelper.CachedProcessIdPromob.Value)
                                 continue;
 
-                            // Procura o texto "completado com sucesso" dentro da janela
+                            // Procura textos dentro da janela
                             var txtSucesso = win.FindFirstDescendant(cf =>
                                 cf.ByControlType(FlaUI.Core.Definitions.ControlType.Text));
 
@@ -352,6 +417,16 @@ namespace AutomacaoPromobTeste.Promob{
                                 foreach (var txt in todosTextos){
                                     try {
                                         var conteudo = txt.Properties.Name.ValueOrDefault ?? "";
+
+                                        // Verifica ERRO primeiro (prioridade sobre sucesso)
+                                        if (conteudo.Contains(PromobConfig.MsgExportacaoErro, StringComparison.OrdinalIgnoreCase)){
+                                            Logger.Log($"  [ERRO] Mensagem de erro detectada: '{conteudo}'", LogLevel.Error);
+                                            janelaExportacao = win.AsWindow();
+                                            detectouErro = true;
+                                            return true;
+                                        }
+
+                                        // Verifica SUCESSO
                                         if (conteudo.Contains(PromobConfig.MsgExportacaoSucesso, StringComparison.OrdinalIgnoreCase)){
                                             textoSucesso = txt;
                                             janelaExportacao = win.AsWindow();
@@ -367,15 +442,14 @@ namespace AutomacaoPromobTeste.Promob{
                 return false;
             }, timeoutMs: PromobConfig.TimeoutExportacaoErp, intervaloMs: 5000);
 
-            if (!exportouComSucesso){
-                Logger.Log($"  [ERRO] Timeout de 35 minutos atingido sem detectar 'completado com sucesso'. Exportação pode ter falhado.", LogLevel.Error);
+            if (!exportouComResultado){
+                Logger.Log($"  [ERRO] Timeout de 35 minutos atingido sem detectar resultado. Exportação pode ter falhado.", LogLevel.Error);
                 return;
             }
 
-            Logger.Log($"  [SUCESSO] Mensagem 'completado com sucesso' detectada após {swTotal.ElapsedMilliseconds / 1000}s!");
-
             // ====================================================================
             // FASE 2: Clicar no botão "Fechar" da janela de exportação
+            // (tanto para sucesso quanto para erro)
             // ====================================================================
             if (janelaExportacao != null){
                 Logger.Log("  [INFO] Procurando botão 'Fechar' na janela de exportação...");
@@ -408,6 +482,21 @@ namespace AutomacaoPromobTeste.Promob{
                     InteractionHelper.EsperarUiRespirar(1500);
                 }
             }
+
+            // Se detectou erro, lança exceção APÓS fechar a janela de exportação
+            // para que o fluxo principal saiba que precisa mover o arquivo e fechar o projeto
+            if (detectouErro){
+                Logger.Log("  [ERRO] Exportação ERP abortada com erro. Sinalizando para mover arquivo e continuar.", LogLevel.Error);
+
+                // Retorna foco para o Promob antes de lançar a exceção
+                InteractionHelper.AtivarJanela(janela);
+                InteractionHelper.EsperarUiRespirar(500);
+
+                swTotal.Stop();
+                throw new PromobExportException($"Exportação ERP abortada com erro após {swTotal.ElapsedMilliseconds / 1000}s.");
+            }
+
+            Logger.Log($"  [SUCESSO] Mensagem 'completado com sucesso' detectada após {swTotal.ElapsedMilliseconds / 1000}s!");
 
             // ====================================================================
             // FASE 3: Fechar a pasta 01_XML que abre automaticamente no Explorer
@@ -450,6 +539,12 @@ namespace AutomacaoPromobTeste.Promob{
             Logger.Log($"  [SUCESSO] Exportação ERP concluída em {swTotal.ElapsedMilliseconds / 1000}s.");
         }
 
+        //--------------------------------------------------------------------------------------
+            /// <summary>
+            /// Realiza a busca ativa e clica no botão "Importar Projeto" na tela de início do Promob.
+            /// </summary>
+            /// <param name="janelaPromob">A janela principal ativa do Promob.</param>
+        //--------------------------------------------------------------------------------------
         private static void ClicarBotaoImportar(Window janelaPromob){
             int tentativas = 1;
             while (true){
@@ -494,6 +589,15 @@ namespace AutomacaoPromobTeste.Promob{
             }
         }
 
+        //--------------------------------------------------------------------------------------
+            /// <summary>
+            /// Abre o diálogo nativo do Windows para seleção de arquivos clicando no botão "Procurar" no Wizard
+            /// e preenche com o caminho absoluto do arquivo a ser importado.
+            /// </summary>
+            /// <param name="automation">A instância ativa do motor de automação UIA3.</param>
+            /// <param name="janelaPromob">A janela de Wizard ou janela principal ativa do Promob.</param>
+            /// <param name="caminhoArquivo">O caminho absoluto do arquivo C# do projeto a ser selecionado.</param>
+        //--------------------------------------------------------------------------------------
         private static void AbrirDialogoEPreencher(UIA3Automation automation, Window janelaPromob, string caminhoArquivo){
             InteractionHelper.AtivarJanela(janelaPromob);
 
@@ -535,6 +639,15 @@ namespace AutomacaoPromobTeste.Promob{
             PreencherDialogoNativo(automation, caminhoArquivo, dialogo);
         }
 
+        //--------------------------------------------------------------------------------------
+            /// <summary>
+            /// Insere o caminho do arquivo no campo de texto de seleção de arquivo do Windows FileDialog
+            /// e confirma a seleção de forma robusta e resiliente (tentando SetValue, Clipboard e Teclado).
+            /// </summary>
+            /// <param name="automation">A instância ativa do motor de automação UIA3.</param>
+            /// <param name="caminhoCompleto">O caminho completo do arquivo a ser importado.</param>
+            /// <param name="dialogo">A janela do FileDialog nativo do Windows aberta.</param>
+        //--------------------------------------------------------------------------------------
         private static void PreencherDialogoNativo(UIA3Automation automation, string caminhoCompleto, Window dialogo){
             Logger.Log($"  [OK] Diálogo encontrado: {dialogo.Name}");
             InteractionHelper.AtivarJanela(dialogo);
@@ -698,6 +811,14 @@ namespace AutomacaoPromobTeste.Promob{
             InteractionHelper.EsperarUiRespirar(500);
         }
 
+        //--------------------------------------------------------------------------------------
+            /// <summary>
+            /// Verifica e valida se o campo obrigatório de "Caminho do arquivo" foi devidamente 
+            /// preenchido pelo robô no assistente de importação antes de disparar o clique de avançar.
+            /// </summary>
+            /// <param name="janelaWizard">A janela ativa do assistente (Wizard) de Importação.</param>
+            /// <returns><c>true</c> se a validação passar ou se o campo não puder ser verificado; caso contrário, <c>false</c>.</returns>
+        //--------------------------------------------------------------------------------------
         private static bool ValidarCamposWizard(Window janelaWizard){
             Logger.Log("  [INFO] Validando preenchimento dos campos obrigatórios no Wizard...");
             
@@ -731,6 +852,14 @@ namespace AutomacaoPromobTeste.Promob{
             return true; // Retorna true para não travar se não achar o elemento, mas loga o aviso
         }
 
+        //--------------------------------------------------------------------------------------
+            /// <summary>
+            /// Localiza e clica no botão "Avançar" do Wizard de importação, gerenciando ativamente possíveis
+            /// diálogos de cancelamento, avisos de validação de formulário ou erros emitidos pelo Promob.
+            /// </summary>
+            /// <param name="automation">A instância ativa do motor de automação UIA3.</param>
+            /// <param name="janelaWizard">A janela do assistente (Wizard) ativa.</param>
+        //--------------------------------------------------------------------------------------
         private static void ClicarAvancarWizard(UIA3Automation automation, Window janelaWizard){
             InteractionHelper.AtivarJanela(janelaWizard);
 
@@ -829,6 +958,13 @@ namespace AutomacaoPromobTeste.Promob{
             }
         }
 
+        //--------------------------------------------------------------------------------------
+            /// <summary>
+            /// Intercepta e cancela com segurança possíveis popups de confirmação de "Novo Projeto" ou
+            /// salvamento indesejados abertos após avançar etapas do wizard.
+            /// </summary>
+            /// <param name="automation">A instância ativa do motor de automação UIA3.</param>
+        //--------------------------------------------------------------------------------------
         private static void CancelarPopupNovoProjeto(UIA3Automation automation){
             Logger.Log("  [INFO] Aguardando popup 'Atenção'...");
 
@@ -857,6 +993,14 @@ namespace AutomacaoPromobTeste.Promob{
             }
         }
 
+        //--------------------------------------------------------------------------------------
+            /// <summary>
+            /// Localiza o projeto importado pelo nome na lista de projetos recentes e efetua o duplo clique
+            /// para abri-lo, gerenciando ativamente a espera pelo carregamento total e avisos de cena na tela.
+            /// </summary>
+            /// <param name="janelaPromob">A janela principal ativa do Promob.</param>
+            /// <param name="nomeProjeto">O nome do projeto a ser aberto.</param>
+        //--------------------------------------------------------------------------------------
         private static void AbrirProjetoSelecionado(Window janelaPromob, string nomeProjeto){
             InteractionHelper.AtivarJanela(janelaPromob);
             Logger.Log($"  [INFO] Procurando projeto '{nomeProjeto}' para abrir...");
@@ -870,8 +1014,50 @@ namespace AutomacaoPromobTeste.Promob{
             );
 
             if (itemProjeto != null){
-                Logger.Log("  [OK] Projeto encontrado na lista. Executando duplo clique...");
-                itemProjeto.DoubleClick();
+                Logger.Log("  [OK] Projeto encontrado na lista. Procurando botão 'Abrir projeto'...");
+                bool botaoClicado = false;
+                
+                // Tenta achar o ListItem (pai) caso o elemento encontrado seja apenas o Text com o nome do projeto
+                var containerBusca = itemProjeto;
+                try {
+                    if (containerBusca.ControlType != FlaUI.Core.Definitions.ControlType.ListItem && containerBusca.Parent != null) {
+                        containerBusca = containerBusca.Parent;
+                        if (containerBusca.ControlType != FlaUI.Core.Definitions.ControlType.ListItem && containerBusca.Parent != null) {
+                            containerBusca = containerBusca.Parent;
+                        }
+                    }
+                } catch { }
+
+                for (int i = 1; i <= 3; i++) {
+                    // O botão tem AutomationId='openProjectAction' e Nome vazio — buscar por Id
+                    var btnAbrirProjeto = containerBusca.FindFirstDescendant(cf =>
+                        cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button)
+                          .And(cf.ByAutomationId("openProjectAction")));
+
+                    if (btnAbrirProjeto == null) {
+                        // Fallback: tenta pelos nomes configurados
+                        btnAbrirProjeto = containerBusca.FindFirstDescendant(cf =>
+                            cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button)
+                              .And(cf.ByName(PromobConfig.BtnAbrirProjeto).Or(cf.ByName(PromobConfig.BtnAbrir)).Or(cf.ByName("Acessar")).Or(cf.ByName("Editar"))));
+                    }
+
+                    if (btnAbrirProjeto != null) {
+                        Logger.Log($"  [OK] Botão 'Abrir projeto' encontrado na tentativa {i}. Clicando...");
+                        InteractionHelper.ClicarComFallback(btnAbrirProjeto);
+                        botaoClicado = true;
+                        break;
+                    }
+
+                    if (i < 3) {
+                        Logger.Log($"  [AVISO] Botão 'Abrir projeto' não encontrado na tentativa {i}. Aguardando 5s...", LogLevel.Warn);
+                        Thread.Sleep(5000);
+                    }
+                }
+
+                if (!botaoClicado) {
+                    Logger.Log("  [AVISO] Botão 'Abrir projeto' não encontrado após 3 tentativas. Executando duplo clique como fallback...", LogLevel.Warn);
+                    itemProjeto.DoubleClick();
+                }
             }
             else{
                 Logger.Log("  [AVISO] Elemento do projeto não encontrado via nome. Tentando localizar o primeiro item da lista...", LogLevel.Warn);
@@ -976,6 +1162,7 @@ namespace AutomacaoPromobTeste.Promob{
 
                 Logger.Log($"  [AVISO] Timeout de {timeoutAtual / 1000}s atingido sem concluir o carregamento por UIA.", LogLevel.Warn);
 
+                // Fallback de Visão Computacional (AI) caso o mapeamento por árvore UIA falhe
                 if (VisionHelper.Habilitado){
                     Logger.Log("  [VISION] Iniciando verificação visual (IA) como fallback final para este ciclo...");
                     var visao = VisionHelper.AguardarEstadoTela(
@@ -997,6 +1184,13 @@ namespace AutomacaoPromobTeste.Promob{
             }
         }
 
+        //--------------------------------------------------------------------------------------
+            /// <summary>
+            /// Trata e responde a um popup ou caixa de aviso/atenção genérica aberta pelo Promob,
+            /// clicando em botões lógicos de confirmação (OK, Confirmar, Sim) ou enviando ALT+F4/ESC.
+            /// </summary>
+            /// <param name="popup">A janela do popup interceptado.</param>
+        //--------------------------------------------------------------------------------------
         private static void TratarPopupGenerico(Window popup){
             Logger.Log($"  [INFO] Tratando popup: '{popup.Name}'");
             InteractionHelper.AtivarJanela(popup);
@@ -1022,6 +1216,13 @@ namespace AutomacaoPromobTeste.Promob{
             }
         }
 
+        //--------------------------------------------------------------------------------------
+            /// <summary>
+            /// Rotina de auto-recuperação (Self-Healing) disparada quando ocorrem timeouts ou falhas inesperadas no fluxo principal.
+            /// Tenta desobstruir a UI do Promob fechando modais travados e retornando a aplicação ao estado inicial seguro.
+            /// </summary>
+            /// <param name="automation">A instância ativa do motor de automação UIA3.</param>
+        //--------------------------------------------------------------------------------------
         public static void TentarRecuperar(UIA3Automation automation){
             Logger.Log("  [INFO] Executando rotina de recuperação...");
 
@@ -1086,6 +1287,13 @@ namespace AutomacaoPromobTeste.Promob{
             InteractionHelper.EsperarUiRespirar(1000);
         }
 
+        //--------------------------------------------------------------------------------------
+            /// <summary>
+            /// Tenta agressivamente fechar o projeto ativo no Promob durante a execução da rotina de recuperação,
+            /// forçando a negação de qualquer diálogo de salvamento de arquivos pendente.
+            /// </summary>
+            /// <param name="janelaPromob">A janela principal do Promob.</param>
+        //--------------------------------------------------------------------------------------
         private static void FecharProjetoEIgnorarSalvar(Window janelaPromob){
             Logger.Log("  [RECOVERY] Tentando fechar projeto atual de forma segura...");
             InteractionHelper.AtivarJanela(janelaPromob);
@@ -1133,8 +1341,38 @@ namespace AutomacaoPromobTeste.Promob{
             }
         }
 
+        //--------------------------------------------------------------------------------------
+            /// <summary>
+            /// Limpa a referência cacheada do elemento raiz do Promob (WPF Host), forçando o buscador
+            /// a escanear a árvore novamente na próxima requisição (útil após reinicializações).
+            /// </summary>
+        //--------------------------------------------------------------------------------------
         private static void InvalidarCacheUi(){
             WindowFinder.CachedHost = null;
+        }
+
+        //--------------------------------------------------------------------------------------
+        /// <summary>
+        /// Lista os botões do projeto para ajudar a diagnosticar e encontrar os IDs na árvore de automação.
+        /// </summary>
+        //--------------------------------------------------------------------------------------
+        public static void ListarTodosBotoes(Window janela){
+            var processId = janela.Properties.ProcessId.ValueOrDefault;
+            Logger.Log($"[INFO] Escaneando TODOS os elementos da janela inteira para Processo: {processId}");
+
+            var all = janela.FindAllDescendants()
+                .Where(e => !string.IsNullOrEmpty(e.Name) || !string.IsNullOrEmpty(e.Properties.AutomationId.ValueOrDefault))
+                .GroupBy(e => e.ControlType.ToString() + "|" + (e.Properties.AutomationId.ValueOrDefault ?? "") + "|" + (e.Name ?? ""))
+                .Select(g => g.First())
+                .ToList();
+
+            Logger.Log($"[INFO] Foram encontrados {all.Count} elementos únicos com Nome ou ID na tela.");
+
+            foreach (var e in all){
+                Logger.Log($"  -> Tipo: {e.ControlType}, Nome: '{e.Name}', Id: '{e.Properties.AutomationId.ValueOrDefault}'");
+            }
+
+            Logger.Log("------------------------------------------");
         }
     }
 }
