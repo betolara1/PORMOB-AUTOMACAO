@@ -55,7 +55,7 @@ namespace AutomacaoPromobTeste.Promob{
                         // Busca precisa: valida se a janela pertence exatamente ao Process ID do Promob que identificamos
                         if (j.Properties.ProcessId.ValueOrDefault == promobProc.Id){
                             var name = j.Name ?? "";
-                            if (EhJanelaPromob(name) || name.Contains("Promob", StringComparison.OrdinalIgnoreCase)){
+                            if (EhJanelaPromob(name)){
                                 encontrada = j.AsWindow();
                                 return true;
                             }
@@ -101,8 +101,14 @@ namespace AutomacaoPromobTeste.Promob{
                 nome.Contains("VS Code", StringComparison.OrdinalIgnoreCase))
                 return false;
 
+            // Explicitamente ignorar a splash screen do Promob (que tem o título exato "Promob" ou apenas "Promob" com espaços)
+            if (nome.Trim().Equals("Promob", StringComparison.OrdinalIgnoreCase))
+                return false;
+
             return nome.Contains("- Promob Studio", StringComparison.OrdinalIgnoreCase) ||
-                   nome.Contains("Promob Studio Bartz", StringComparison.OrdinalIgnoreCase);
+                   nome.Contains("Promob Studio Bartz", StringComparison.OrdinalIgnoreCase) ||
+                   nome.Contains("Promob Studio", StringComparison.OrdinalIgnoreCase) ||
+                   nome.Contains("Studio Bartz", StringComparison.OrdinalIgnoreCase);
         }
 
         //--------------------------------------------------------------------------------------

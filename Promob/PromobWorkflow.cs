@@ -31,7 +31,7 @@ namespace AutomacaoPromobTeste.Promob{
         //--------------------------------------------------------------------------------------
         public static void ProcessarArquivo(UIA3Automation automation, string caminhoArquivo){
             Logger.Log("  [1/8] Localizando janela do Promob...");
-            var janela = PromobWindowHelper.AguardarJanelaPromob(automation, PromobConfig.TimeoutLongo)
+            var janela = PromobWindowHelper.AguardarJanelaPromob(automation, 60000)
                 ?? throw new Exception("Janela do Promob não encontrada. O Promob está aberto?");
 
             int currentPid = janela.Properties.ProcessId.ValueOrDefault;

@@ -25,27 +25,86 @@ namespace AutomacaoPromobTeste.Promob{
             /// <param name="janela">A janela principal ativa do Promob.</param>
         //--------------------------------------------------------------------------------------
         public static void FecharProjetoPendenteSeNecessario(UIA3Automation automation, Window janela){
-            var raiz = WindowFinder.ObterHostOuJanela(janela, PromobConfig.AutomationIdHost, PromobWindowHelper.CachedProcessIdPromob);
+            Logger.Log("  [INFO] Verificando se o Promob está pronto na tela inicial...");
+            
+            bool achouImportar = false;
+            bool achouFechar = false;
+            
+            // Tenta detectar o estado do Promob (Tela Inicial vs Projeto Aberto) por 3 tentativas de 5 segundos cada
+            for (int tentativa = 1; tentativa <= 3; tentativa++)
+            {
+                Logger.Log($"    -> Verificando estado do Promob (Tentativa {tentativa}/3)...");
+                
+                var sw = Stopwatch.StartNew();
+                while (sw.ElapsedMilliseconds < 5000)
+                {
+                    var raiz = WindowFinder.ObterHostOuJanela(janela, PromobConfig.AutomationIdHost, PromobWindowHelper.CachedProcessIdPromob);
+                    
+                    // 1. Tenta localizar o botão 'Importar Projeto' (Tela Inicial)
+                    var btnImportar = WindowFinder.BuscarElementoComFallback(
+                        raiz,
+                        cf => cf.ByAutomationId(PromobConfig.IdImportarBotao),
+                        e => (e.Properties.AutomationId.ValueOrDefault ?? "").Equals(PromobConfig.IdImportarBotao, StringComparison.OrdinalIgnoreCase) ||
+                             (e.Properties.Name.ValueOrDefault ?? "").Equals(PromobConfig.NomeJanelaWizardImportacao, StringComparison.OrdinalIgnoreCase),
+                        limitarAoMesmoProcesso: true,
+                        processId: PromobWindowHelper.CachedProcessIdPromob
+                    );
 
-            var btnImportar = WindowFinder.BuscarElementoComFallback(
-                raiz,
-                cf => cf.ByAutomationId(PromobConfig.IdImportarBotao),
-                e => (e.Properties.AutomationId.ValueOrDefault ?? "").Equals(PromobConfig.IdImportarBotao, StringComparison.OrdinalIgnoreCase) ||
-                     (e.Properties.Name.ValueOrDefault ?? "").Equals(PromobConfig.NomeJanelaWizardImportacao, StringComparison.OrdinalIgnoreCase),
-                limitarAoMesmoProcesso: true,
-                processId: PromobWindowHelper.CachedProcessIdPromob
-            );
+                    if (btnImportar != null && !btnImportar.Properties.IsOffscreen.ValueOrDefault)
+                    {
+                        achouImportar = true;
+                        break;
+                    }
 
-            bool naTelaPrincipal = btnImportar != null && !btnImportar.Properties.IsOffscreen.ValueOrDefault;
+                    // 2. Se não achou Importar, tenta localizar elementos de fechar projeto (Projeto Aberto)
+                    var abaArquivo = WindowFinder.BuscarElementoComFallback(
+                        raiz,
+                        cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.TabItem)
+                                .And(cf.ByAutomationId(PromobConfig.IdFileTab).Or(cf.ByName(PromobConfig.AbaArquivo))),
+                        e => e.ControlType == FlaUI.Core.Definitions.ControlType.TabItem &&
+                             ((e.Properties.AutomationId.ValueOrDefault ?? "").Equals(PromobConfig.IdFileTab, StringComparison.OrdinalIgnoreCase) ||
+                              (e.Properties.Name.ValueOrDefault ?? "").Equals(PromobConfig.AbaArquivo, StringComparison.OrdinalIgnoreCase)),
+                        limitarAoMesmoProcesso: true,
+                        processId: PromobWindowHelper.CachedProcessIdPromob
+                    );
 
-            if (naTelaPrincipal){
-                Logger.Log("  [INFO] Promob está na tela inicial. Nenhum projeto aberto detectado. Prosseguindo...");
-                return;
+                    var btnFechar = WindowFinder.BuscarElementoComFallback(
+                        raiz,
+                        cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button)
+                                .And(cf.ByAutomationId(PromobConfig.IdProjectClose).Or(cf.ByName(PromobConfig.BtnFechar))),
+                        e => e.ControlType == FlaUI.Core.Definitions.ControlType.Button &&
+                             ((e.Properties.AutomationId.ValueOrDefault ?? "").Equals(PromobConfig.IdProjectClose, StringComparison.OrdinalIgnoreCase) ||
+                              (e.Properties.Name.ValueOrDefault ?? "").Equals(PromobConfig.BtnFechar, StringComparison.OrdinalIgnoreCase)),
+                        limitarAoMesmoProcesso: true,
+                        processId: PromobWindowHelper.CachedProcessIdPromob
+                    );
+
+                    if (abaArquivo != null || btnFechar != null)
+                    {
+                        achouFechar = true;
+                        break;
+                    }
+                    
+                    Thread.Sleep(500); // Polling de 500ms
+                }
+
+                if (achouImportar)
+                {
+                    Logger.Log("  [INFO] Promob está na tela inicial (pronto para importar). Nenhum projeto aberto detectado.");
+                    return;
+                }
+
+                if (achouFechar)
+                {
+                    Logger.Log("  [AVISO] Projeto aberto detectado. Fechando projeto antes de importar...", LogLevel.Warn);
+                    Fechar(automation, janela);
+                    Logger.Log("  [OK] Projeto anterior fechado. Promob retornou à tela inicial.");
+                    return;
+                }
             }
 
-            Logger.Log("  [AVISO] Promob NÃO está na tela inicial — projeto aberto detectado. Fechando antes de importar...", LogLevel.Warn);
-            Fechar(automation, janela);
-            Logger.Log("  [OK] Projeto anterior fechado. Promob retornou à tela inicial.");
+            // Caso não encontre nenhum dos dois estados após as retentativas acumuladas
+            throw new Exception("Não foi possível detectar o estado do Promob (nem tela inicial nem projeto aberto foram encontrados após retentativas). O programa ainda pode estar inicializando.");
         }
 
         //--------------------------------------------------------------------------------------
