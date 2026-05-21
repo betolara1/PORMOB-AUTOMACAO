@@ -64,9 +64,8 @@ namespace AutomacaoPromobTeste.Promob{
             Logger.Log("  [5/8] Tratando popup de Novo Projeto...");
             Diagnostics.Medir("Tratar popup", () => CancelarPopupNovoProjeto(automation));
 
-            Logger.Log("  [6/9] Abrindo o projeto selecionado...");
-            var nomeProjeto = Path.GetFileNameWithoutExtension(caminhoArquivo);
-            Diagnostics.Medir("Abrir projeto", () => AbrirProjetoSelecionado(janela, nomeProjeto));
+            Logger.Log("  [6/9] Abrindo o projeto recém-importado (primeiro da lista)...");
+            Diagnostics.Medir("Abrir projeto", () => AbrirProjetoSelecionado(janela));
 
 /*
             Logger.Log("  [7/9] Navegando até Ferramentas > Integradores > Promob ERP...");
@@ -1032,20 +1031,20 @@ namespace AutomacaoPromobTeste.Promob{
             /// <param name="janelaPromob">A janela principal ativa do Promob.</param>
             /// <param name="nomeProjeto">O nome do projeto a ser aberto.</param>
         //--------------------------------------------------------------------------------------
-        private static void AbrirProjetoSelecionado(Window janelaPromob, string nomeProjeto){
+        private static void AbrirProjetoSelecionado(Window janelaPromob){
             InteractionHelper.AtivarJanela(janelaPromob);
-            Logger.Log($"  [INFO] Procurando projeto '{nomeProjeto}' para abrir...");
+            Logger.Log("  [INFO] Localizando o primeiro projeto da lista de recentes...");
 
             var itemProjeto = WindowFinder.BuscarElementoComFallback(
                 janelaPromob,
-                cf => cf.ByName(nomeProjeto).Or(cf.ByName(nomeProjeto.ToUpperInvariant())),
-                e => string.Equals(e.Properties.Name.ValueOrDefault, nomeProjeto, StringComparison.OrdinalIgnoreCase),
+                cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.ListItem).Or(cf.ByControlType(FlaUI.Core.Definitions.ControlType.DataItem)),
+                e => e.ControlType == FlaUI.Core.Definitions.ControlType.ListItem || e.ControlType == FlaUI.Core.Definitions.ControlType.DataItem,
                 limitarAoMesmoProcesso: true,
                 processId: PromobWindowHelper.CachedProcessIdPromob
             );
 
             if (itemProjeto != null){
-                Logger.Log("  [OK] Projeto encontrado na lista. Procurando botão 'Abrir projeto'...");
+                Logger.Log($"  [OK] Primeiro projeto localizado na lista: '{itemProjeto.Name}'. Procurando botão 'Abrir projeto'...");
                 bool botaoClicado = false;
                 
                 // Tenta achar o ListItem (pai) caso o elemento encontrado seja apenas o Text com o nome do projeto
@@ -1086,44 +1085,25 @@ namespace AutomacaoPromobTeste.Promob{
                 }
 
                 if (!botaoClicado) {
-                    Logger.Log("  [AVISO] Botão 'Abrir projeto' não encontrado após 3 tentativas. Executando duplo clique como fallback...", LogLevel.Warn);
+                    Logger.Log("  [AVISO] Botão 'Abrir projeto' não encontrado após 3 tentativas. Executando duplo clique no item do projeto...", LogLevel.Warn);
                     itemProjeto.DoubleClick();
                 }
             }
             else{
-                Logger.Log("  [AVISO] Elemento do projeto não encontrado via nome. Tentando localizar o primeiro item da lista...", LogLevel.Warn);
+                Logger.Log("  [AVISO] Nenhum item de projeto (ListItem/DataItem) encontrado na tela. Tentando botão de abrir genérico...", LogLevel.Warn);
 
-                var qualquerItem = WindowFinder.BuscarElementoComFallback(
-                    janelaPromob,
-                    cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.ListItem).Or(cf.ByControlType(FlaUI.Core.Definitions.ControlType.DataItem)),
-                    e => e.ControlType == FlaUI.Core.Definitions.ControlType.ListItem || e.ControlType == FlaUI.Core.Definitions.ControlType.DataItem,
-                    limitarAoMesmoProcesso: true,
-                    processId: PromobWindowHelper.CachedProcessIdPromob
-                );
+                var btnAbrir = janelaPromob.FindFirstDescendant(cf =>
+                    cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button)
+                      .And(cf.ByName(PromobConfig.BtnAbrirProjeto).Or(cf.ByName(PromobConfig.BtnAbrir)).Or(cf.ByName("Acessar")).Or(cf.ByName("Editar"))));
 
-                if (qualquerItem != null){
-                    Logger.Log($"  [OK] Item genérico encontrado ('{qualquerItem.Name}'). Executando duplo clique...");
-                    qualquerItem.DoubleClick();
-                    InteractionHelper.EsperarUiRespirar(800);
-                    qualquerItem.DoubleClick();
-                    InteractionHelper.EsperarUiRespirar(800);
+                if (btnAbrir != null){
+                    Logger.Log("  [OK] Botão de abrir genérico encontrado. Clicando...");
+                    InteractionHelper.ClicarComFallback(btnAbrir);
                 }
                 else{
-                    Logger.Log("  [AVISO] Nenhum item de lista encontrado. Tentando botão 'Abrir projeto'...", LogLevel.Warn);
-
-                    var btnAbrir = janelaPromob.FindFirstDescendant(cf =>
-                        cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button)
-                          .And(cf.ByName(PromobConfig.BtnAbrirProjeto).Or(cf.ByName(PromobConfig.BtnAbrir)).Or(cf.ByName("Acessar")).Or(cf.ByName("Editar"))));
-
-                    if (btnAbrir != null){
-                        Logger.Log("  [OK] Botão de abrir encontrado. Clicando...");
-                        InteractionHelper.ClicarComFallback(btnAbrir);
-                    }
-                    else{
-                        Logger.Log("  [AVISO] Nenhuma forma de abrir encontrada. Tentando ENTER...", LogLevel.Warn);
-                        InteractionHelper.AtivarJanela(janelaPromob);
-                        Keyboard.Type(VirtualKeyShort.RETURN);
-                    }
+                    Logger.Log("  [AVISO] Nenhuma forma de abrir encontrada. Tentando ENTER...", LogLevel.Warn);
+                    InteractionHelper.AtivarJanela(janelaPromob);
+                    Keyboard.Type(VirtualKeyShort.RETURN);
                 }
             }
 
