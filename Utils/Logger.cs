@@ -18,6 +18,11 @@ namespace AutomacaoPromobTeste.Utils{
     public static class Logger{
         
         //--------------------------------------------------------------------------------------
+        // Evento que permite à interface gráfica escutar mensagens de logs emitidas em tempo real
+        //--------------------------------------------------------------------------------------
+        public static event Action<string, LogLevel>? OnLog;
+
+        //--------------------------------------------------------------------------------------
             /// <summary>
             /// Caminho absoluto do arquivo em disco ("erros.log") onde as falhas críticas serão persistidas.
             /// </summary>
@@ -46,6 +51,7 @@ namespace AutomacaoPromobTeste.Utils{
             if (nivel <= NivelAtual){
                 Console.WriteLine(mensagem);
             }
+            OnLog?.Invoke(mensagem, nivel);
         }
 
         //--------------------------------------------------------------------------------------

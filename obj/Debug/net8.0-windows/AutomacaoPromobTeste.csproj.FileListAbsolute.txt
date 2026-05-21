@@ -26,3 +26,7 @@ C:\Users\Ralf\Desktop\Programação\AutomacaoPromobTeste\obj\Debug\net8.0-window
 C:\Users\Ralf\Desktop\Programação\AutomacaoPromobTeste\obj\Debug\net8.0-windows\AutomacaoPromobTeste.pdb
 C:\Users\Ralf\Desktop\Programação\AutomacaoPromobTeste\obj\Debug\net8.0-windows\AutomacaoPromobTeste.genruntimeconfig.cache
 C:\Users\Ralf\Desktop\Programação\AutomacaoPromobTeste\obj\Debug\net8.0-windows\ref\AutomacaoPromobTeste.dll
+C:\Users\Ralf\Desktop\Programação\AutomacaoPromobTeste\obj\Debug\net8.0-windows\AutomacaoPromobTeste_MarkupCompile.cache
+C:\Users\Ralf\Desktop\Programação\AutomacaoPromobTeste\obj\Debug\net8.0-windows\MainWindow.baml
+C:\Users\Ralf\Desktop\Programação\AutomacaoPromobTeste\obj\Debug\net8.0-windows\MainWindow.g.cs
+C:\Users\Ralf\Desktop\Programação\AutomacaoPromobTeste\obj\Debug\net8.0-windows\AutomacaoPromobTeste.g.resources
