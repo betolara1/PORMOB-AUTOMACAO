@@ -44,6 +44,11 @@ namespace AutomacaoPromobTeste.Promob{
 
             InteractionHelper.AtivarJanela(janela);
 
+            // Garante que o Promob está na tela inicial antes de importar.
+            // Se houver um projeto aberto (sessão anterior não finalizada), fecha primeiro.
+            Logger.Log("  [1.5/8] Verificando estado inicial do Promob...");
+            Diagnostics.Medir("Verificar e fechar projeto pendente", () => FecharProjetoPendenteSeNecessario(automation, janela));
+
             Logger.Log("  [2/8] Acionando Importar...");
             InteractionHelper.AtivarJanela(janela);
             Diagnostics.Medir("Clicar botão Importar", () => ClicarBotaoImportar(janela));
@@ -58,13 +63,6 @@ namespace AutomacaoPromobTeste.Promob{
 
             Logger.Log("  [5/8] Tratando popup de Novo Projeto...");
             Diagnostics.Medir("Tratar popup", () => CancelarPopupNovoProjeto(automation));
-
-            // LISTAR OS BOTÕES
-            // Console.WriteLine("[INFO] Procurando janela do Promob para listar botões...");
-            // var janelaInicial = PromobWindowHelper.AguardarJanelaPromob(automation, 5000);
-            // if (janelaInicial != null){
-            //     ListarTodosBotoes(janelaInicial);
-            // }
 
             Logger.Log("  [6/9] Abrindo o projeto selecionado...");
             var nomeProjeto = Path.GetFileNameWithoutExtension(caminhoArquivo);
@@ -93,6 +91,39 @@ namespace AutomacaoPromobTeste.Promob{
             // }
 
             Logger.Log("  [INFO] Fluxo concluído para este arquivo.");
+        }
+
+        //--------------------------------------------------------------------------------------
+            /// <summary>
+            /// Verifica o estado inicial do Promob ao iniciar o programa.
+            /// Se detectar que há um projeto aberto (o botão "Importar" da tela inicial NÃO está visível),
+            /// executa o fechamento do projeto para retornar à tela principal antes de continuar.
+            /// </summary>
+            /// <param name="automation">A instância ativa do motor de automação UIA3.</param>
+            /// <param name="janela">A janela principal ativa do Promob.</param>
+        //--------------------------------------------------------------------------------------
+        private static void FecharProjetoPendenteSeNecessario(UIA3Automation automation, Window janela){
+            var raiz = WindowFinder.ObterHostOuJanela(janela, PromobConfig.AutomationIdHost, PromobWindowHelper.CachedProcessIdPromob);
+
+            var btnImportar = WindowFinder.BuscarElementoComFallback(
+                raiz,
+                cf => cf.ByAutomationId(PromobConfig.IdImportarBotao),
+                e => (e.Properties.AutomationId.ValueOrDefault ?? "").Equals(PromobConfig.IdImportarBotao, StringComparison.OrdinalIgnoreCase) ||
+                     (e.Properties.Name.ValueOrDefault ?? "").Equals(PromobConfig.NomeJanelaWizardImportacao, StringComparison.OrdinalIgnoreCase),
+                limitarAoMesmoProcesso: true,
+                processId: PromobWindowHelper.CachedProcessIdPromob
+            );
+
+            bool naTelaPrincipal = btnImportar != null && !btnImportar.Properties.IsOffscreen.ValueOrDefault;
+
+            if (naTelaPrincipal){
+                Logger.Log("  [INFO] Promob está na tela inicial. Nenhum projeto aberto detectado. Prosseguindo...");
+                return;
+            }
+
+            Logger.Log("  [AVISO] Promob NÃO está na tela inicial — projeto aberto detectado. Fechando antes de importar...", LogLevel.Warn);
+            FecharProjeto(automation, janela);
+            Logger.Log("  [OK] Projeto anterior fechado. Promob retornou à tela inicial.");
         }
 
         //--------------------------------------------------------------------------------------
