@@ -14,18 +14,18 @@ using FlaUI.UIA3;
 
 namespace AutomacaoPromobTeste.Promob{
     //--------------------------------------------------------------------------------------
-    /// <summary>
-    /// Componente responsável por gerenciar a etapa de importação de arquivos no Promob,
-    /// cobrindo o acionamento do botão Importar, o preenchimento do FileDialog e o avanço no Wizard.
-    /// </summary>
+        /// <summary>
+        /// Componente responsável por gerenciar a etapa de importação de arquivos no Promob,
+        /// cobrindo o acionamento do botão Importar, o preenchimento do FileDialog e o avanço no Wizard.
+        /// </summary>
     //--------------------------------------------------------------------------------------
     public static class PromobImportador{
 
         //--------------------------------------------------------------------------------------
-        /// <summary>
-        /// Realiza a busca ativa e clica no botão "Importar Projeto" na tela de início do Promob.
-        /// </summary>
-        /// <param name="janelaPromob">A janela principal ativa do Promob.</param>
+            /// <summary>
+            /// Realiza a busca ativa e clica no botão "Importar Projeto" na tela de início do Promob.
+            /// </summary>
+            /// <param name="janelaPromob">A janela principal ativa do Promob.</param>
         //--------------------------------------------------------------------------------------
         public static void ClicarBotaoImportar(Window janelaPromob){
             int tentativas = 1;
@@ -72,13 +72,13 @@ namespace AutomacaoPromobTeste.Promob{
         }
 
         //--------------------------------------------------------------------------------------
-        /// <summary>
-        /// Abre o diálogo nativo do Windows para seleção de arquivos clicando no botão "Procurar" no Wizard
-        /// e preenche com o caminho absoluto do arquivo a ser importado.
-        /// </summary>
-        /// <param name="automation">A instância ativa do motor de automação UIA3.</param>
-        /// <param name="janelaPromob">A janela de Wizard ou janela principal ativa do Promob.</param>
-        /// <param name="caminhoArquivo">O caminho absoluto do arquivo C# do projeto a ser selecionado.</param>
+            /// <summary>
+            /// Abre o diálogo nativo do Windows para seleção de arquivos clicando no botão "Procurar" no Wizard
+            /// e preenche com o caminho absoluto do arquivo a ser importado.
+            /// </summary>
+            /// <param name="automation">A instância ativa do motor de automação UIA3.</param>
+            /// <param name="janelaPromob">A janela de Wizard ou janela principal ativa do Promob.</param>
+            /// <param name="caminhoArquivo">O caminho absoluto do arquivo C# do projeto a ser selecionado.</param>
         //--------------------------------------------------------------------------------------
         public static void AbrirDialogoEPreencher(UIA3Automation automation, Window janelaPromob, string caminhoArquivo){
             InteractionHelper.AtivarJanela(janelaPromob);
@@ -122,13 +122,13 @@ namespace AutomacaoPromobTeste.Promob{
         }
 
         //--------------------------------------------------------------------------------------
-        /// <summary>
-        /// Insere o caminho do arquivo no campo de texto de seleção de arquivo do Windows FileDialog
-        /// e confirma a seleção de forma robusta e resiliente (tentando SetValue, Clipboard e Teclado).
-        /// </summary>
-        /// <param name="automation">A instância ativa do motor de automação UIA3.</param>
-        /// <param name="caminhoCompleto">O caminho completo do arquivo a ser importado.</param>
-        /// <param name="dialogo">A janela do FileDialog nativo do Windows aberta.</param>
+            /// <summary>
+            /// Insere o caminho do arquivo no campo de texto de seleção de arquivo do Windows FileDialog
+            /// e confirma a seleção de forma robusta e resiliente (tentando SetValue, Clipboard e Teclado).
+            /// </summary>
+            /// <param name="automation">A instância ativa do motor de automação UIA3.</param>
+            /// <param name="caminhoCompleto">O caminho completo do arquivo a ser importado.</param>
+            /// <param name="dialogo">A janela do FileDialog nativo do Windows aberta.</param>
         //--------------------------------------------------------------------------------------
         public static void PreencherDialogoNativo(UIA3Automation automation, string caminhoCompleto, Window dialogo){
             Logger.Log($"  [OK] Diálogo encontrado: {dialogo.Name}");
@@ -294,12 +294,12 @@ namespace AutomacaoPromobTeste.Promob{
         }
 
         //--------------------------------------------------------------------------------------
-        /// <summary>
-        /// Verifica e valida se o campo obrigatório de "Caminho do arquivo" foi devidamente 
-        /// preenchido pelo robô no assistente de importação antes de disparar o clique de avançar.
-        /// </summary>
-        /// <param name="janelaWizard">A janela ativa do assistente (Wizard) de Importação.</param>
-        /// <returns><c>true</c> se a validação passar ou se o campo não puder ser verificado; caso contrário, <c>false</c>.</returns>
+            /// <summary>
+            /// Verifica e valida se o campo obrigatório de "Caminho do arquivo" foi devidamente 
+            /// preenchido pelo robô no assistente de importação antes de disparar o clique de avançar.
+            /// </summary>
+            /// <param name="janelaWizard">A janela ativa do assistente (Wizard) de Importação.</param>
+            /// <returns><c>true</c> se a validação passar ou se o campo não puder ser verificado; caso contrário, <c>false</c>.</returns>
         //--------------------------------------------------------------------------------------
         public static bool ValidarCamposWizard(Window janelaWizard){
             Logger.Log("  [INFO] Validando preenchimento dos campos obrigatórios no Wizard...");
@@ -335,12 +335,12 @@ namespace AutomacaoPromobTeste.Promob{
         }
 
         //--------------------------------------------------------------------------------------
-        /// <summary>
-        /// Localiza e clica no botão "Avançar" do Wizard de importação, gerenciando ativamente possíveis
-        /// diálogos de cancelamento, avisos de validação de formulário ou erros emitidos pelo Promob.
-        /// </summary>
-        /// <param name="automation">A instância ativa do motor de automação UIA3.</param>
-        /// <param name="janelaWizard">A janela do assistente (Wizard) ativa.</param>
+            /// <summary>
+            /// Localiza e clica no botão "Avançar" do Wizard de importação, gerenciando ativamente possíveis
+            /// diálogos de cancelamento, avisos de validação de formulário ou erros emitidos pelo Promob.
+            /// </summary>
+            /// <param name="automation">A instância ativa do motor de automação UIA3.</param>
+            /// <param name="janelaWizard">A janela do assistente (Wizard) ativa.</param>
         //--------------------------------------------------------------------------------------
         public static void ClicarAvancarWizard(UIA3Automation automation, Window janelaWizard){
             InteractionHelper.AtivarJanela(janelaWizard);
@@ -441,11 +441,11 @@ namespace AutomacaoPromobTeste.Promob{
         }
 
         //--------------------------------------------------------------------------------------
-        /// <summary>
-        /// Intercepta e cancela com segurança possíveis popups de confirmação de "Novo Projeto" ou
-        /// salvamento indesejados abertos após avançar etapas do wizard.
-        /// </summary>
-        /// <param name="automation">A instância ativa do motor de automação UIA3.</param>
+            /// <summary>
+            /// Intercepta e cancela com segurança possíveis popups de confirmação de "Novo Projeto" ou
+            /// salvamento indesejados abertos após avançar etapas do wizard.
+            /// </summary>
+            /// <param name="automation">A instância ativa do motor de automação UIA3.</param>
         //--------------------------------------------------------------------------------------
         public static void CancelarPopupNovoProjeto(UIA3Automation automation){
             Logger.Log("  [INFO] Aguardando popup 'Atenção'...");

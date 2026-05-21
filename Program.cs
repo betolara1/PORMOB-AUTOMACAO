@@ -1,13 +1,10 @@
 using System;
 using System.Windows;
 
-namespace AutomacaoPromobTeste
-{
-    internal class Program
-    {
+namespace AutomacaoPromobTeste{
+    internal class Program{
         [STAThread]
-        static void Main(string[] args)
-        {
+        static void Main(string[] args){
             // Inicializa a aplicação WPF
             var app = new Application();
             

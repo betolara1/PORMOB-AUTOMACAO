@@ -42,6 +42,7 @@ namespace AutomacaoPromobTeste.Promob{
                 Logger.Log("  [INFO] Novo ProcessId detectado. Invalidando cache de UI.");
                 WindowFinder.CachedHost = null;
             }
+
             PromobWindowHelper.CachedProcessIdPromob = currentPid;
 
             InteractionHelper.AtivarJanela(janela);
@@ -69,7 +70,7 @@ namespace AutomacaoPromobTeste.Promob{
             Logger.Log("  [6/9] Abrindo o projeto recém-importado (primeiro da lista)...");
             Diagnostics.Medir("Abrir projeto", () => PromobCarregadorProjeto.AbrirProjetoSelecionado(janela));
 
-/*
+            /*
             Logger.Log("  [7/9] Navegando até Ferramentas > Integradores > Promob ERP...");
             Diagnostics.Medir("Abrir Promob ERP", () => PromobExportadorErp.AbrirIntegradorErp(automation, janela));
 
@@ -82,7 +83,7 @@ namespace AutomacaoPromobTeste.Promob{
                 erroExportacao = ex;
                 Logger.Log("  [AVISO] Exportação falhou. Fechando o projeto normalmente antes de sinalizar o erro...", LogLevel.Warn);
             }
-*/
+            */
             Logger.Log("  [9/9] Fechando o projeto atual...");
             Diagnostics.Medir("Fechar projeto", () => PromobFecharProjeto.Fechar(automation, janela));
 

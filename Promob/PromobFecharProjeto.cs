@@ -31,13 +31,11 @@ namespace AutomacaoPromobTeste.Promob{
             bool achouFechar = false;
             
             // Tenta detectar o estado do Promob (Tela Inicial vs Projeto Aberto) por 3 tentativas de 5 segundos cada
-            for (int tentativa = 1; tentativa <= 3; tentativa++)
-            {
+            for (int tentativa = 1; tentativa <= 3; tentativa++){
                 Logger.Log($"    -> Verificando estado do Promob (Tentativa {tentativa}/3)...");
                 
                 var sw = Stopwatch.StartNew();
-                while (sw.ElapsedMilliseconds < 5000)
-                {
+                while (sw.ElapsedMilliseconds < 5000){
                     var raiz = WindowFinder.ObterHostOuJanela(janela, PromobConfig.AutomationIdHost, PromobWindowHelper.CachedProcessIdPromob);
                     
                     // 1. Tenta localizar o botão 'Importar Projeto' (Tela Inicial)
@@ -50,8 +48,7 @@ namespace AutomacaoPromobTeste.Promob{
                         processId: PromobWindowHelper.CachedProcessIdPromob
                     );
 
-                    if (btnImportar != null && !btnImportar.Properties.IsOffscreen.ValueOrDefault)
-                    {
+                    if (btnImportar != null && !btnImportar.Properties.IsOffscreen.ValueOrDefault){
                         achouImportar = true;
                         break;
                     }
@@ -79,8 +76,7 @@ namespace AutomacaoPromobTeste.Promob{
                         processId: PromobWindowHelper.CachedProcessIdPromob
                     );
 
-                    if (abaArquivo != null || btnFechar != null)
-                    {
+                    if (abaArquivo != null || btnFechar != null){
                         achouFechar = true;
                         break;
                     }
@@ -88,14 +84,12 @@ namespace AutomacaoPromobTeste.Promob{
                     Thread.Sleep(500); // Polling de 500ms
                 }
 
-                if (achouImportar)
-                {
+                if (achouImportar){
                     Logger.Log("  [INFO] Promob está na tela inicial (pronto para importar). Nenhum projeto aberto detectado.");
                     return;
                 }
 
-                if (achouFechar)
-                {
+                if (achouFechar){
                     Logger.Log("  [AVISO] Projeto aberto detectado. Fechando projeto antes de importar...", LogLevel.Warn);
                     Fechar(automation, janela);
                     Logger.Log("  [OK] Projeto anterior fechado. Promob retornou à tela inicial.");
@@ -174,8 +168,7 @@ namespace AutomacaoPromobTeste.Promob{
             var swFechamento = Stopwatch.StartNew();
             bool projetoFechado = false;
             
-            while (swFechamento.ElapsedMilliseconds < 60000)
-            {
+            while (swFechamento.ElapsedMilliseconds < 60000){
                 // 1. Verifica se retornou à tela inicial (botão Importar visível)
                 var raizNova = WindowFinder.ObterHostOuJanela(janela, PromobConfig.AutomationIdHost, PromobWindowHelper.CachedProcessIdPromob);
                 var btnImportar = WindowFinder.BuscarElementoComFallback(
@@ -187,8 +180,7 @@ namespace AutomacaoPromobTeste.Promob{
                     processId: PromobWindowHelper.CachedProcessIdPromob
                 );
 
-                if (btnImportar != null && !btnImportar.Properties.IsOffscreen.ValueOrDefault)
-                {
+                if (btnImportar != null && !btnImportar.Properties.IsOffscreen.ValueOrDefault){
                     Logger.Log($"    [SUCESSO] Botão 'Importar' detectado! Projeto fechado ({swFechamento.ElapsedMilliseconds}ms).");
                     projetoFechado = true;
                     break;
@@ -198,22 +190,19 @@ namespace AutomacaoPromobTeste.Promob{
                 var desktop = automation.GetDesktop();
                 var popup = PromobWindowHelper.EncontrarPopupAtencao(desktop, PromobWindowHelper.CachedProcessIdPromob);
 
-                if (popup != null)
-                {
+                if (popup != null){
                     // Previne prender no fallback da janela principal avaliando se o botão "Não" existe
                     var btnNao = popup.FindFirstDescendant(cf =>
                         cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button)
                           .And(cf.ByName(PromobConfig.BtnNao).Or(cf.ByName(PromobConfig.BtnNaoAlt)).Or(cf.ByName(PromobConfig.BtnNo))));
 
-                    if (btnNao == null)
-                    {
+                    if (btnNao == null){
                         btnNao = popup.FindFirstChild(cf =>
                             cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button)
                               .And(cf.ByName(PromobConfig.BtnNao).Or(cf.ByName(PromobConfig.BtnNaoAlt)).Or(cf.ByName(PromobConfig.BtnNo))));
                     }
 
-                    if (btnNao != null)
-                    {
+                    if (btnNao != null){
                         Logger.Log($"    [OK] Popup de salvamento detectado. Clicando em 'Não'...");
                         InteractionHelper.AtivarJanela(popup.AsWindow());
                         InteractionHelper.ClicarComFallback(btnNao);
@@ -224,8 +213,7 @@ namespace AutomacaoPromobTeste.Promob{
                 Thread.Sleep(500);
             }
 
-            if (!projetoFechado)
-            {
+            if (!projetoFechado){
                 Logger.Log($"    [AVISO] Timeout de 60s atingido e botão 'Importar' não foi detectado. O Promob pode estar travado.", LogLevel.Warn);
             }
 

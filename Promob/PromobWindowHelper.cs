@@ -42,8 +42,7 @@ namespace AutomacaoPromobTeste.Promob{
                                      !p.ProcessName.Contains("Uploader", StringComparison.OrdinalIgnoreCase) &&
                                      !p.ProcessName.Contains("Automacao", StringComparison.OrdinalIgnoreCase));
 
-            if (promobProc != null)
-                CachedProcessIdPromob = promobProc.Id;
+            if (promobProc != null) CachedProcessIdPromob = promobProc.Id;
 
             // Executa buscas periódicas até que a janela do Promob seja instanciada ou ocorra timeout
             InteractionHelper.EsperarAte(() =>{
@@ -93,8 +92,7 @@ namespace AutomacaoPromobTeste.Promob{
         //--------------------------------------------------------------------------------------
         public static bool EhJanelaPromob(string? nome){
             
-            if (string.IsNullOrWhiteSpace(nome))
-                return false;
+            if (string.IsNullOrWhiteSpace(nome)) return false;
 
             // Filtro de segurança para evitar falsos positivos se o desenvolvedor estiver com o VS Code aberto trabalhando neste projeto
             if (nome.Contains("Visual Studio Code", StringComparison.OrdinalIgnoreCase) ||

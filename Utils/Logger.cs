@@ -18,7 +18,7 @@ namespace AutomacaoPromobTeste.Utils{
     public static class Logger{
         
         //--------------------------------------------------------------------------------------
-        // Evento que permite à interface gráfica escutar mensagens de logs emitidas em tempo real
+            // Evento que permite à interface gráfica escutar mensagens de logs emitidas em tempo real
         //--------------------------------------------------------------------------------------
         public static event Action<string, LogLevel>? OnLog;
 

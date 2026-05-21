@@ -14,19 +14,19 @@ using FlaUI.UIA3;
 
 namespace AutomacaoPromobTeste.Promob{
     //--------------------------------------------------------------------------------------
-    /// <summary>
-    /// Componente responsável por gerenciar a rotina de auto-recuperação (Self-Healing)
-    /// do robô quando ocorrem timeouts ou exceções no fluxo principal.
-    /// </summary>
+        /// <summary>
+        /// Componente responsável por gerenciar a rotina de auto-recuperação (Self-Healing)
+        /// do robô quando ocorrem timeouts ou exceções no fluxo principal.
+        /// </summary>
     //--------------------------------------------------------------------------------------
     public static class PromobRecuperacao{
 
         //--------------------------------------------------------------------------------------
-        /// <summary>
-        /// Rotina de auto-recuperação (Self-Healing) disparada quando ocorrem timeouts ou falhas inesperadas no fluxo principal.
-        /// Tenta desobstruir a UI do Promob fechando modais travados e retornando a aplicação ao estado inicial seguro.
-        /// </summary>
-        /// <param name="automation">A instância ativa do motor de automação UIA3.</param>
+            /// <summary>
+            /// Rotina de auto-recuperação (Self-Healing) disparada quando ocorrem timeouts ou falhas inesperadas no fluxo principal.
+            /// Tenta desobstruir a UI do Promob fechando modais travados e retornando a aplicação ao estado inicial seguro.
+            /// </summary>
+            /// <param name="automation">A instância ativa do motor de automação UIA3.</param>
         //--------------------------------------------------------------------------------------
         public static void TentarRecuperar(UIA3Automation automation){
             Logger.Log("  [INFO] Executando rotina de recuperação...");
@@ -93,11 +93,11 @@ namespace AutomacaoPromobTeste.Promob{
         }
 
         //--------------------------------------------------------------------------------------
-        /// <summary>
-        /// Tenta agressivamente fechar o projeto ativo no Promob durante a execução da rotina de recuperação,
-        /// forçando a negação de qualquer diálogo de salvamento de arquivos pendente.
-        /// </summary>
-        /// <param name="janelaPromob">A janela principal do Promob.</param>
+            /// <summary>
+            /// Tenta agressivamente fechar o projeto ativo no Promob durante a execução da rotina de recuperação,
+            /// forçando a negação de qualquer diálogo de salvamento de arquivos pendente.
+            /// </summary>
+            /// <param name="janelaPromob">A janela principal do Promob.</param>
         //--------------------------------------------------------------------------------------
         public static void FecharProjetoEIgnorarSalvar(Window janelaPromob){
             Logger.Log("  [RECOVERY] Tentando fechar projeto atual de forma segura...");
@@ -115,7 +115,8 @@ namespace AutomacaoPromobTeste.Promob{
             if (btnFechar != null) {
                 Logger.Log("    [RECOVERY] Fechando projeto via UIA Pattern (Background)...");
                 InteractionHelper.ClicarComFallback(btnFechar);
-            } else {
+            } 
+            else {
                 Logger.Log("    [RECOVERY] Fallback de teclado para fechar projeto...");
                 InteractionHelper.AtivarJanela(janelaPromob);
                 Keyboard.TypeSimultaneously(VirtualKeyShort.ALT, VirtualKeyShort.KEY_A);

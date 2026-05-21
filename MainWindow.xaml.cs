@@ -13,10 +13,8 @@ using AutomacaoPromobTeste.Promob;
 using AutomacaoPromobTeste.Automation;
 using FlaUI.UIA3;
 
-namespace AutomacaoPromobTeste
-{
-    public partial class MainWindow : Window
-    {
+namespace AutomacaoPromobTeste{
+    public partial class MainWindow : Window{
         private bool _isMonitoring = false;
         private CancellationTokenSource? _cts;
         private Task? _automationTask;
@@ -25,8 +23,7 @@ namespace AutomacaoPromobTeste
         private int _errosCount = 0;
         private System.Windows.Threading.DispatcherTimer? _statusTimer;
 
-        public MainWindow()
-        {
+        public MainWindow(){
             InitializeComponent();
             
             // Exibir caminhos das pastas configuradas
@@ -54,8 +51,7 @@ namespace AutomacaoPromobTeste
             AtualizarBotaoIniciar();
         }
 
-        protected override void OnClosed(EventArgs e)
-        {
+        protected override void OnClosed(EventArgs e){
             // Para o timer de verificação de processos
             _statusTimer?.Stop();
 
@@ -72,23 +68,18 @@ namespace AutomacaoPromobTeste
         // --- EVENT HANDLERS ---
         // ==========================================
 
-        private void BtnToggleAutomacao_Click(object sender, RoutedEventArgs e)
-        {
-            if (!_isMonitoring)
-            {
+        private void BtnToggleAutomacao_Click(object sender, RoutedEventArgs e){
+            if (!_isMonitoring){
                 StartMonitoring();
             }
-            else
-            {
+            else{
                 StopMonitoring();
             }
         }
 
-        private void BtnAbrirPromob_Click(object sender, RoutedEventArgs e)
-        {
+        private void BtnAbrirPromob_Click(object sender, RoutedEventArgs e){
             btnAbrirPromob.IsEnabled = false;
-            try
-            {
+            try{
                 // 1. Verifica se já está em execução
                 var currentProcId = Process.GetCurrentProcess().Id;
                 var promobProc = Process.GetProcesses()
@@ -97,25 +88,20 @@ namespace AutomacaoPromobTeste
                                          !p.ProcessName.Contains("Uploader", StringComparison.OrdinalIgnoreCase) &&
                                          !p.ProcessName.Contains("Automacao", StringComparison.OrdinalIgnoreCase));
 
-                if (promobProc != null)
-                {
+                if (promobProc != null){
                     Logger.Log($"[INFO] Promob já está em execução (PID: {promobProc.Id}). Trazendo para a tela...");
                     // Tentativa de foco
-                    try
-                    {
+                    try{
                         using var automation = new UIA3Automation();
                         var janela = PromobWindowHelper.AguardarJanelaPromob(automation, 2000);
-                        if (janela != null)
-                        {
+                        if (janela != null){
                             InteractionHelper.AtivarJanela(janela);
                         }
                     }
-                    catch
-                    {
+                    catch{
                         // Fallback básico de foco pelo processo se falhar UIA3
                         var handle = promobProc.MainWindowHandle;
-                        if (handle != IntPtr.Zero)
-                        {
+                        if (handle != IntPtr.Zero){
                             // Traz janela do SO ao topo
                             InteractionHelper.EsperarUiRespirar(200);
                         }
@@ -126,18 +112,15 @@ namespace AutomacaoPromobTeste
                 // 2. Tenta localizar o executável
                 string? caminhoExe = DetectarPromobExe();
 
-                if (string.IsNullOrEmpty(caminhoExe))
-                {
+                if (string.IsNullOrEmpty(caminhoExe)){
                     // Diálogo de seleção manual se não achou automático
-                    var dialog = new OpenFileDialog
-                    {
+                    var dialog = new OpenFileDialog{
                         Title = "Selecione o Executável do Promob (Promob.exe)",
                         Filter = "Executável do Promob (*.exe)|*.exe;*.lnk",
                         FileName = "Promob5.exe"
                     };
 
-                    if (dialog.ShowDialog() == true)
-                    {
+                    if (dialog.ShowDialog() == true){
                         caminhoExe = dialog.FileName;
                         // Salva para futuras execuções
                         var configPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "promob_path.txt");
@@ -145,11 +128,9 @@ namespace AutomacaoPromobTeste
                     }
                 }
 
-                if (!string.IsNullOrEmpty(caminhoExe) && File.Exists(caminhoExe))
-                {
+                if (!string.IsNullOrEmpty(caminhoExe) && File.Exists(caminhoExe)){
                     Logger.Log($"[INFO] Iniciando Promob a partir de: {caminhoExe}");
-                    var info = new ProcessStartInfo
-                    {
+                    var info = new ProcessStartInfo{
                         FileName = caminhoExe,
                         WorkingDirectory = Path.GetDirectoryName(caminhoExe) ?? "",
                         UseShellExecute = false, // Necessário para modificar variáveis de ambiente
@@ -158,23 +139,19 @@ namespace AutomacaoPromobTeste
                     info.EnvironmentVariables["__COMPAT_LAYER"] = "RunAsInvoker";
                     Process.Start(info);
                 }
-                else
-                {
+                else{
                     Logger.Log("[AVISO] Operação cancelada ou executável do Promob não foi encontrado.", LogLevel.Warn);
                 }
             }
-            catch (Exception ex)
-            {
+            catch (Exception ex){
                 Logger.Log($"[ERRO] Não foi possível iniciar o Promob: {ex.Message}", LogLevel.Error);
             }
-            finally
-            {
+            finally{
                 btnAbrirPromob.IsEnabled = true;
             }
         }
 
-        private void BtnClearLog_Click(object sender, RoutedEventArgs e)
-        {
+        private void BtnClearLog_Click(object sender, RoutedEventArgs e){
             txtLogTerminal.Clear();
         }
 
@@ -182,8 +159,7 @@ namespace AutomacaoPromobTeste
         // --- LOGIC FUNCTIONS ---
         // ==========================================
 
-        private void StartMonitoring()
-        {
+        private void StartMonitoring(){
             _isMonitoring = true;
             _cts = new CancellationTokenSource();
 
@@ -191,8 +167,7 @@ namespace AutomacaoPromobTeste
             txtStatusText.Text = "Monitorando...";
             txtStatusText.Foreground = new SolidColorBrush(Color.FromRgb(16, 185, 129)); // Verde
             statusIndicator.Fill = new SolidColorBrush(Color.FromRgb(16, 185, 129));
-            if (statusIndicator.Effect is DropShadowEffect shadow)
-            {
+            if (statusIndicator.Effect is DropShadowEffect shadow){
                 shadow.Color = Color.FromRgb(16, 185, 129);
             }
 
@@ -206,19 +181,16 @@ namespace AutomacaoPromobTeste
             _automationTask = Task.Run(() => ExecutarLoopAutomacao(_cts.Token), _cts.Token);
         }
 
-        private void StopMonitoring()
-        {
+        private void StopMonitoring(){
             btnToggleAutomacao.IsEnabled = false;
             Logger.Log("[INFO] Solicitando parada da automação... Por favor, aguarde a conclusão da etapa atual.");
             _cts?.Cancel();
         }
 
-        private void ExecutarLoopAutomacao(CancellationToken token)
-        {
+        private void ExecutarLoopAutomacao(CancellationToken token){
             VisionHelper.Inicializar();
 
-            if (!Directory.Exists(PromobConfig.PastaPromob))
-            {
+            if (!Directory.Exists(PromobConfig.PastaPromob)){
                 Logger.Log($"[ERRO] Pasta do Promob na Área de Trabalho não encontrada: {PromobConfig.PastaPromob}", LogLevel.Error);
                 ResetUiStateOnStop();
                 return;
@@ -231,8 +203,7 @@ namespace AutomacaoPromobTeste
             using var fileAddedEvent = new AutoResetEvent(true);
             
             // Configura o FileSystemWatcher para monitorar a pasta
-            using var watcher = new FileSystemWatcher(PromobConfig.PastaPromob, "*.promob")
-            {
+            using var watcher = new FileSystemWatcher(PromobConfig.PastaPromob, "*.promob"){
                 NotifyFilter = NotifyFilters.FileName | NotifyFilters.LastWrite,
                 EnableRaisingEvents = true
             };
@@ -242,17 +213,14 @@ namespace AutomacaoPromobTeste
 
             bool loggedWaiting = false;
 
-            while (!token.IsCancellationRequested)
-            {
+            while (!token.IsCancellationRequested){
                 // Obtém todos os arquivos pendentes
                 var arquivos = Directory.GetFiles(PromobConfig.PastaPromob, "*.promob")
                     .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
                     .ToList();
 
-                if (arquivos.Count == 0)
-                {
-                    if (!loggedWaiting)
-                    {
+                if (arquivos.Count == 0){
+                    if (!loggedWaiting){
                         Logger.Log($"[AGUARDANDO] Nenhum arquivo para processar. Aguardando novos arquivos...");
                         loggedWaiting = true;
                     }
@@ -264,8 +232,7 @@ namespace AutomacaoPromobTeste
 
                 loggedWaiting = false;
 
-                foreach (var arquivo in arquivos)
-                {
+                foreach (var arquivo in arquivos){
                     if (token.IsCancellationRequested)
                         break;
 
@@ -276,8 +243,7 @@ namespace AutomacaoPromobTeste
                     Logger.Log($"  Status: Processados: {_processadosCount} | Erros: {_errosCount}");
                     Logger.Log("══════════════════════════════════════════");
 
-                    try
-                    {
+                    try{
                         // Pequena pausa de segurança
                         Thread.Sleep(500);
 
@@ -289,18 +255,15 @@ namespace AutomacaoPromobTeste
                         Logger.Log($"[OK] {nome} processado com sucesso!");
 
                         // Exclui o arquivo processado da pasta
-                        try
-                        {
+                        try{
                             File.Delete(arquivo);
                             Logger.Log($"  [OK] Arquivo original '{nome}' excluído.");
                         }
-                        catch (Exception exDel)
-                        {
+                        catch (Exception exDel){
                             Logger.Log($"  [AVISO] Não foi possível excluir '{nome}': {exDel.Message}", LogLevel.Warn);
                         }
                     }
-                    catch (PromobExportException exErp)
-                    {
+                    catch (PromobExportException exErp){
                         _errosCount++;
                         UpdateMetricsOnUi();
                         
@@ -308,11 +271,9 @@ namespace AutomacaoPromobTeste
                         Logger.RegistrarErro(nome, exErp);
 
                         // Move o arquivo para a pasta "promob erro"
-                        try
-                        {
+                        try{
                             var destino = Path.Combine(PromobConfig.PastaPromobErro, nome);
-                            if (File.Exists(destino))
-                            {
+                            if (File.Exists(destino)){
                                 var semExtensao = Path.GetFileNameWithoutExtension(nome);
                                 var extensao = Path.GetExtension(nome);
                                 destino = Path.Combine(PromobConfig.PastaPromobErro, $"{semExtensao}_{DateTime.Now:yyyyMMdd_HHmmss}{extensao}");
@@ -320,21 +281,18 @@ namespace AutomacaoPromobTeste
                             File.Move(arquivo, destino);
                             Logger.Log($"  [OK] Arquivo com erro movido para '{PromobConfig.PastaPromobErro}'.");
                         }
-                        catch (Exception exMove)
-                        {
+                        catch (Exception exMove){
                             Logger.Log($"  [AVISO] Não foi possível mover '{nome}' para 'promob erro': {exMove.Message}", LogLevel.Warn);
                         }
                     }
-                    catch (Exception ex)
-                    {
+                    catch (Exception ex){
                         _errosCount++;
                         UpdateMetricsOnUi();
                         
                         Logger.Log($"[ERRO] Falha no processamento de {nome}: {ex.Message}", LogLevel.Error);
                         Logger.RegistrarErro(nome, ex);
                         
-                        try
-                        {
+                        try{
                             PromobWorkflow.TentarRecuperar(automation);
                         }
                         catch { }
@@ -347,26 +305,21 @@ namespace AutomacaoPromobTeste
             ResetUiStateOnStop();
         }
 
-        private void UpdateMetricsOnUi()
-        {
-            Dispatcher.Invoke(() =>
-            {
+        private void UpdateMetricsOnUi(){
+            Dispatcher.Invoke(() => {
                 txtSucessosCount.Text = _processadosCount.ToString();
                 txtErrosCount.Text = _errosCount.ToString();
             });
         }
 
-        private void ResetUiStateOnStop()
-        {
-            Dispatcher.Invoke(() =>
-            {
+        private void ResetUiStateOnStop(){
+            Dispatcher.Invoke(() => {
                 _isMonitoring = false;
                 
                 txtStatusText.Text = "Parado";
                 txtStatusText.Foreground = new SolidColorBrush(Color.FromRgb(148, 163, 184)); // Cinza
                 statusIndicator.Fill = new SolidColorBrush(Color.FromRgb(239, 68, 68)); // Vermelho
-                if (statusIndicator.Effect is DropShadowEffect shadow)
-                {
+                if (statusIndicator.Effect is DropShadowEffect shadow) {
                     shadow.Color = Color.FromRgb(239, 68, 68);
                 }
 
@@ -380,12 +333,9 @@ namespace AutomacaoPromobTeste
         }
 
         // Helper to output to the logs textbox
-        private void LogToTerminal(string message, LogLevel level)
-        {
-            Dispatcher.Invoke(() =>
-            {
-                string prefix = level switch
-                {
+        private void LogToTerminal(string message, LogLevel level){
+            Dispatcher.Invoke(() => {
+                string prefix = level switch{
                     LogLevel.Error => "[ERRO] ",
                     LogLevel.Warn => "[AVISO] ",
                     LogLevel.Debug => "[DEBUG] ",
@@ -394,8 +344,7 @@ namespace AutomacaoPromobTeste
 
                 // Remove prefixos duplicados se a própria mensagem já começar com eles
                 string cleanMessage = message;
-                if (!string.IsNullOrEmpty(prefix) && message.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
-                {
+                if (!string.IsNullOrEmpty(prefix) && message.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)){
                     cleanMessage = message.Substring(prefix.Length);
                 }
 
@@ -406,12 +355,11 @@ namespace AutomacaoPromobTeste
         }
 
         // Tenta detectar o executável do Promob no sistema
-        private string? DetectarPromobExe()
-        {
+        private string? DetectarPromobExe(){
             // 1. Tenta carregar de um arquivo de configuração local
             var configPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "promob_path.txt");
-            if (File.Exists(configPath))
-            {
+
+            if (File.Exists(configPath)){
                 var path = File.ReadAllText(configPath).Trim();
                 if (File.Exists(path)) return path;
             }
@@ -422,20 +370,15 @@ namespace AutomacaoPromobTeste
                 @"C:\Program Files (x86)\Promob"
             };
 
-            foreach (var raiz in raizes)
-            {
-                if (Directory.Exists(raiz))
-                {
-                    try
-                    {
+            foreach (var raiz in raizes){
+                if (Directory.Exists(raiz)){
+                    try{
                         var arquivos = Directory.GetFiles(raiz, "Promob.exe", SearchOption.AllDirectories);
-                        if (arquivos.Length == 0)
-                        {
+                        if (arquivos.Length == 0){
                             arquivos = Directory.GetFiles(raiz, "Promob5.exe", SearchOption.AllDirectories);
                         }
 
-                        if (arquivos.Length > 0)
-                        {
+                        if (arquivos.Length > 0){
                             // Salva para as próximas vezes
                             File.WriteAllText(configPath, arquivos[0]);
                             return arquivos[0];
@@ -452,10 +395,8 @@ namespace AutomacaoPromobTeste
         // --- PROMOB MONITORING LOGIC ---
         // ==========================================
 
-        private async void StatusTimer_Tick(object? sender, EventArgs e)
-        {
-            if (_isMonitoring)
-            {
+        private async void StatusTimer_Tick(object? sender, EventArgs e){
+            if (_isMonitoring){
                 btnToggleAutomacao.IsEnabled = true;
                 return;
             }
@@ -463,16 +404,13 @@ namespace AutomacaoPromobTeste
             bool promobAberto = await Task.Run(() => IsPromobRunning());
             
             // Só atualiza se o estado do monitoramento não tiver mudado nesse meio tempo
-            if (!_isMonitoring)
-            {
+            if (!_isMonitoring){
                 btnToggleAutomacao.IsEnabled = promobAberto;
             }
         }
 
-        private void AtualizarBotaoIniciar()
-        {
-            if (_isMonitoring)
-            {
+        private void AtualizarBotaoIniciar(){
+            if (_isMonitoring){
                 btnToggleAutomacao.IsEnabled = true;
                 return;
             }
@@ -480,10 +418,8 @@ namespace AutomacaoPromobTeste
             btnToggleAutomacao.IsEnabled = IsPromobRunning();
         }
 
-        private bool IsPromobRunning()
-        {
-            try
-            {
+        private bool IsPromobRunning(){
+            try{
                 var currentProcId = Process.GetCurrentProcess().Id;
                 return Process.GetProcesses()
                     .Any(p => p.Id != currentProcId &&
@@ -491,8 +427,7 @@ namespace AutomacaoPromobTeste
                               !p.ProcessName.Contains("Uploader", StringComparison.OrdinalIgnoreCase) &&
                               !p.ProcessName.Contains("Automacao", StringComparison.OrdinalIgnoreCase));
             }
-            catch
-            {
+            catch{
                 return false;
             }
         }

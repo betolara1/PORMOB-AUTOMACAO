@@ -12,19 +12,19 @@ using FlaUI.Core.WindowsAPI;
 
 namespace AutomacaoPromobTeste.Promob{
     //--------------------------------------------------------------------------------------
-    /// <summary>
-    /// Componente responsável por gerenciar o carregamento de projetos recém-importados no Promob,
-    /// aguardando e validando a renderização correta de abas e tratando possíveis popups informativos.
-    /// </summary>
+        /// <summary>
+        /// Componente responsável por gerenciar o carregamento de projetos recém-importados no Promob,
+        /// aguardando e validando a renderização correta de abas e tratando possíveis popups informativos.
+        /// </summary>
     //--------------------------------------------------------------------------------------
     public static class PromobCarregadorProjeto{
 
         //--------------------------------------------------------------------------------------
-        /// <summary>
-        /// Localiza o projeto importado pelo nome na lista de projetos recentes e efetua o duplo clique
-        /// para abri-lo, gerenciando ativamente a espera pelo carregamento total e avisos de cena na tela.
-        /// </summary>
-        /// <param name="janelaPromob">A janela principal ativa do Promob.</param>
+            /// <summary>
+            /// Localiza o projeto importado pelo nome na lista de projetos recentes e efetua o duplo clique
+            /// para abri-lo, gerenciando ativamente a espera pelo carregamento total e avisos de cena na tela.
+            /// </summary>
+            /// <param name="janelaPromob">A janela principal ativa do Promob.</param>
         //--------------------------------------------------------------------------------------
         public static void AbrirProjetoSelecionado(Window janelaPromob){
             InteractionHelper.AtivarJanela(janelaPromob);
@@ -191,11 +191,11 @@ namespace AutomacaoPromobTeste.Promob{
         }
 
         //--------------------------------------------------------------------------------------
-        /// <summary>
-        /// Trata e responde a um popup ou caixa de aviso/atenção genérica aberta pelo Promob,
-        /// clicando em botões lógicos de confirmação (OK, Confirmar, Sim) ou enviando ALT+F4/ESC.
-        /// </summary>
-        /// <param name="popup">A janela do popup interceptado.</param>
+            /// <summary>
+            /// Trata e responde a um popup ou caixa de aviso/atenção genérica aberta pelo Promob,
+            /// clicando em botões lógicos de confirmação (OK, Confirmar, Sim) ou enviando ALT+F4/ESC.
+            /// </summary>
+            /// <param name="popup">A janela do popup interceptado.</param>
         //--------------------------------------------------------------------------------------
         public static void TratarPopupGenerico(Window popup){
             Logger.Log($"  [INFO] Tratando popup: '{popup.Name}'");

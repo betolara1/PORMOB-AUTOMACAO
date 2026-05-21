@@ -13,20 +13,20 @@ using FlaUI.UIA3;
 
 namespace AutomacaoPromobTeste.Promob{
     //--------------------------------------------------------------------------------------
-    /// <summary>
-    /// Componente responsável por gerenciar a navegação e a exportação de dados para o ERP,
-    /// cobrindo o acionamento do integrador no menu e o monitoramento da geração do XML.
-    /// </summary>
+        /// <summary>
+        /// Componente responsável por gerenciar a navegação e a exportação de dados para o ERP,
+        /// cobrindo o acionamento do integrador no menu e o monitoramento da geração do XML.
+        /// </summary>
     //--------------------------------------------------------------------------------------
     public static class PromobExportadorErp{
 
         //--------------------------------------------------------------------------------------
-        /// <summary>
-        /// Navega pela interface gráfica do Promob ativando o menu 'Ferramentas', abrindo a opção
-        /// 'Integradores' e disparando o integrador 'Promob ERP'.
-        /// </summary>
-        /// <param name="automation">A instância ativa do motor de automação UIA3.</param>
-        /// <param name="janela">A janela principal ativa do Promob.</param>
+            /// <summary>
+            /// Navega pela interface gráfica do Promob ativando o menu 'Ferramentas', abrindo a opção
+            /// 'Integradores' e disparando o integrador 'Promob ERP'.
+            /// </summary>
+            /// <param name="automation">A instância ativa do motor de automação UIA3.</param>
+            /// <param name="janela">A janela principal ativa do Promob.</param>
         //--------------------------------------------------------------------------------------
         public static void AbrirIntegradorErp(UIA3Automation automation, Window janela){
             InteractionHelper.AtivarJanela(janela);
@@ -103,21 +103,21 @@ namespace AutomacaoPromobTeste.Promob{
         }
 
         //--------------------------------------------------------------------------------------
-        /// <summary>
-        /// Monitora ativamente o processamento pesado de exportação do Promob ERP, aguardando que o
-        /// texto de sucesso apareça, fechando a janela de status e fechando o Explorer que abre ao fim.
-        /// </summary>
-        /// <param name="automation">A instância ativa do motor de automação UIA3.</param>
-        /// <param name="janela">A janela principal ativa do Promob.</param>
+            /// <summary>
+            /// Monitora ativamente o processamento pesado de exportação do Promob ERP, aguardando que o
+            /// texto de sucesso apareça, fechando a janela de status e fechando o Explorer que abre ao fim.
+            /// </summary>
+            /// <param name="automation">A instância ativa do motor de automação UIA3.</param>
+            /// <param name="janela">A janela principal ativa do Promob.</param>
         //--------------------------------------------------------------------------------------
         public static void AguardarExportacaoErp(UIA3Automation automation, Window janela){
             var swTotal = Stopwatch.StartNew();
             Logger.Log("  [INFO] Aguardando a exportação do Promob ERP finalizar (timeout: 35min)...");
 
             // ====================================================================
-            // FASE 1: Aguardar a mensagem de sucesso OU erro
-            // O popup de carregamento e a janela de exportação vão aparecer e sumir
-            // sozinhos. Monitoramos até o texto de sucesso ou erro surgir.
+                // FASE 1: Aguardar a mensagem de sucesso OU erro
+                // O popup de carregamento e a janela de exportação vão aparecer e sumir
+                // sozinhos. Monitoramos até o texto de sucesso ou erro surgir.
             // ====================================================================
             AutomationElement? textoSucesso = null;
             Window? janelaExportacao = null;
@@ -186,8 +186,8 @@ namespace AutomacaoPromobTeste.Promob{
             }
 
             // ====================================================================
-            // FASE 2: Clicar no botão "Fechar" da janela de exportação
-            // (tanto para sucesso quanto para erro)
+                // FASE 2: Clicar no botão "Fechar" da janela de exportação
+                // (tanto para sucesso quanto para erro)
             // ====================================================================
             if (janelaExportacao != null){
                 Logger.Log("  [INFO] Procurando botão 'Fechar' na janela de exportação...");
@@ -237,7 +237,7 @@ namespace AutomacaoPromobTeste.Promob{
             Logger.Log($"  [SUCESSO] Mensagem 'completado com sucesso' detectada após {swTotal.ElapsedMilliseconds / 1000}s!");
 
             // ====================================================================
-            // FASE 3: Fechar a pasta 01_XML que abre automaticamente no Explorer
+                // FASE 3: Fechar a pasta 01_XML que abre automaticamente no Explorer
             // ====================================================================
             Logger.Log("  [INFO] Procurando janela do Explorer (pasta 01_XML) para fechar...");
             bool fechouExplorer = InteractionHelper.EsperarAte(() => {
@@ -267,7 +267,7 @@ namespace AutomacaoPromobTeste.Promob{
             }
 
             // ====================================================================
-            // FASE 4: Retornar o foco para o Promob
+                // FASE 4: Retornar o foco para o Promob
             // ====================================================================
             Logger.Log("  [INFO] Retornando foco para o Promob...");
             InteractionHelper.AtivarJanela(janela);
