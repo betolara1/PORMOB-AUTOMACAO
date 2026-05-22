@@ -30,46 +30,137 @@ namespace AutomacaoPromobTeste.Promob{
         public static void ClicarBotaoImportar(Window janelaPromob){
             int tentativas = 1;
             while (true){
-                var swTotal = Stopwatch.StartNew();
-                Logger.Log($"  [INFO] Procurando botão 'Importar' (Tentativa {tentativas})...");
+                try{
+                    var swTotal = Stopwatch.StartNew();
+                    Logger.Log($"  [INFO] Procurando botão 'Importar' (Tentativa {tentativas})...");
 
-                var swBusca = Stopwatch.StartNew();
-                Logger.Log("    [SEARCH] Iniciando busca persistente do botão 'Importar Projeto'...");
+                    var swBusca = Stopwatch.StartNew();
+                    Logger.Log("    [SEARCH] Iniciando busca persistente do botão 'Importar Projeto'...");
 
-                var buscaEm = WindowFinder.ObterHostOuJanela(janelaPromob, PromobConfig.AutomationIdHost, PromobWindowHelper.CachedProcessIdPromob);
+                    var buscaEm = WindowFinder.ObterHostOuJanela(janelaPromob, PromobConfig.AutomationIdHost, PromobWindowHelper.CachedProcessIdPromob);
 
-                AutomationElement? btnFound = WindowFinder.BuscarElementoComFallback(
-                    buscaEm,
-                    cf => cf.ByAutomationId(PromobConfig.IdImportarBotao),
-                    e => (e.Properties.AutomationId.ValueOrDefault ?? "").Equals(PromobConfig.IdImportarBotao, StringComparison.OrdinalIgnoreCase) ||
-                         (e.Properties.Name.ValueOrDefault ?? "").Equals(PromobConfig.NomeJanelaWizardImportacao, StringComparison.OrdinalIgnoreCase),
-                    limitarAoMesmoProcesso: true,
-                    processId: PromobWindowHelper.CachedProcessIdPromob
-                );
-                swBusca.Stop();
+                    AutomationElement? btnFound = WindowFinder.BuscarElementoComFallback(
+                        buscaEm,
+                        cf => cf.ByAutomationId(PromobConfig.IdImportarBotao),
+                        e => (e.Properties.AutomationId.ValueOrDefault ?? "").Equals(PromobConfig.IdImportarBotao, StringComparison.OrdinalIgnoreCase) ||
+                             (e.Properties.Name.ValueOrDefault ?? "").Equals(PromobConfig.NomeJanelaWizardImportacao, StringComparison.OrdinalIgnoreCase),
+                        limitarAoMesmoProcesso: true,
+                        processId: PromobWindowHelper.CachedProcessIdPromob
+                    );
+                    swBusca.Stop();
 
-                if (btnFound != null) Logger.Log($"    [OK] Botão localizado em {swBusca.ElapsedMilliseconds}ms.");
-                else Logger.Log($"    [AVISO] Botão não encontrado após {swBusca.ElapsedMilliseconds}ms.");
+                    if (btnFound != null) Logger.Log($"    [OK] Botão localizado em {swBusca.ElapsedMilliseconds}ms.");
+                    else Logger.Log($"    [AVISO] Botão não encontrado após {swBusca.ElapsedMilliseconds}ms.");
 
-                if (btnFound != null){
-                    InteractionHelper.AtivarJanela(janelaPromob);
+                    if (btnFound != null){
+                        InteractionHelper.AtivarJanela(janelaPromob);
 
-                    Logger.Log("    [ACTION] Clicando no botão 'Importar'...");
-                    InteractionHelper.ClicarComFallback(btnFound);
+                        Logger.Log("    [ACTION] Clicando no botão 'Importar'...");
+                        InteractionHelper.ClicarComFallback(btnFound);
 
-                    swTotal.Stop();
-                    Logger.Log($"  [SUCESSO] Clique executado com sucesso (Tempo total: {swTotal.ElapsedMilliseconds}ms).");
-                    break;
+                        swTotal.Stop();
+                        Logger.Log($"  [SUCESSO] Clique executado com sucesso (Tempo total: {swTotal.ElapsedMilliseconds}ms).");
+                        break;
+                    }
+                    else{
+                        swTotal.Stop();
+                        Logger.Log($"  [AVISO] Tentativa {tentativas} falhou ({swTotal.ElapsedMilliseconds}ms). Aguardando 5s...", LogLevel.Warn);
+                    }
                 }
-                else{
-                    swTotal.Stop();
-                    Logger.Log($"  [AVISO] Tentativa {tentativas} falhou ({swTotal.ElapsedMilliseconds}ms). Aguardando 5s...", LogLevel.Warn);
+                catch (Exception ex){
+                    Logger.Log($"  [AVISO] Erro na busca do botão 'Importar' na tentativa {tentativas}: {ex.Message}. Aguardando 5s...", LogLevel.Warn);
+                    WindowFinder.CachedHost = null;
                 }
 
                 tentativas++;
                 Thread.Sleep(5000);
             }
         }
+
+        //--------------------------------------------------------------------------------------
+            /// <summary>
+            /// Verifica se a janela do Wizard de importação que está aberta é a correta,
+            /// ou seja, se contém o botão "..." (Browse/Caminho) que permite selecionar o arquivo .promob.
+            /// O Promob pode abrir um wizard errado (importação por sistema cloud/ERP) sem esse botão.
+            /// </summary>
+            /// <param name="janelaWizard">A janela de wizard aberta a ser inspecionada.</param>
+            /// <returns>true se o botão "..." foi encontrado (wizard correto); false caso contrário (wizard errado).</returns>
+        //--------------------------------------------------------------------------------------
+        public static bool VerificarBotaoBrowseNoWizard(Window janelaWizard){
+            try{
+                var swVerificacao = Stopwatch.StartNew();
+                Logger.Log("  [INFO] Analisando estrutura visual do wizard de importação...");
+
+                // Obtém os elementos dos primeiros 4 níveis do wizard (que cobrem todos os botões e campos estruturais WPF do Promob)
+                var elementos = WindowFinder.BuscarAteNivel(janelaWizard, maxNivel: 4).ToList();
+
+                // Busca o botão "..." ou Browse
+                var btnBrowse = elementos.FirstOrDefault(e =>
+                    e.ControlType == FlaUI.Core.Definitions.ControlType.Button &&
+                    ((e.Properties.Name.ValueOrDefault ?? "") == PromobConfig.BtnProcurar ||
+                     (e.Properties.Name.ValueOrDefault ?? "") == PromobConfig.BtnProcurarTexto ||
+                     (e.Properties.AutomationId.ValueOrDefault ?? "") == PromobConfig.IdBrowseButton ||
+                     (e.Properties.AutomationId.ValueOrDefault ?? "").Contains("Browse", StringComparison.OrdinalIgnoreCase)));
+
+                swVerificacao.Stop();
+
+                if (btnBrowse != null){
+                    Logger.Log($"  [OK] Wizard correto detectado em {swVerificacao.ElapsedMilliseconds}ms: botão '{btnBrowse.Name}' (ID: '{btnBrowse.Properties.AutomationId.ValueOrDefault}') encontrado.");
+                    return true;
+                }
+
+                Logger.Log($"  [AVISO] Wizard INCORRETO detectado em {swVerificacao.ElapsedMilliseconds}ms: botão '...' não encontrado. Iniciando sequência de recomeço.", LogLevel.Warn);
+                return false;
+            }
+            catch (Exception ex){
+                Logger.Log($"  [AVISO] Erro ao verificar wizard: {ex.Message}. Assumindo wizard incorreto.", LogLevel.Warn);
+                return false;
+            }
+        }
+
+        //--------------------------------------------------------------------------------------
+            /// <summary>
+            /// Fecha o wizard de importação que está aberto (quando é o wizard errado/incorreto),
+            /// clicando em 'Cancelar' ou no botão 'X' da janela, para retornar à tela inicial do Promob.
+            /// </summary>
+            /// <param name="janelaWizard">A janela do wizard a ser fechada.</param>
+        //--------------------------------------------------------------------------------------
+        public static void FecharWizardAtual(Window janelaWizard){
+            Logger.Log("  [INFO] Fechando wizard incorreto para tentar novamente...");
+            try{
+                InteractionHelper.AtivarJanela(janelaWizard);
+
+                // Busca superficial pelo botão Cancelar
+                var elementos = WindowFinder.BuscarAteNivel(janelaWizard, maxNivel: 4);
+                var btnCancelar = elementos.FirstOrDefault(e =>
+                    e.ControlType == FlaUI.Core.Definitions.ControlType.Button &&
+                    ((e.Properties.Name.ValueOrDefault ?? "") == PromobConfig.BtnCancelar ||
+                     (e.Properties.AutomationId.ValueOrDefault ?? "").Contains("Cancel", StringComparison.OrdinalIgnoreCase)));
+
+                if (btnCancelar != null){
+                    Logger.Log("    [ACTION] Clicando em 'Cancelar' para fechar o wizard...");
+                    InteractionHelper.ClicarComFallback(btnCancelar);
+                    InteractionHelper.EsperarUiRespirar(800);
+                    Logger.Log("    [OK] Wizard fechado via 'Cancelar'.");
+                    return;
+                }
+
+                // Fallback: pressiona ESC para fechar o wizard
+                Logger.Log("    [AVISO] Botão 'Cancelar' não encontrado superficialmente. Usando ESC...", LogLevel.Warn);
+                Keyboard.Type(VirtualKeyShort.ESCAPE);
+                InteractionHelper.EsperarUiRespirar(800);
+                Logger.Log("    [OK] Wizard fechado via ESC.");
+            }
+            catch (Exception ex){
+                Logger.Log($"    [AVISO] Erro ao fechar wizard: {ex.Message}. Tentando ESC como último recurso...", LogLevel.Warn);
+                try{
+                    Keyboard.Type(VirtualKeyShort.ESCAPE);
+                    InteractionHelper.EsperarUiRespirar(800);
+                }
+                catch { }
+            }
+        }
+
 
         //--------------------------------------------------------------------------------------
             /// <summary>

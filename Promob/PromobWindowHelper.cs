@@ -122,14 +122,41 @@ namespace AutomacaoPromobTeste.Promob{
             
             var desktop = automation.GetDesktop();
 
-            // Tentativa 1: Procurar como janela órfã no Desktop
-            var wizardDesktop = desktop.FindFirstChild(cf => cf.ByName(PromobConfig.NomeJanelaWizardImportacao));
-            if (wizardDesktop != null)
-                return wizardDesktop.AsWindow();
+            // Tentativa 1: Procurar como janela de topo no Desktop pertencente ao processo do Promob.
+            // Isso é instantâneo e super preciso, cobrendo 99% dos casos já que modais WPF/WinForms são janelas de topo nativas.
+            try{
+                var janelasDesktop = desktop.FindAllChildren(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Window));
+                var wizard = janelasDesktop.FirstOrDefault(j =>
+                    (j.Properties.Name.ValueOrDefault ?? "").Equals(PromobConfig.NomeJanelaWizardImportacao, StringComparison.OrdinalIgnoreCase) &&
+                    (!CachedProcessIdPromob.HasValue || j.Properties.ProcessId.ValueOrDefault == CachedProcessIdPromob.Value));
 
-            // Tentativa 2: Procurar dentro da hierarquia da janela principal
-            var wizardDesc = janelaPrincipal.FindFirstDescendant(cf => cf.ByName(PromobConfig.NomeJanelaWizardImportacao));
-            return wizardDesc?.AsWindow();
+                if (wizard != null){
+                    Logger.Log($"    [OK] Janela Wizard localizada no Desktop ({wizard.Name}).");
+                    return wizard.AsWindow();
+                }
+            }
+            catch (Exception ex){
+                Logger.Log($"    [DEBUG] Erro ao buscar wizard no Desktop: {ex.Message}", LogLevel.Debug);
+            }
+
+            // Tentativa 2: Busca rasa (até nível 2) apenas dentro da janela principal se não foi achado no desktop.
+            // Evita a pesadíssima busca profunda (FindFirstDescendant) na árvore do Promob.
+            try{
+                var filhosSuperficiais = WindowFinder.BuscarAteNivel(janelaPrincipal, maxNivel: 2);
+                var wizardDesc = filhosSuperficiais.FirstOrDefault(e =>
+                    e.ControlType == FlaUI.Core.Definitions.ControlType.Window &&
+                    (e.Properties.Name.ValueOrDefault ?? "").Equals(PromobConfig.NomeJanelaWizardImportacao, StringComparison.OrdinalIgnoreCase));
+
+                if (wizardDesc != null){
+                    Logger.Log($"    [OK] Janela Wizard localizada sob a Janela Principal ({wizardDesc.Name}).");
+                    return wizardDesc.AsWindow();
+                }
+            }
+            catch (Exception ex){
+                Logger.Log($"    [DEBUG] Erro ao buscar wizard na janela principal: {ex.Message}", LogLevel.Debug);
+            }
+
+            return null;
         }
 
         //--------------------------------------------------------------------------------------

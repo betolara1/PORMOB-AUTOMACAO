@@ -41,20 +41,27 @@ namespace AutomacaoPromobTeste.Automation{
             Logger.Log($"    [DEBUG] Buscando {automationIdHost}...", LogLevel.Debug);
             var swHost = Stopwatch.StartNew();
 
-            // Realiza a busca física utilizando a estratégia de fallback
-            CachedHost = BuscarElementoComFallback(
-                janela,
-                cf => cf.ByAutomationId(automationIdHost),
-                e => (e.Properties.AutomationId.ValueOrDefault ?? "").Equals(automationIdHost, StringComparison.OrdinalIgnoreCase),
-                limitarAoMesmoProcesso: true,
-                processId: processId
-            );
+            // Sendo o elementHost1 (o painel WPF principal), ele sempre fica nos níveis superficiais (1 ou 2) da janela.
+            // Para evitar a pesada e extremamente demorada varredura profunda do UIA (FindFirstDescendant) na inicialização do Promob,
+            // faremos apenas uma busca rápida nas redondezas superficiais (nível 2 no máximo).
+            try{
+                var filhosSuperficiais = BuscarAteNivel(janela, maxNivel: 2);
+                CachedHost = filhosSuperficiais.FirstOrDefault(e => 
+                    (e.Properties.AutomationId.ValueOrDefault ?? "").Equals(automationIdHost, StringComparison.OrdinalIgnoreCase) &&
+                    (!processId.HasValue || e.Properties.ProcessId.ValueOrDefault == processId.Value));
+            }
+            catch (Exception ex){
+                Logger.Log($"    [DEBUG] Falha na busca superficial do host: {ex.Message}", LogLevel.Debug);
+            }
+
             swHost.Stop();
 
-            if (CachedHost != null)
-                Logger.Log($"    [OK] {automationIdHost} localizado ({swHost.ElapsedMilliseconds}ms) e cacheado.", LogLevel.Debug);
-            else
-                Logger.Log($"    [AVISO] {automationIdHost} não encontrado após {swHost.ElapsedMilliseconds}ms. Usando janela principal.", LogLevel.Debug);
+            if (CachedHost != null){
+                Logger.Log($"    [OK] {automationIdHost} localizado superficialmente ({swHost.ElapsedMilliseconds}ms) e cacheado.", LogLevel.Debug);
+            }
+            else{
+                Logger.Log($"    [AVISO] {automationIdHost} não encontrado na busca superficial rápida ({swHost.ElapsedMilliseconds}ms). Usando janela principal como raiz temporária.", LogLevel.Debug);
+            }
 
             return CachedHost ?? janela;
         }

@@ -31,7 +31,7 @@ namespace AutomacaoPromobTeste.Promob{
         //--------------------------------------------------------------------------------------
         public static void ProcessarArquivo(UIA3Automation automation, string caminhoArquivo){
             Logger.Log("  [1/8] Localizando janela do Promob...");
-            var janela = PromobWindowHelper.AguardarJanelaPromob(automation, 60000)
+            var janela = PromobWindowHelper.AguardarJanelaPromob(automation, 300000)
                 ?? throw new Exception("Janela do Promob não encontrada. O Promob está aberto?");
 
             int currentPid = janela.Properties.ProcessId.ValueOrDefault;
@@ -52,13 +52,47 @@ namespace AutomacaoPromobTeste.Promob{
             Logger.Log("  [1.5/8] Verificando estado inicial do Promob...");
             Diagnostics.Medir("Verificar e fechar projeto pendente", () => PromobFecharProjeto.FecharProjetoPendenteSeNecessario(automation, janela));
 
-            Logger.Log("  [2/8] Acionando Importar...");
-            InteractionHelper.AtivarJanela(janela);
-            Diagnostics.Medir("Clicar botão Importar", () => PromobImportador.ClicarBotaoImportar(janela));
+            // Loop de retry para garantir que o wizard correto foi aberto (com o botão "...").
+            // O Promob pode abrir um wizard de importação via sistema cloud/ERP (sem o botão "...").
+            // Nesse caso, fechamos e tentamos novamente até obter a tela correta com "Caminho" + "...".
+            Window? janelaWizard = null;
+            int tentativaWizard = 0;
+            const int maxTentativasWizard = 10;
 
-            Logger.Log("  [3/8] Abrindo busca de arquivo e preenchendo caminho...");
-            var janelaWizard = PromobWindowHelper.EncontrarJanelaWizard(automation, janela) ?? janela;
+            while (tentativaWizard < maxTentativasWizard){
+                tentativaWizard++;
+                Logger.Log($"  [2/8] Acionando Importar... (Tentativa {tentativaWizard}/{maxTentativasWizard})");
+                InteractionHelper.AtivarJanela(janela);
+                Diagnostics.Medir("Clicar botão Importar", () => PromobImportador.ClicarBotaoImportar(janela));
+
+                Logger.Log("  [3/8] Aguardando e verificando wizard de importação...");
+                // Espera um momento para o wizard abrir
+                InteractionHelper.EsperarUiRespirar(1500);
+                var wizardEncontrado = PromobWindowHelper.EncontrarJanelaWizard(automation, janela) ?? janela;
+
+                // Verifica se o wizard correto foi aberto (aquele com o botão "...")
+                if (PromobImportador.VerificarBotaoBrowseNoWizard(wizardEncontrado)){
+                    janelaWizard = wizardEncontrado;
+                    Logger.Log($"  [OK] Wizard correto confirmado na tentativa {tentativaWizard}.");
+                    break;
+                }
+
+                // Wizard errado: fecha e tenta de novo
+                Logger.Log($"  [AVISO] Wizard incorreto na tentativa {tentativaWizard}. Fechando e tentando novamente...", LogLevel.Warn);
+                PromobImportador.FecharWizardAtual(wizardEncontrado);
+                // Pequena pausa para o Promob retornar à tela inicial antes de tentar novamente
+                InteractionHelper.EsperarUiRespirar(1000);
+                // Invalida cache para garantir nova busca limpa do botão Importar
+                WindowFinder.CachedHost = null;
+            }
+
+            if (janelaWizard == null){
+                throw new Exception($"Não foi possível abrir o wizard correto de importação após {maxTentativasWizard} tentativas. O botão '...' (Caminho) não apareceu.");
+            }
+
+            Logger.Log("  [3/8] Preenchendo caminho do arquivo no wizard...");
             Diagnostics.Medir("Selecionar arquivo", () => PromobImportador.AbrirDialogoEPreencher(automation, janelaWizard, caminhoArquivo));
+
 
             Logger.Log("  [4/8] Clicando em Avançar no Wizard...");
             InteractionHelper.AtivarJanela(janelaWizard);

@@ -30,13 +30,23 @@ namespace AutomacaoPromobTeste.Promob{
             bool achouImportar = false;
             bool achouFechar = false;
             
-            // Tenta detectar o estado do Promob (Tela Inicial vs Projeto Aberto) por 3 tentativas de 5 segundos cada
-            for (int tentativa = 1; tentativa <= 3; tentativa++){
-                Logger.Log($"    -> Verificando estado do Promob (Tentativa {tentativa}/3)...");
-                
-                var sw = Stopwatch.StartNew();
-                while (sw.ElapsedMilliseconds < 5000){
+            const int maxTentativas = 150; // 150 tentativas * 2 segundos = 5 minutos de espera máxima
+            const int tempoEsperaMs = 2000;
+            
+            for (int tentativa = 1; tentativa <= maxTentativas; tentativa++){
+                try{
+                    Logger.Log($"    -> Verificando estado do Promob (Tentativa {tentativa}/{maxTentativas})...");
+                    
                     var raiz = WindowFinder.ObterHostOuJanela(janela, PromobConfig.AutomationIdHost, PromobWindowHelper.CachedProcessIdPromob);
+                    
+                    // Se a raiz obtida for a própria janela principal (elementHost1 ainda não carregado),
+                    // significa que o Promob ainda está na fase inicial de carregamento de plugins/splash.
+                    // Procurar botões internos agora causará timeouts e lentidão extrema no UIA.
+                    if (raiz == janela && WindowFinder.CachedHost == null){
+                        Logger.Log($"    [INFO] Interface gráfica (elementHost1) ainda não foi renderizada pelo Promob. Aguardando inicialização...");
+                        Thread.Sleep(tempoEsperaMs);
+                        continue;
+                    }
                     
                     // 1. Tenta localizar o botão 'Importar Projeto' (Tela Inicial)
                     var btnImportar = WindowFinder.BuscarElementoComFallback(
@@ -80,21 +90,27 @@ namespace AutomacaoPromobTeste.Promob{
                         achouFechar = true;
                         break;
                     }
-                    
-                    Thread.Sleep(500); // Polling de 500ms
+                }
+                catch (Exception ex){
+                    // Captura erros de timeout, janelas não responsivas ou COMExceptions comuns de inicialização do Promob
+                    Logger.Log($"    [INFO] Promob ainda não respondeu ou está carregando ({ex.Message}). Continuando busca...", LogLevel.Debug);
+                    // Invalidamos o cache do host para forçar uma nova varredura física na próxima tentativa
+                    WindowFinder.CachedHost = null;
                 }
 
-                if (achouImportar){
-                    Logger.Log("  [INFO] Promob está na tela inicial (pronto para importar). Nenhum projeto aberto detectado.");
-                    return;
-                }
+                Thread.Sleep(tempoEsperaMs);
+            }
 
-                if (achouFechar){
-                    Logger.Log("  [AVISO] Projeto aberto detectado. Fechando projeto antes de importar...", LogLevel.Warn);
-                    Fechar(automation, janela);
-                    Logger.Log("  [OK] Projeto anterior fechado. Promob retornou à tela inicial.");
-                    return;
-                }
+            if (achouImportar){
+                Logger.Log("  [INFO] Promob está na tela inicial (pronto para importar). Nenhum projeto aberto detectado.");
+                return;
+            }
+
+            if (achouFechar){
+                Logger.Log("  [AVISO] Projeto aberto detectado. Fechando projeto antes de importar...", LogLevel.Warn);
+                Fechar(automation, janela);
+                Logger.Log("  [OK] Projeto anterior fechado. Promob retornou à tela inicial.");
+                return;
             }
 
             // Caso não encontre nenhum dos dois estados após as retentativas acumuladas
