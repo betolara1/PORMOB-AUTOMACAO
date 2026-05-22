@@ -53,14 +53,16 @@ namespace AutomacaoPromobTeste.Promob{
                             var popup = j.AsWindow();
                             popup.SetForeground();
                             
-                            // Verifica se é o popup de "Deseja cancelar a operação?"
-                            var textElement = popup.FindFirstDescendant(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Text));
+                            // Verifica se é o popup de "Deseja cancelar a operação?" (Busca rasa ultra rápida com FindAllChildren)
+                            var textElement = popup.FindAllChildren(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Text)).FirstOrDefault();
                             var texto = textElement?.Properties.Name.ValueOrDefault ?? "";
 
                             if (texto.Contains(PromobConfig.MsgConfirmarCancelamento, StringComparison.OrdinalIgnoreCase)){
                                 Logger.Log($"    [RECOVERY] Popup de cancelamento detectado. Clicando em '{PromobConfig.BtnNao}' para manter a aplicação aberta.");
-                                var btnNao = popup.FindFirstDescendant(cf => 
-                                    cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button).And(cf.ByName(PromobConfig.BtnNao).Or(cf.ByName(PromobConfig.BtnNaoAlt))));
+                                
+                                // Busca rasa (FindAllChildren) filtrada em memória para evitar COM hangs
+                                var btnNao = popup.FindAllChildren(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button))
+                                    .FirstOrDefault(b => b.Name == PromobConfig.BtnNao || b.Name == PromobConfig.BtnNaoAlt);
                                 
                                 if (btnNao != null) InteractionHelper.ClicarComFallback(btnNao);
                                 else {
@@ -130,7 +132,10 @@ namespace AutomacaoPromobTeste.Promob{
             bool fechou = InteractionHelper.EsperarAte(() => {
                 var popup = PromobWindowHelper.EncontrarPopupAtencao(janelaPromob.Automation.GetDesktop(), PromobWindowHelper.CachedProcessIdPromob);
                 if (popup != null) {
-                    var btnNao = popup.FindFirstDescendant(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button).And(cf.ByName(PromobConfig.BtnNao).Or(cf.ByName(PromobConfig.BtnNaoAlt))));
+                    // Busca rasa rápida com FindAllChildren filtrando em memória
+                    var btnNao = popup.FindAllChildren(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button))
+                        .FirstOrDefault(b => b.Name == PromobConfig.BtnNao || b.Name == PromobConfig.BtnNaoAlt);
+                    
                     if (btnNao != null) InteractionHelper.ClicarComFallback(btnNao);
                     else {
                         InteractionHelper.AtivarJanela(popup.AsWindow());

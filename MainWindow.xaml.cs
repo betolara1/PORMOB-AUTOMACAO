@@ -183,6 +183,7 @@ namespace AutomacaoPromobTeste{
 
         private void StopMonitoring(){
             btnToggleAutomacao.IsEnabled = false;
+            btnToggleAutomacao.Content = "Parando...";
             Logger.Log("[INFO] Solicitando parada da automação... Por favor, aguarde a conclusão da etapa atual.");
             _cts?.Cancel();
         }
@@ -247,7 +248,7 @@ namespace AutomacaoPromobTeste{
                         // Pequena pausa de segurança
                         Thread.Sleep(500);
 
-                        Diagnostics.Medir("Processar arquivo", () => PromobWorkflow.ProcessarArquivo(automation, arquivo));
+                        Diagnostics.Medir("Processar arquivo", () => PromobWorkflow.ProcessarArquivo(automation, arquivo, token));
                         
                         _processadosCount++;
                         UpdateMetricsOnUi();
@@ -285,7 +286,21 @@ namespace AutomacaoPromobTeste{
                             Logger.Log($"  [AVISO] Não foi possível mover '{nome}' para 'promob erro': {exMove.Message}", LogLevel.Warn);
                         }
                     }
+                    catch (OperationCanceledException){
+                        Logger.Log($"[INFO] Processamento de '{nome}' cancelado manualmente pelo usuário.");
+                        break;
+                    }
                     catch (Exception ex){
+                        // Intercepta cancelamento manual com máxima robustez (token ativo, exceção de cancelamento direta ou encapsulada)
+                        if (token.IsCancellationRequested || 
+                            ex is OperationCanceledException || 
+                            ex.InnerException is OperationCanceledException || 
+                            (ex is AggregateException ae && ae.InnerExceptions.Any(e => e is OperationCanceledException))){
+                            
+                            Logger.Log($"[INFO] Processamento de '{nome}' cancelado manualmente pelo usuário.");
+                            break;
+                        }
+
                         _errosCount++;
                         UpdateMetricsOnUi();
                         
@@ -397,7 +412,8 @@ namespace AutomacaoPromobTeste{
 
         private async void StatusTimer_Tick(object? sender, EventArgs e){
             if (_isMonitoring){
-                btnToggleAutomacao.IsEnabled = true;
+                bool isStopping = _cts?.IsCancellationRequested ?? false;
+                btnToggleAutomacao.IsEnabled = !isStopping;
                 return;
             }
 
@@ -411,7 +427,8 @@ namespace AutomacaoPromobTeste{
 
         private void AtualizarBotaoIniciar(){
             if (_isMonitoring){
-                btnToggleAutomacao.IsEnabled = true;
+                bool isStopping = _cts?.IsCancellationRequested ?? false;
+                btnToggleAutomacao.IsEnabled = !isStopping;
                 return;
             }
 

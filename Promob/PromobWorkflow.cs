@@ -28,11 +28,16 @@ namespace AutomacaoPromobTeste.Promob{
             /// </summary>
             /// <param name="automation">A instância ativa do motor de automação UIA3.</param>
             /// <param name="caminhoArquivo">O caminho absoluto do arquivo do projeto a ser processado.</param>
+            /// <param name="token">O token de cancelamento para interrupção imediata.</param>
         //--------------------------------------------------------------------------------------
-        public static void ProcessarArquivo(UIA3Automation automation, string caminhoArquivo){
+        public static void ProcessarArquivo(UIA3Automation automation, string caminhoArquivo, CancellationToken token = default){
+            token.ThrowIfCancellationRequested();
+
             Logger.Log("  [1/8] Localizando janela do Promob...");
             var janela = PromobWindowHelper.AguardarJanelaPromob(automation, 300000)
                 ?? throw new Exception("Janela do Promob não encontrada. O Promob está aberto?");
+
+            token.ThrowIfCancellationRequested();
 
             int currentPid = janela.Properties.ProcessId.ValueOrDefault;
             
@@ -47,10 +52,14 @@ namespace AutomacaoPromobTeste.Promob{
 
             InteractionHelper.AtivarJanela(janela);
 
+            token.ThrowIfCancellationRequested();
+
             // Garante que o Promob está na tela inicial antes de importar.
             // Se houver um projeto aberto (sessão anterior não finalizada), fecha primeiro.
             Logger.Log("  [1.5/8] Verificando estado inicial do Promob...");
             Diagnostics.Medir("Verificar e fechar projeto pendente", () => PromobFecharProjeto.FecharProjetoPendenteSeNecessario(automation, janela));
+
+            token.ThrowIfCancellationRequested();
 
             // Loop de retry para garantir que o wizard correto foi aberto (com o botão "...").
             // O Promob pode abrir um wizard de importação via sistema cloud/ERP (sem o botão "...").
@@ -60,15 +69,20 @@ namespace AutomacaoPromobTeste.Promob{
             const int maxTentativasWizard = 10;
 
             while (tentativaWizard < maxTentativasWizard){
+                token.ThrowIfCancellationRequested();
                 tentativaWizard++;
                 Logger.Log($"  [2/8] Acionando Importar... (Tentativa {tentativaWizard}/{maxTentativasWizard})");
                 InteractionHelper.AtivarJanela(janela);
                 Diagnostics.Medir("Clicar botão Importar", () => PromobImportador.ClicarBotaoImportar(janela));
 
+                token.ThrowIfCancellationRequested();
+
                 Logger.Log("  [3/8] Aguardando e verificando wizard de importação...");
                 // Espera um momento para o wizard abrir
                 InteractionHelper.EsperarUiRespirar(1500);
                 var wizardEncontrado = PromobWindowHelper.EncontrarJanelaWizard(automation, janela) ?? janela;
+
+                token.ThrowIfCancellationRequested();
 
                 // Verifica se o wizard correto foi aberto (aquele com o botão "...")
                 if (PromobImportador.VerificarBotaoBrowseNoWizard(wizardEncontrado)){
@@ -76,6 +90,8 @@ namespace AutomacaoPromobTeste.Promob{
                     Logger.Log($"  [OK] Wizard correto confirmado na tentativa {tentativaWizard}.");
                     break;
                 }
+
+                token.ThrowIfCancellationRequested();
 
                 // Wizard errado: fecha e tenta de novo
                 Logger.Log($"  [AVISO] Wizard incorreto na tentativa {tentativaWizard}. Fechando e tentando novamente...", LogLevel.Warn);
@@ -86,6 +102,8 @@ namespace AutomacaoPromobTeste.Promob{
                 WindowFinder.CachedHost = null;
             }
 
+            token.ThrowIfCancellationRequested();
+
             if (janelaWizard == null){
                 throw new Exception($"Não foi possível abrir o wizard correto de importação após {maxTentativasWizard} tentativas. O botão '...' (Caminho) não apareceu.");
             }
@@ -93,38 +111,28 @@ namespace AutomacaoPromobTeste.Promob{
             Logger.Log("  [3/8] Preenchendo caminho do arquivo no wizard...");
             Diagnostics.Medir("Selecionar arquivo", () => PromobImportador.AbrirDialogoEPreencher(automation, janelaWizard, caminhoArquivo));
 
+            token.ThrowIfCancellationRequested();
 
             Logger.Log("  [4/8] Clicando em Avançar no Wizard...");
             InteractionHelper.AtivarJanela(janelaWizard);
             Diagnostics.Medir("Avançar wizard", () => PromobImportador.ClicarAvancarWizard(automation, janelaWizard));
 
+            token.ThrowIfCancellationRequested();
+
             Logger.Log("  [5/8] Tratando popup de Novo Projeto...");
             Diagnostics.Medir("Tratar popup", () => PromobImportador.CancelarPopupNovoProjeto(automation));
+
+            token.ThrowIfCancellationRequested();
 
             Logger.Log("  [6/9] Abrindo o projeto recém-importado (primeiro da lista)...");
             Diagnostics.Medir("Abrir projeto", () => PromobCarregadorProjeto.AbrirProjetoSelecionado(janela));
 
-            /*
-            Logger.Log("  [7/9] Navegando até Ferramentas > Integradores > Promob ERP...");
-            Diagnostics.Medir("Abrir Promob ERP", () => PromobExportadorErp.AbrirIntegradorErp(automation, janela));
+            token.ThrowIfCancellationRequested();
 
-            Logger.Log("  [8/9] Aguardando exportação XML do Promob ERP...");
-            PromobExportException? erroExportacao = null;
-            try{
-                Diagnostics.Medir("Exportação ERP", () => PromobExportadorErp.AguardarExportacaoErp(automation, janela));
-            }
-            catch (PromobExportException ex){
-                erroExportacao = ex;
-                Logger.Log("  [AVISO] Exportação falhou. Fechando o projeto normalmente antes de sinalizar o erro...", LogLevel.Warn);
-            }
-            */
             Logger.Log("  [9/9] Fechando o projeto atual...");
             Diagnostics.Medir("Fechar projeto", () => PromobFecharProjeto.Fechar(automation, janela));
 
-            // Se houve erro na exportação, relança a exceção APÓS fechar o projeto
-            // if (erroExportacao != null){
-            //     throw erroExportacao;
-            // }
+            token.ThrowIfCancellationRequested();
 
             Logger.Log("  [INFO] Fluxo concluído para este arquivo.");
         }

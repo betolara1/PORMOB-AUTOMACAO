@@ -550,9 +550,12 @@ namespace AutomacaoPromobTeste.Promob{
             Logger.Log($"  [OK] Popup encontrado: {popup.Name}");
             InteractionHelper.AtivarJanela(popup);
 
-            var btnCancelar = popup.FindFirstDescendant(cf =>
-                cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button)
-                  .And(cf.ByName(PromobConfig.BtnCancelar).Or(cf.ByName(PromobConfig.BtnNao)).Or(cf.ByName(PromobConfig.BtnNaoAlt)).Or(cf.ByName(PromobConfig.BtnNo))));
+            // Busca rasa rápida com FindAllChildren filtrando em memória
+            var btnCancelar = popup.FindAllChildren(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button))
+                .FirstOrDefault(b => b.Name == PromobConfig.BtnCancelar || 
+                                     b.Name == PromobConfig.BtnNao || 
+                                     b.Name == PromobConfig.BtnNaoAlt || 
+                                     b.Name == PromobConfig.BtnNo);
 
             if (btnCancelar != null){
                 InteractionHelper.AtivarJanela(popup);

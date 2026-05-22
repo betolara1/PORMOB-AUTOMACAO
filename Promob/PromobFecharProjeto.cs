@@ -207,16 +207,9 @@ namespace AutomacaoPromobTeste.Promob{
                 var popup = PromobWindowHelper.EncontrarPopupAtencao(desktop, PromobWindowHelper.CachedProcessIdPromob);
 
                 if (popup != null){
-                    // Previne prender no fallback da janela principal avaliando se o botão "Não" existe
-                    var btnNao = popup.FindFirstDescendant(cf =>
-                        cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button)
-                          .And(cf.ByName(PromobConfig.BtnNao).Or(cf.ByName(PromobConfig.BtnNaoAlt)).Or(cf.ByName(PromobConfig.BtnNo))));
-
-                    if (btnNao == null){
-                        btnNao = popup.FindFirstChild(cf =>
-                            cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button)
-                              .And(cf.ByName(PromobConfig.BtnNao).Or(cf.ByName(PromobConfig.BtnNaoAlt)).Or(cf.ByName(PromobConfig.BtnNo))));
-                    }
+                    // Previne prender no fallback da janela principal avaliando se o botão "Não" existe (Busca rasa ultra rápida FindAllChildren)
+                    var btnNao = popup.FindAllChildren(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button))
+                        .FirstOrDefault(b => b.Name == PromobConfig.BtnNao || b.Name == PromobConfig.BtnNaoAlt || b.Name == PromobConfig.BtnNo);
 
                     if (btnNao != null){
                         Logger.Log($"    [OK] Popup de salvamento detectado. Clicando em 'Não'...");
