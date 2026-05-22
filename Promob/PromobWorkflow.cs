@@ -129,10 +129,30 @@ namespace AutomacaoPromobTeste.Promob{
 
             token.ThrowIfCancellationRequested();
 
+            /*
+            Logger.Log("  [7/9] Navegando até Ferramentas > Integradores > Promob ERP...");
+            Diagnostics.Medir("Abrir Promob ERP", () => PromobExportadorErp.AbrirIntegradorErp(automation, janela));
+
+            Logger.Log("  [8/9] Aguardando exportação XML do Promob ERP...");
+            PromobExportException? erroExportacao = null;
+            try{
+                Diagnostics.Medir("Exportação ERP", () => PromobExportadorErp.AguardarExportacaoErp(automation, janela));
+            }
+            catch (PromobExportException ex){
+                erroExportacao = ex;
+                Logger.Log("  [AVISO] Exportação falhou. Fechando o projeto normalmente antes de sinalizar o erro...", LogLevel.Warn);
+            }
+            */
+
             Logger.Log("  [9/9] Fechando o projeto atual...");
             Diagnostics.Medir("Fechar projeto", () => PromobFecharProjeto.Fechar(automation, janela));
 
             token.ThrowIfCancellationRequested();
+
+            // Se houve erro na exportação, relança a exceção APÓS fechar o projeto
+            // if (erroExportacao != null){
+            //     throw erroExportacao;
+            // }
 
             Logger.Log("  [INFO] Fluxo concluído para este arquivo.");
         }
