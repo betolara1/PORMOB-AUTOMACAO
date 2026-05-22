@@ -78,6 +78,50 @@ namespace AutomacaoPromobTeste{
         }
 
         private void BtnAbrirPromob_Click(object sender, RoutedEventArgs e){
+            bool isFechar = btnAbrirPromob.Content.ToString() == "Fechar Promob";
+
+            if (isFechar){
+                var result = MessageBox.Show(
+                    "Tem certeza de que deseja fechar o Promob? Todos os dados não salvos serão perdidos.",
+                    "Confirmar Fechamento",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Warning
+                );
+
+                if (result == MessageBoxResult.Yes){
+                    btnAbrirPromob.IsEnabled = false;
+                    try{
+                        Logger.Log("[INFO] Fechando o Promob conforme solicitado pelo usuário...");
+                        
+                        var currentProcId = Process.GetCurrentProcess().Id;
+                        var processos = Process.GetProcesses()
+                            .Where(p => p.Id != currentProcId &&
+                                         p.ProcessName.Contains("Promob", StringComparison.OrdinalIgnoreCase) &&
+                                         !p.ProcessName.Contains("Uploader", StringComparison.OrdinalIgnoreCase) &&
+                                         !p.ProcessName.Contains("Automacao", StringComparison.OrdinalIgnoreCase))
+                            .ToList();
+
+                        foreach (var p in processos){
+                            try{
+                                p.Kill();
+                                p.WaitForExit(1000);
+                            }
+                            catch { }
+                        }
+
+                        Logger.Log("[OK] Processos do Promob encerrados com sucesso.");
+                    }
+                    catch (Exception ex){
+                        Logger.Log($"[ERRO] Falha ao fechar o Promob: {ex.Message}", LogLevel.Error);
+                    }
+                    finally{
+                        bool promobAberto = IsPromobRunning();
+                        AtualizarEstadoBotaoPromob(promobAberto);
+                    }
+                }
+                return;
+            }
+
             btnAbrirPromob.IsEnabled = false;
             try{
                 // 1. Verifica se já está em execução
@@ -147,7 +191,8 @@ namespace AutomacaoPromobTeste{
                 Logger.Log($"[ERRO] Não foi possível iniciar o Promob: {ex.Message}", LogLevel.Error);
             }
             finally{
-                btnAbrirPromob.IsEnabled = true;
+                bool promobAberto = IsPromobRunning();
+                AtualizarEstadoBotaoPromob(promobAberto);
             }
         }
 
@@ -340,8 +385,10 @@ namespace AutomacaoPromobTeste{
 
                 btnToggleAutomacao.Content = "Iniciar Automação";
                 btnToggleAutomacao.Background = new SolidColorBrush(Color.FromRgb(16, 185, 129)); // Verde
-                btnToggleAutomacao.IsEnabled = IsPromobRunning();
-                btnAbrirPromob.IsEnabled = true;
+                
+                bool promobRunning = IsPromobRunning();
+                btnToggleAutomacao.IsEnabled = promobRunning;
+                AtualizarEstadoBotaoPromob(promobRunning);
 
                 Logger.Log("[INFO] Monitoramento parado. Automação inativa.");
             });
@@ -411,14 +458,18 @@ namespace AutomacaoPromobTeste{
         // ==========================================
 
         private async void StatusTimer_Tick(object? sender, EventArgs e){
+            bool promobAberto = await Task.Run(() => IsPromobRunning());
+
+            Dispatcher.Invoke(() => {
+                AtualizarEstadoBotaoPromob(promobAberto);
+            });
+
             if (_isMonitoring){
                 bool isStopping = _cts?.IsCancellationRequested ?? false;
                 btnToggleAutomacao.IsEnabled = !isStopping;
                 return;
             }
 
-            bool promobAberto = await Task.Run(() => IsPromobRunning());
-            
             // Só atualiza se o estado do monitoramento não tiver mudado nesse meio tempo
             if (!_isMonitoring){
                 btnToggleAutomacao.IsEnabled = promobAberto;
@@ -426,13 +477,35 @@ namespace AutomacaoPromobTeste{
         }
 
         private void AtualizarBotaoIniciar(){
+            bool promobAberto = IsPromobRunning();
+            AtualizarEstadoBotaoPromob(promobAberto);
+
             if (_isMonitoring){
                 bool isStopping = _cts?.IsCancellationRequested ?? false;
                 btnToggleAutomacao.IsEnabled = !isStopping;
                 return;
             }
 
-            btnToggleAutomacao.IsEnabled = IsPromobRunning();
+            btnToggleAutomacao.IsEnabled = promobAberto;
+        }
+
+        private void AtualizarEstadoBotaoPromob(bool promobAberto){
+            if (promobAberto){
+                btnAbrirPromob.Content = "Fechar Promob";
+                btnAbrirPromob.Background = new SolidColorBrush(Color.FromRgb(239, 68, 68)); // Vermelho
+            }
+            else{
+                btnAbrirPromob.Content = "Abrir Promob";
+                btnAbrirPromob.Background = new SolidColorBrush(Color.FromRgb(59, 130, 246)); // Azul
+            }
+
+            // Só altera IsEnabled se não estiver monitorando
+            if (!_isMonitoring){
+                btnAbrirPromob.IsEnabled = true;
+            }
+            else{
+                btnAbrirPromob.IsEnabled = false;
+            }
         }
 
         private bool IsPromobRunning(){
