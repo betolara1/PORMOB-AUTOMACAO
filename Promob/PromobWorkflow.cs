@@ -119,8 +119,8 @@ namespace AutomacaoPromobTeste.Promob{
 
             token.ThrowIfCancellationRequested();
 
-            Logger.Log("  [5/8] Tratando popup de Novo Projeto...");
-            Diagnostics.Medir("Tratar popup", () => PromobImportador.CancelarPopupNovoProjeto(automation));
+            Logger.Log("  [5/8] Aguardando conclusão da importação...");
+            Diagnostics.Medir("Aguardar importação", () => PromobImportador.AguardarImportacaoETratarPopups(automation, janelaWizard));
 
             token.ThrowIfCancellationRequested();
 

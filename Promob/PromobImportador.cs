@@ -533,40 +533,85 @@ namespace AutomacaoPromobTeste.Promob{
 
         //--------------------------------------------------------------------------------------
             /// <summary>
-            /// Intercepta e cancela com segurança possíveis popups de confirmação de "Novo Projeto" ou
-            /// salvamento indesejados abertos após avançar etapas do wizard.
+            /// Aguarda a conclusão da importação (fechamento do Wizard) e trata popups que podem 
+            /// surgir durante o processo, como a confirmação de "Deseja importar como novo projeto?".
             /// </summary>
             /// <param name="automation">A instância ativa do motor de automação UIA3.</param>
+            /// <param name="janelaWizard">A janela do wizard de importação.</param>
         //--------------------------------------------------------------------------------------
-        public static void CancelarPopupNovoProjeto(UIA3Automation automation){
-            Logger.Log("  [INFO] Aguardando popup 'Atenção'...");
+        public static void AguardarImportacaoETratarPopups(UIA3Automation automation, Window janelaWizard){
+            Logger.Log("  [INFO] Aguardando conclusão da importação e verificando popups (Timeout: 45s)...");
 
-            var popup = InteractionHelper.EsperarAteRetorno(() => PromobWindowHelper.EncontrarPopupAtencao(automation.GetDesktop(), PromobWindowHelper.CachedProcessIdPromob), 5000);
-            if (popup == null){
-                Logger.Log("  [INFO] Popup de novo projeto não apareceu.");
-                return;
+            var swAguardar = System.Diagnostics.Stopwatch.StartNew();
+            
+            while (swAguardar.ElapsedMilliseconds < 45000){
+                try{
+                    // Se o wizard sumiu ou fechou, a importação terminou.
+                    if (janelaWizard.IsAvailable == false || janelaWizard.Properties.IsOffscreen.ValueOrDefault){
+                        Logger.Log("  [OK] Janela do Wizard foi fechada. Importação concluída.");
+                        break;
+                    }
+                }
+                catch{
+                    Logger.Log("  [OK] Janela do Wizard não está mais acessível. Importação concluída.");
+                    break;
+                }
+
+                var popup = PromobWindowHelper.EncontrarPopupAtencao(automation.GetDesktop(), PromobWindowHelper.CachedProcessIdPromob);
+                if (popup != null && popup.Name != janelaWizard.Name){
+                    Logger.Log($"  [INFO] Popup encontrado durante importação: {popup.Name}");
+                    InteractionHelper.AtivarJanela(popup);
+
+                    var textElement = popup.FindFirstDescendant(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Text));
+                    var texto = textElement?.Properties.Name.ValueOrDefault ?? "";
+                    Logger.Log($"  [INFO] Texto do popup: {texto}");
+
+                    AutomationElement? btnClicar = null;
+
+                    if (texto.Contains("novo projeto", StringComparison.OrdinalIgnoreCase)){
+                        Logger.Log("  [INFO] O Promob perguntou se deseja importar como novo projeto. Selecionando 'Cancelar'...");
+                        btnClicar = popup.FindFirstDescendant(cf => 
+                            cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button).And(cf.ByName(PromobConfig.BtnCancelar)));
+                    }
+                    else if (texto.Contains("substituir", StringComparison.OrdinalIgnoreCase) || texto.Contains("sobrepor", StringComparison.OrdinalIgnoreCase)){
+                        Logger.Log("  [INFO] O Promob perguntou se deseja substituir o projeto existente. Selecionando 'Sim'...");
+                        btnClicar = popup.FindFirstDescendant(cf => 
+                            cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button).And(cf.ByName(PromobConfig.BtnSim)));
+                    }
+
+                    if (btnClicar == null){
+                        btnClicar = popup.FindFirstDescendant(cf => 
+                            cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button).And(
+                                cf.ByName(PromobConfig.BtnSim).Or(
+                                cf.ByName(PromobConfig.BtnOk)).Or(
+                                cf.ByName(PromobConfig.BtnOkAlt)).Or(
+                                cf.ByName(PromobConfig.BtnConcluir))
+                            ));
+                    }
+
+                    if (btnClicar != null){
+                        Logger.Log($"  [ACTION] Clicando no botão '{btnClicar.Name}' no popup...");
+                        InteractionHelper.ClicarComFallback(btnClicar);
+                        
+                        // Aguarda o popup fechar para evitar cliques duplicados e lidar com múltiplos popups
+                        InteractionHelper.EsperarAte(() => {
+                            try { return popup.IsAvailable == false || popup.Properties.IsOffscreen.ValueOrDefault; }
+                            catch { return true; }
+                        }, 2000, 200);
+                    }
+                    else{
+                        Logger.Log("  [AVISO] Botão de confirmação não encontrado no popup. Tentando ENTER...", LogLevel.Warn);
+                        Keyboard.Type(VirtualKeyShort.RETURN);
+                        InteractionHelper.EsperarUiRespirar(1000);
+                    }
+                }
+
+                System.Threading.Thread.Sleep(500);
             }
 
-            Logger.Log($"  [OK] Popup encontrado: {popup.Name}");
-            InteractionHelper.AtivarJanela(popup);
-
-            // Busca rasa rápida com FindAllChildren filtrando em memória
-            var btnCancelar = popup.FindAllChildren(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button))
-                .FirstOrDefault(b => b.Name == PromobConfig.BtnCancelar || 
-                                     b.Name == PromobConfig.BtnNao || 
-                                     b.Name == PromobConfig.BtnNaoAlt || 
-                                     b.Name == PromobConfig.BtnNo);
-
-            if (btnCancelar != null){
-                InteractionHelper.AtivarJanela(popup);
-                InteractionHelper.ClicarComFallback(btnCancelar);
-                Logger.Log("  [OK] Botão de cancelamento clicado no popup.");
-            }
-            else{
-                Logger.Log("  [AVISO] Botão de cancelamento não encontrado. Usando ESC...", LogLevel.Warn);
-                InteractionHelper.AtivarJanela(popup);
-                Keyboard.Type(VirtualKeyShort.ESCAPE);
-            }
+            // Uma espera extra para garantir que a UI principal atualizou a lista de projetos recentes
+            Logger.Log("  [INFO] Aguardando 3 segundos para estabilização da lista de projetos...");
+            InteractionHelper.EsperarUiRespirar(3000);
         }
     }
 }
