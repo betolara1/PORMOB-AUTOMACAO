@@ -1,0 +1,220 @@
+<Window x:Class="AutomacaoPromobTeste.StartupWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Automação Promob — Modo de Operação"
+        Height="510" Width="820"
+        MinWidth="750" MinHeight="490"
+        Background="#0F1016"
+        WindowStartupLocation="CenterScreen"
+        Foreground="#E2E8F0"
+        ResizeMode="NoResize">
+
+    <Window.Resources>
+        <!-- Botão de ação principal -->
+        <Style x:Key="ActionButton" TargetType="Button">
+            <Setter Property="Background" Value="#38BDF8"/>
+            <Setter Property="Foreground" Value="#0F172A"/>
+            <Setter Property="FontSize" Value="15"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" Background="{TemplateBinding Background}"
+                                CornerRadius="8" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Opacity" Value="0.88"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="border" Property="Opacity" Value="0.72"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="border" Property="Background" Value="#2D303E"/>
+                                <Setter Property="Foreground" Value="#6B7280"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Campo de texto moderno -->
+        <Style x:Key="ModernTextBox" TargetType="TextBox">
+            <Setter Property="Background" Value="#13151F"/>
+            <Setter Property="Foreground" Value="#F1F5F9"/>
+            <Setter Property="BorderBrush" Value="#334155"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="10,6"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="CaretBrush" Value="#38BDF8"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="6">
+                            <ScrollViewer x:Name="PART_ContentHost" Padding="{TemplateBinding Padding}"
+                                          VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="25">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>  <!-- Header -->
+            <RowDefinition Height="18"/>    <!-- Spacer -->
+            <RowDefinition Height="*"/>     <!-- Cards -->
+            <RowDefinition Height="16"/>    <!-- Spacer -->
+            <RowDefinition Height="Auto"/>  <!-- Info Panel -->
+            <RowDefinition Height="16"/>    <!-- Spacer -->
+            <RowDefinition Height="Auto"/>  <!-- Confirm Button -->
+        </Grid.RowDefinitions>
+
+        <!-- ===== HEADER ===== -->
+        <Border Grid.Row="0" Background="#181A25" CornerRadius="10"
+                Padding="22,16" BorderBrush="#262A3B" BorderThickness="1">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0">
+                    <TextBlock Text="AUTOMAÇÃO PROMOB" FontSize="22" FontWeight="ExtraBold" Foreground="#38BDF8"/>
+                    <TextBlock Text="Central de Controle &amp; Monitoramento Contínuo de Projetos 3D"
+                               FontSize="12" Foreground="#94A3B8" Margin="0,3,0,0"/>
+                    <TextBlock Text="Selecione o modo de operação para continuar"
+                               FontSize="11" Foreground="#64748B" Margin="0,5,0,0"/>
+                </StackPanel>
+                <Border Grid.Column="1" Background="#0F1016" CornerRadius="8" Padding="12,8" VerticalAlignment="Center">
+                    <TextBlock Text="v2.0 Network" FontSize="11" Foreground="#38BDF8" FontWeight="SemiBold"/>
+                </Border>
+            </Grid>
+        </Border>
+
+        <!-- ===== CARDS DE SELEÇÃO DE MODO ===== -->
+        <UniformGrid Grid.Row="2" Columns="3">
+
+            <!-- Card: LOCAL -->
+            <Border x:Name="cardLocal"
+                    Background="#181A25" BorderBrush="#262A3B" BorderThickness="2"
+                    CornerRadius="12" Margin="0,0,10,0" Cursor="Hand"
+                    MouseDown="CardLocal_MouseDown">
+                <StackPanel VerticalAlignment="Center" Margin="16">
+                    <Border Width="52" Height="52" Background="#1E293B" CornerRadius="26"
+                            HorizontalAlignment="Center" Margin="0,0,0,12">
+                        <TextBlock Text="🖥" FontSize="26" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <TextBlock Text="MODO LOCAL" FontSize="13" FontWeight="Bold"
+                               Foreground="#F1F5F9" HorizontalAlignment="Center"/>
+                    <TextBlock Text="Standalone" FontSize="10" Foreground="#64748B"
+                               HorizontalAlignment="Center" Margin="0,3,0,10"/>
+                    <TextBlock Text="Roda a automação completa neste computador, sem compartilhar na rede."
+                               FontSize="11" Foreground="#94A3B8" TextWrapping="Wrap"
+                               TextAlignment="Center" LineHeight="17"/>
+                </StackPanel>
+            </Border>
+
+            <!-- Card: SERVIDOR -->
+            <Border x:Name="cardServidor"
+                    Background="#181A25" BorderBrush="#262A3B" BorderThickness="2"
+                    CornerRadius="12" Margin="5,0,5,0" Cursor="Hand"
+                    MouseDown="CardServidor_MouseDown">
+                <StackPanel VerticalAlignment="Center" Margin="16">
+                    <Border Width="52" Height="52" Background="#1E293B" CornerRadius="26"
+                            HorizontalAlignment="Center" Margin="0,0,0,12">
+                        <TextBlock Text="📡" FontSize="26" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <TextBlock Text="MODO SERVIDOR" FontSize="13" FontWeight="Bold"
+                               Foreground="#F1F5F9" HorizontalAlignment="Center"/>
+                    <TextBlock Text="Compartilhado na rede" FontSize="10" Foreground="#64748B"
+                               HorizontalAlignment="Center" Margin="0,3,0,10"/>
+                    <TextBlock Text="Roda a automação E compartilha logs, métricas e controle com outros PCs da rede."
+                               FontSize="11" Foreground="#94A3B8" TextWrapping="Wrap"
+                               TextAlignment="Center" LineHeight="17"/>
+                </StackPanel>
+            </Border>
+
+            <!-- Card: CLIENTE -->
+            <Border x:Name="cardCliente"
+                    Background="#181A25" BorderBrush="#262A3B" BorderThickness="2"
+                    CornerRadius="12" Margin="10,0,0,0" Cursor="Hand"
+                    MouseDown="CardCliente_MouseDown">
+                <StackPanel VerticalAlignment="Center" Margin="16">
+                    <Border Width="52" Height="52" Background="#1E293B" CornerRadius="26"
+                            HorizontalAlignment="Center" Margin="0,0,0,12">
+                        <TextBlock Text="🎮" FontSize="26" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <TextBlock Text="MODO CLIENTE" FontSize="13" FontWeight="Bold"
+                               Foreground="#F1F5F9" HorizontalAlignment="Center"/>
+                    <TextBlock Text="Controle remoto" FontSize="10" Foreground="#64748B"
+                               HorizontalAlignment="Center" Margin="0,3,0,10"/>
+                    <TextBlock Text="Conecte-se a um Servidor na rede para controlar remotamente a automação."
+                               FontSize="11" Foreground="#94A3B8" TextWrapping="Wrap"
+                               TextAlignment="Center" LineHeight="17"/>
+                </StackPanel>
+            </Border>
+        </UniformGrid>
+
+        <!-- ===== PAINEL DE INFORMAÇÕES (muda conforme seleção) ===== -->
+        <Border Grid.Row="4" Background="#181A25" CornerRadius="10"
+                Padding="20,14" BorderBrush="#262A3B" BorderThickness="1">
+            <Grid>
+                <!-- Info: Modo Local -->
+                <StackPanel x:Name="panelLocalInfo" Orientation="Horizontal" VerticalAlignment="Center" Visibility="Visible">
+                    <TextBlock Text="ℹ" FontSize="14" Foreground="#64748B" Margin="0,0,10,0" VerticalAlignment="Center"/>
+                    <TextBlock Text="Modo autônomo — nenhuma configuração de rede necessária."
+                               FontSize="12" Foreground="#64748B" VerticalAlignment="Center"/>
+                </StackPanel>
+
+                <!-- Info: Modo Servidor -->
+                <StackPanel x:Name="panelServidorInfo" Orientation="Horizontal" VerticalAlignment="Center" Visibility="Collapsed">
+                    <TextBlock Text="IP desta máquina:" FontSize="12" Foreground="#94A3B8" VerticalAlignment="Center"/>
+                    <TextBlock x:Name="txtLocalIp" FontSize="13" Foreground="#38BDF8" FontWeight="Bold"
+                               Margin="8,0,0,0" VerticalAlignment="Center"/>
+                    <TextBlock Text="  Porta:" FontSize="12" Foreground="#94A3B8" VerticalAlignment="Center" Margin="16,0,0,0"/>
+                    <TextBlock x:Name="txtPortDisplay" FontSize="13" Foreground="#38BDF8" FontWeight="Bold"
+                               Margin="8,0,0,0" VerticalAlignment="Center"/>
+                    <TextBlock Text="  — Compartilhe este endereço com os clientes"
+                               FontSize="11" Foreground="#64748B" VerticalAlignment="Center" Margin="16,0,0,0"/>
+                </StackPanel>
+
+                <!-- Info: Modo Cliente -->
+                <Grid x:Name="panelClienteInfo" Visibility="Collapsed">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="200"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock Grid.Column="0" Text="IP do Servidor:" FontSize="12" Foreground="#94A3B8"
+                               VerticalAlignment="Center" Margin="0,0,10,0"/>
+                    <TextBox Grid.Column="1" x:Name="txtServerIp" Height="34"
+                             Style="{StaticResource ModernTextBox}" VerticalContentAlignment="Center"/>
+                    <TextBlock Grid.Column="2" Text="  Porta:" FontSize="12" Foreground="#94A3B8"
+                               VerticalAlignment="Center" Margin="16,0,0,0"/>
+                    <TextBlock Grid.Column="3" x:Name="txtPortClient" FontSize="13" Foreground="#38BDF8"
+                               FontWeight="Bold" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                    <TextBlock Grid.Column="4" x:Name="txtConnectionStatus" FontSize="11"
+                               VerticalAlignment="Center" Margin="16,0,0,0" TextWrapping="Wrap"/>
+                </Grid>
+            </Grid>
+        </Border>
+
+        <!-- ===== BOTÃO CONFIRMAR ===== -->
+        <Button Grid.Row="6" x:Name="btnConfirmar"
+                Content="Confirmar e Iniciar"
+                Style="{StaticResource ActionButton}"
+                Height="46" Padding="0"
+                Click="BtnConfirmar_Click"/>
+    </Grid>
+</Window>

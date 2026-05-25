@@ -1,0 +1,173 @@
+<Window x:Class="AutomacaoPromobTeste.LoginWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Acesso Restrito — Autenticação de Operador"
+        Height="360" Width="440"
+        Background="#0F1016"
+        WindowStartupLocation="CenterScreen"
+        Foreground="#E2E8F0"
+        ResizeMode="NoResize"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        BorderBrush="#262A3B"
+        BorderThickness="2">
+
+    <Window.Resources>
+        <!-- Botão de ação principal (Logar) -->
+        <Style x:Key="ActionButton" TargetType="Button">
+            <Setter Property="Background" Value="#38BDF8"/>
+            <Setter Property="Foreground" Value="#0F172A"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" Background="{TemplateBinding Background}"
+                                CornerRadius="8" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Opacity" Value="0.88"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="border" Property="Opacity" Value="0.72"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Botão Secundário (Espectador) -->
+        <Style x:Key="SecondaryButton" TargetType="Button">
+            <Setter Property="Background" Value="#1E293B"/>
+            <Setter Property="Foreground" Value="#E2E8F0"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="BorderBrush" Value="#334155"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="8" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#2D3A4F"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="border" Property="Opacity" Value="0.8"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Campo de texto moderno -->
+        <Style x:Key="ModernTextBox" TargetType="TextBox">
+            <Setter Property="Background" Value="#13151F"/>
+            <Setter Property="Foreground" Value="#F1F5F9"/>
+            <Setter Property="BorderBrush" Value="#334155"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="10,6"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="CaretBrush" Value="#38BDF8"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="6">
+                            <ScrollViewer x:Name="PART_ContentHost" Padding="{TemplateBinding Padding}"
+                                          VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- PasswordBox moderno -->
+        <Style x:Key="ModernPasswordBox" TargetType="PasswordBox">
+            <Setter Property="Background" Value="#13151F"/>
+            <Setter Property="Foreground" Value="#F1F5F9"/>
+            <Setter Property="BorderBrush" Value="#334155"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="10,6"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="CaretBrush" Value="#38BDF8"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="PasswordBox">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="6">
+                            <ScrollViewer x:Name="PART_ContentHost" Padding="{TemplateBinding Padding}"
+                                          VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>  <!-- Header -->
+            <RowDefinition Height="15"/>    <!-- Spacer -->
+            <RowDefinition Height="Auto"/>  <!-- Form -->
+            <RowDefinition Height="15"/>    <!-- Message/Status -->
+            <RowDefinition Height="Auto"/>  <!-- Primary Action -->
+            <RowDefinition Height="12"/>    <!-- Spacer -->
+            <RowDefinition Height="Auto"/>  <!-- Secondary Actions -->
+        </Grid.RowDefinitions>
+
+        <!-- ===== HEADER ===== -->
+        <StackPanel Grid.Row="0">
+            <TextBlock Text="AUTENTICAÇÃO DE OPERADOR" FontSize="16" FontWeight="ExtraBold" Foreground="#38BDF8" HorizontalAlignment="Center"/>
+            <TextBlock Text="Faça login para habilitar o controle remoto ou continue apenas visualizando."
+                       FontSize="11" Foreground="#94A3B8" TextWrapping="Wrap" TextAlignment="Center" Margin="0,5,0,0" LineHeight="15"/>
+        </StackPanel>
+
+        <!-- ===== FORMULARIO ===== -->
+        <Border Grid.Row="2" Background="#181A25" CornerRadius="10" Padding="20,15" BorderBrush="#262A3B" BorderThickness="1">
+            <StackPanel>
+                <!-- Usuario -->
+                <TextBlock Text="Usuário" FontSize="11" Foreground="#94A3B8" Margin="0,0,0,5"/>
+                <TextBox x:Name="txtUsername" Height="34" Style="{StaticResource ModernTextBox}" VerticalContentAlignment="Center" Margin="0,0,0,12"/>
+
+                <!-- Senha -->
+                <TextBlock Text="Senha" FontSize="11" Foreground="#94A3B8" Margin="0,0,0,5"/>
+                <PasswordBox x:Name="txtPassword" Height="34" Style="{StaticResource ModernPasswordBox}" VerticalContentAlignment="Center"/>
+            </StackPanel>
+        </Border>
+
+        <!-- ===== MENSAGEM DE ERRO/ALERTA ===== -->
+        <TextBlock Grid.Row="3" x:Name="txtErrorMsg" Text="" FontSize="11" Foreground="#EF4444" FontWeight="SemiBold" HorizontalAlignment="Center" Height="15"/>
+
+        <!-- ===== AÇÃO PRINCIPAL (LOGAR) ===== -->
+        <Button Grid.Row="4" x:Name="btnLogar" Content="Autenticar como Operador" Style="{StaticResource ActionButton}" Height="40" Click="BtnLogar_Click"/>
+
+        <!-- ===== AÇÕES SECUNDÁRIAS ===== -->
+        <Grid Grid.Row="6">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="12"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            
+            <Button Grid.Column="0" x:Name="btnEspectador" Content="Entrar como Espectador" Style="{StaticResource SecondaryButton}" Height="36" Click="BtnEspectador_Click"/>
+            <Button Grid.Column="2" x:Name="btnCancelar" Content="Cancelar" Style="{StaticResource SecondaryButton}" Height="36" Click="BtnCancelar_Click"/>
+        </Grid>
+    </Grid>
+</Window>

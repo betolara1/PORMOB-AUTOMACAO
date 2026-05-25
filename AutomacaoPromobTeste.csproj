@@ -15,6 +15,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Content Include="network.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
     <Compile Remove="backup\**" />
     <None Include="backup\**" />
   </ItemGroup>

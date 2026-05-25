@@ -71,14 +71,19 @@
                     <TextBlock Text="Central de Controle &amp; Monitoramento Contínuo de Projetos 3D" FontSize="12" Foreground="#94A3B8" Margin="0,3,0,0"/>
                 </StackPanel>
 
-                <!-- Indicator light -->
-                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                    <Ellipse x:Name="statusIndicator" Width="10" Height="10" Fill="#EF4444" Margin="0,0,8,0">
-                        <Ellipse.Effect>
-                            <DropShadowEffect Color="#EF4444" BlurRadius="8" ShadowDepth="0"/>
-                        </Ellipse.Effect>
-                    </Ellipse>
-                    <TextBlock x:Name="txtStatusText" Text="Parado" FontSize="14" FontWeight="Bold" Foreground="#94A3B8"/>
+                <!-- Indicator light + Network badge -->
+                <StackPanel Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Right">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Ellipse x:Name="statusIndicator" Width="10" Height="10" Fill="#EF4444" Margin="0,0,8,0">
+                            <Ellipse.Effect>
+                                <DropShadowEffect Color="#EF4444" BlurRadius="8" ShadowDepth="0"/>
+                            </Ellipse.Effect>
+                        </Ellipse>
+                        <TextBlock x:Name="txtStatusText" Text="Parado" FontSize="14" FontWeight="Bold" Foreground="#94A3B8"/>
+                    </StackPanel>
+                    <TextBlock x:Name="txtNetworkStatus" Text="● Modo Local"
+                               FontSize="10" Foreground="#64748B"
+                               HorizontalAlignment="Right" Margin="0,5,0,0"/>
                 </StackPanel>
             </Grid>
         </Border>
@@ -106,7 +111,7 @@
                 </Grid.RowDefinitions>
 
                 <!-- 1. OPERATIONS CARD -->
-                <Border Grid.Row="0" Background="#181A25" CornerRadius="10" BorderBrush="#262A3B" BorderThickness="1" Padding="20">
+                <Border x:Name="cardOperacoes" Grid.Row="0" Background="#181A25" CornerRadius="10" BorderBrush="#262A3B" BorderThickness="1" Padding="20">
                     <StackPanel>
                         <TextBlock Text="Ações de Controle" FontSize="15" FontWeight="Bold" Foreground="#F1F5F9" Margin="0,0,0,15"/>
                         

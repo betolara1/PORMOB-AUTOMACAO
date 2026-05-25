@@ -30,3 +30,9 @@ C:\Users\Ralf\Desktop\Programação\AutomacaoPromobTeste\obj\Debug\net8.0-window
 C:\Users\Ralf\Desktop\Programação\AutomacaoPromobTeste\obj\Debug\net8.0-windows\MainWindow.baml
 C:\Users\Ralf\Desktop\Programação\AutomacaoPromobTeste\obj\Debug\net8.0-windows\MainWindow.g.cs
 C:\Users\Ralf\Desktop\Programação\AutomacaoPromobTeste\obj\Debug\net8.0-windows\AutomacaoPromobTeste.g.resources
+C:\Users\Ralf\Desktop\Programação\AutomacaoPromobTeste\bin\Debug\net8.0-windows\network.json
+C:\Users\Ralf\Desktop\Programação\AutomacaoPromobTeste\obj\Debug\net8.0-windows\StartupWindow.baml
+C:\Users\Ralf\Desktop\Programação\AutomacaoPromobTeste\obj\Debug\net8.0-windows\StartupWindow.g.cs
+C:\Users\Ralf\Desktop\Programação\AutomacaoPromobTeste\obj\Debug\net8.0-windows\AutomacaoPromobTeste_Content.g.cs
+C:\Users\Ralf\Desktop\Programação\AutomacaoPromobTeste\obj\Debug\net8.0-windows\LoginWindow.baml
+C:\Users\Ralf\Desktop\Programação\AutomacaoPromobTeste\obj\Debug\net8.0-windows\LoginWindow.g.cs

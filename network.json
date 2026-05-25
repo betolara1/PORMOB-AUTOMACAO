@@ -1,0 +1,6 @@
+{
+  "port": 8085,
+  "telegramBotToken": "",
+  "telegramChatId": "",
+  "recentServerIps": []
+}
