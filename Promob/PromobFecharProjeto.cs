@@ -183,7 +183,8 @@ namespace AutomacaoPromobTeste.Promob{
             Logger.Log("    [INFO] Aguardando fechamento do projeto (e possível popup 'Deseja salvar?')...");
             var swFechamento = Stopwatch.StartNew();
             bool projetoFechado = false;
-            
+            int ciclosSemPopup = 0;
+
             while (swFechamento.ElapsedMilliseconds < 60000){
                 // 1. Verifica se retornou à tela inicial (botão Importar visível)
                 var raizNova = WindowFinder.ObterHostOuJanela(janela, PromobConfig.AutomationIdHost, PromobWindowHelper.CachedProcessIdPromob);
@@ -203,19 +204,52 @@ namespace AutomacaoPromobTeste.Promob{
                 }
 
                 // 2. Verifica se existe o popup de Salvar aberto
+                // Busca sem filtro de ControlType pois diálogos WPF owned podem não aparecer como Window no desktop
                 var desktop = automation.GetDesktop();
-                var popup = PromobWindowHelper.EncontrarPopupAtencao(desktop, PromobWindowHelper.CachedProcessIdPromob);
+                var todasJanelas = desktop.FindAllChildren(); // sem filtro — pega tudo no nivel do desktop
+                var popup = todasJanelas
+                    .Where(j => {
+                        try { return !PromobWindowHelper.CachedProcessIdPromob.HasValue || j.Properties.ProcessId.ValueOrDefault == PromobWindowHelper.CachedProcessIdPromob.Value; }
+                        catch { return true; }
+                    })
+                    .FirstOrDefault(j => {
+                        var nome = j.Name ?? "";
+                        return nome.Equals("Salvar", StringComparison.OrdinalIgnoreCase) ||
+                               nome.Equals("Save", StringComparison.OrdinalIgnoreCase) ||
+                               nome.Equals("Confirmação", StringComparison.OrdinalIgnoreCase) ||
+                               nome.Equals("Confirmacao", StringComparison.OrdinalIgnoreCase);
+                    });
 
                 if (popup != null){
-                    // Previne prender no fallback da janela principal avaliando se o botão "Não" existe (Busca rasa ultra rápida FindAllChildren)
-                    var btnNao = popup.FindAllChildren(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button))
-                        .FirstOrDefault(b => b.Name == PromobConfig.BtnNao || b.Name == PromobConfig.BtnNaoAlt || b.Name == PromobConfig.BtnNo);
+                    ciclosSemPopup = 0;
+                    Logger.Log($"    [INFO] Popup '{popup.Name}' detectado. Buscando botão 'Não'...");
+                    // Busca profunda: FindAllDescendants para achar botões dentro de Panels intermediários
+                    var btnNao = popup.FindAllDescendants(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button))
+                        .FirstOrDefault(b => b.Name == PromobConfig.BtnNao || b.Name == PromobConfig.BtnNaoAlt || b.Name == "No" || b.Name == "Nao");
 
                     if (btnNao != null){
-                        Logger.Log($"    [OK] Popup de salvamento detectado. Clicando em 'Não'...");
+                        Logger.Log($"    [OK] Botão 'Não' localizado. Clicando...");
                         InteractionHelper.AtivarJanela(popup.AsWindow());
                         InteractionHelper.ClicarComFallback(btnNao);
-                        InteractionHelper.EsperarUiRespirar(1000); // Dá tempo para o popup fechar e o projeto começar a fechar
+                        InteractionHelper.EsperarUiRespirar(1000);
+                    }
+                    else{
+                        // Fallback: ativa o popup e pressiona Alt+N (atalho do botão 'Não')
+                        Logger.Log($"    [AVISO] Botão 'Não' não encontrado na árvore de '{popup.Name}'. Enviando Alt+N via teclado...", LogLevel.Warn);
+                        InteractionHelper.AtivarJanela(popup.AsWindow());
+                        InteractionHelper.EsperarUiRespirar(300);
+                        Keyboard.TypeSimultaneously(VirtualKeyShort.ALT, VirtualKeyShort.KEY_N);
+                        InteractionHelper.EsperarUiRespirar(1000);
+                    }
+                }
+                else{
+                    ciclosSemPopup++;
+                    // Fallback redundante a cada 4 ciclos (~2s): se há modal com foco não detectado via UIA,
+                    // Alt+N fecha direto sem afetar outros elementos
+                    if (swFechamento.ElapsedMilliseconds > 1500 && ciclosSemPopup % 4 == 0){
+                        Logger.Log($"    [DEBUG] Nenhum popup UIA detectado. Disparando Alt+N preventivo...", LogLevel.Debug);
+                        Keyboard.TypeSimultaneously(VirtualKeyShort.ALT, VirtualKeyShort.KEY_N);
+                        InteractionHelper.EsperarUiRespirar(500);
                     }
                 }
 

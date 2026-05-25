@@ -55,6 +55,9 @@ namespace AutomacaoPromobTeste.Promob{
                     if (btnFound != null){
                         InteractionHelper.AtivarJanela(janelaPromob);
 
+                        Logger.Log("    [INFO] Botão 'Importar' encontrado. Aguardando 2 segundos para estabilização antes de clicar...");
+                        Thread.Sleep(2000);
+
                         Logger.Log("    [ACTION] Clicando no botão 'Importar'...");
                         InteractionHelper.ClicarComFallback(btnFound);
 
@@ -610,8 +613,8 @@ namespace AutomacaoPromobTeste.Promob{
             }
 
             // Uma espera extra para garantir que a UI principal atualizou a lista de projetos recentes
-            Logger.Log("  [INFO] Aguardando 3 segundos para estabilização da lista de projetos...");
-            InteractionHelper.EsperarUiRespirar(3000);
+            Logger.Log("  [INFO] Aguardando 1.5 segundos para estabilização da lista de projetos...");
+            InteractionHelper.EsperarUiRespirar(1500);
         }
     }
 }
