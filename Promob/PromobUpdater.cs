@@ -1,6 +1,9 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Runtime.InteropServices;
+using System.Text;
 using System.Threading;
 using AutomacaoPromobTeste.Automation;
 using AutomacaoPromobTeste.Utils;
@@ -18,6 +21,42 @@ namespace AutomacaoPromobTeste.Promob{
         /// </summary>
     //--------------------------------------------------------------------------------------
     public static class PromobUpdater{
+
+        // ==================================================================================
+        // WIN32 P/INVOKE — necessário para detectar janelas ocultas/em segundo plano
+        // ==================================================================================
+
+        private delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
+
+        [DllImport("user32.dll")] private static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
+        [DllImport("user32.dll")] private static extern bool IsWindowVisible(IntPtr hWnd);
+        [DllImport("user32.dll")] private static extern int GetWindowThreadProcessId(IntPtr hWnd, out int lpdwProcessId);
+        [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern int GetWindowText(IntPtr hWnd, StringBuilder lpString, int nMaxCount);
+        [DllImport("user32.dll")] private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+        [DllImport("user32.dll")] private static extern bool SetForegroundWindow(IntPtr hWnd);
+        [DllImport("user32.dll")] private static extern int GetWindowLong(IntPtr hWnd, int nIndex);
+        [DllImport("user32.dll")] private static extern bool GetWindowPlacement(IntPtr hWnd, ref WINDOWPLACEMENT lpwndpl);
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct WINDOWPLACEMENT {
+            public int length;
+            public int flags;
+            public int showCmd;
+            public System.Drawing.Point ptMinPosition;
+            public System.Drawing.Point ptMaxPosition;
+            public System.Drawing.Rectangle rcNormalPosition;
+        }
+
+        private const int SW_RESTORE  = 9;
+        private const int SW_SHOW     = 5;
+        private const int SW_SHOWNA   = 8;
+        private const int SW_SHOWNORMAL = 1;
+        private const int SW_SHOWMINIMIZED = 2;  // janela minimizada na barra de tarefas
+        private const int SW_HIDE     = 0;       // janela completamente oculta
+        private const int GWL_STYLE   = -16;
+        private const int GWL_EXSTYLE = -20;
+        private const int WS_VISIBLE  = 0x10000000;
+        private const int WS_EX_TOOLWINDOW = 0x00000080; // oculto da barra de tarefas
 
         // ==================================================================================
         // MÉTODOS PÚBLICOS
@@ -461,13 +500,19 @@ namespace AutomacaoPromobTeste.Promob{
 
         //--------------------------------------------------------------------------------------
             /// <summary>
-            /// Faz polling no desktop buscando a janela "Promob Update" até que seja encontrada
-            /// ou o timeout expire.
+            /// Faz polling buscando a janela "Promob Update" até que seja encontrada ou o
+            /// timeout expire. Além do scan normal do desktop via FlaUI, usa EnumWindows para
+            /// detectar janelas ocultas/em segundo plano (ícone na área de notificação) e as
+            /// restaura automaticamente via ShowWindow antes de retorná-las.
             /// </summary>
         //--------------------------------------------------------------------------------------
         private static Window? AguardarJanelaUpdate(UIA3Automation automation, int timeoutMs){
             var sw = Stopwatch.StartNew();
+            bool logDiagnosticoFeito = false; // Loga janelas Promob apenas uma vez no primeiro ciclo
+
             while (sw.ElapsedMilliseconds < timeoutMs){
+
+                // ETAPA 1: Scan normal via FlaUI (janelas visíveis no desktop)
                 var janelas = automation.GetDesktop().FindAllChildren();
                 foreach (var child in janelas){
                     if (child.ControlType != FlaUI.Core.Definitions.ControlType.Window) continue;
@@ -479,9 +524,116 @@ namespace AutomacaoPromobTeste.Promob{
                     }
                     catch { }
                 }
+
+                // ETAPA 2: Win32 EnumWindows — busca em TODAS as janelas (visíveis e ocultas)
+                // Cobre: janelas minimizadas para tray, WS_EX_TOOLWINDOW, showCmd=SW_HIDE
+                var hWnd = BuscarERestaurarJanelaOculta("Promob Update", logDiagnostico: !logDiagnosticoFeito);
+                logDiagnosticoFeito = true;
+
+                if (hWnd != IntPtr.Zero){
+                    // Aguarda o Windows processar a restauração
+                    InteractionHelper.EsperarUiRespirar(1200);
+
+                    // Nova varredura FlaUI após restauração
+                    var janelasAposRestore = automation.GetDesktop().FindAllChildren();
+                    foreach (var child in janelasAposRestore){
+                        if (child.ControlType != FlaUI.Core.Definitions.ControlType.Window) continue;
+                        try {
+                            var titulo = child.Name ?? child.Properties.Name.ValueOrDefault ?? "";
+                            if (titulo.Contains("Promob Update", StringComparison.OrdinalIgnoreCase)){
+                                Logger.Log("  [WIN32] Janela 'Promob Update' restaurada e localizada via FlaUI!");
+                                return child.AsWindow();
+                            }
+                        }
+                        catch { }
+                    }
+
+                    // Se o FlaUI ainda não vê, tenta acessar direto pelo HWND via UIA
+                    Logger.Log("  [WIN32] FlaUI não localizou após restauração. Tentando acesso direto pelo HWND...");
+                    try {
+                        var elDireto = automation.FromHandle(hWnd);
+                        if (elDireto != null) {
+                            Logger.Log($"  [WIN32] Elemento obtido diretamente pelo HWND: '{elDireto.Name}'");
+                            return elDireto.AsWindow();
+                        }
+                    }
+                    catch (Exception exDirect) {
+                        Logger.Log($"  [WIN32] Falha ao acessar HWND diretamente: {exDirect.Message}", LogLevel.Debug);
+                    }
+                }
+
                 Thread.Sleep(500);
             }
             return null;
+        }
+
+        //--------------------------------------------------------------------------------------
+            /// <summary>
+            /// Usa EnumWindows do Win32 para varrer TODAS as janelas do sistema (incluindo
+            /// visíveis e ocultas) buscando aquelas cujo título contém <paramref name="tituloContem"/>.
+            /// Loga TODAS as janelas relacionadas ao Promob encontradas para diagnóstico.
+            /// Restaura via ShowWindow qualquer janela encontrada que esteja minimizada/oculta.
+            /// </summary>
+            /// <returns>O HWND da janela encontrada e restaurada, ou IntPtr.Zero se não encontrada.</returns>
+        //--------------------------------------------------------------------------------------
+        private static IntPtr BuscarERestaurarJanelaOculta(string tituloContem, bool logDiagnostico = false){
+            IntPtr resultado = IntPtr.Zero;
+            var sb = new StringBuilder(512);
+
+            EnumWindows((hWnd, _) => {
+                // Lê o título da janela (todas, sem filtro de visibilidade)
+                sb.Clear();
+                GetWindowText(hWnd, sb, sb.Capacity);
+                string titulo = sb.ToString();
+
+                // Log diagnóstico: lista qualquer janela com "Promob" no título
+                if (logDiagnostico && titulo.Contains("Promob", StringComparison.OrdinalIgnoreCase)) {
+                    bool visivel = IsWindowVisible(hWnd);
+                    var wp = new WINDOWPLACEMENT { length = Marshal.SizeOf(typeof(WINDOWPLACEMENT)) };
+                    GetWindowPlacement(hWnd, ref wp);
+                    int exStyle = GetWindowLong(hWnd, GWL_EXSTYLE);
+                    bool isToolWin = (exStyle & WS_EX_TOOLWINDOW) != 0;
+                    Logger.Log($"  [DIAG-WIN32] HWND={hWnd} | Título='{titulo}' | Visível={visivel} | showCmd={wp.showCmd} | ToolWindow={isToolWin}");
+                }
+
+                if (!titulo.Contains(tituloContem, StringComparison.OrdinalIgnoreCase))
+                    return true; // Continua enumerando
+
+                // Janela encontrada — verifica se precisa ser restaurada
+                var placement = new WINDOWPLACEMENT { length = Marshal.SizeOf(typeof(WINDOWPLACEMENT)) };
+                GetWindowPlacement(hWnd, ref placement);
+                bool janelaVisivel = IsWindowVisible(hWnd);
+                int exStyleJanela  = GetWindowLong(hWnd, GWL_EXSTYLE);
+
+                Logger.Log($"  [WIN32] Janela '{tituloContem}' encontrada! HWND={hWnd}, Título='{titulo}'");
+                Logger.Log($"  [WIN32] Estado: Visível={janelaVisivel}, showCmd={placement.showCmd}, ToolWindow={(exStyleJanela & WS_EX_TOOLWINDOW) != 0}");
+
+                // Restaura em todos os casos onde não está em estado normal visível
+                bool precisaRestaurar = !janelaVisivel
+                    || placement.showCmd == SW_HIDE
+                    || placement.showCmd == SW_SHOWMINIMIZED
+                    || (exStyleJanela & WS_EX_TOOLWINDOW) != 0;
+
+                if (precisaRestaurar) {
+                    Logger.Log($"  [WIN32] Restaurando janela do segundo plano/tray...");
+                    ShowWindow(hWnd, SW_RESTORE);
+                    InteractionHelper.EsperarUiRespirar(200);
+                    ShowWindow(hWnd, SW_SHOWNORMAL);
+                    InteractionHelper.EsperarUiRespirar(200);
+                    ShowWindow(hWnd, SW_SHOW);
+                    SetForegroundWindow(hWnd);
+                    Logger.Log($"  [WIN32] ShowWindow executado. Janela restaurada para primeiro plano.");
+                }
+                else {
+                    Logger.Log($"  [WIN32] Janela já está visível/normal. Apenas trazendo para frente...");
+                    SetForegroundWindow(hWnd);
+                }
+
+                resultado = hWnd;
+                return false; // Para a enumeração
+            }, IntPtr.Zero);
+
+            return resultado;
         }
 
         //--------------------------------------------------------------------------------------
@@ -608,6 +760,15 @@ namespace AutomacaoPromobTeste.Promob{
             /// </summary>
         //--------------------------------------------------------------------------------------
         private static (Window? janela, AutomationElement? btnFechar) BuscarPopupSucessoNoDesktop(UIA3Automation automation){
+            // ETAPA 1: Tenta restaurar a janela caso esteja oculta (ícone em segundo plano)
+            // O popup "PromobUpdate" pode estar invisível para o FlaUI
+            var hOculta = BuscarERestaurarJanelaOculta("PromobUpdate");
+            if (hOculta != IntPtr.Zero){
+                Logger.Log("  [WIN32] Popup 'PromobUpdate' oculto restaurado. Aguardando tornar-se acessível...");
+                InteractionHelper.EsperarUiRespirar(800);
+            }
+
+            // ETAPA 2: Scan via FlaUI (janelas visíveis, incluindo a recém-restaurada)
             try {
                 var janelasDesktop = automation.GetDesktop().FindAllChildren();
                 foreach (var child in janelasDesktop) {
@@ -627,7 +788,7 @@ namespace AutomacaoPromobTeste.Promob{
                 }
             }
             catch (Exception exCheck) {
-                Logger.Log($"  [Aviso] Falha ao verificar popup de sucesso prévio: {exCheck.Message}", LogLevel.Debug);
+                Logger.Log($"  [Aviso] Falha ao verificar popup de sucesso: {exCheck.Message}", LogLevel.Debug);
             }
 
             return (null, null);
