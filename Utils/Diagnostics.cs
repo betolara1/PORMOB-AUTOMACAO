@@ -40,7 +40,7 @@ namespace AutomacaoPromobTeste.Utils{
         //--------------------------------------------------------------------------------------
         public static void ListarBotoesProject(Window janela, string automationIdHost){
             var processId = janela.Properties.ProcessId.ValueOrDefault;
-            Console.WriteLine($"[INFO] Analisando estrutura para Processo: {processId}");
+            Logger.Log($"[INFO] Analisando estrutura para Processo: {processId}");
 
             // Busca todas as janelas do Windows que pertencem especificamente a este ProcessID do Promob.
             // Popups ou assistentes nativos às vezes flutuam como janelas de topo órfãs no Desktop.
@@ -49,15 +49,15 @@ namespace AutomacaoPromobTeste.Utils{
                 .ToList();
 
             if (janelasDoProcesso.Count > 1){
-                Console.WriteLine($"[AVISO] Encontradas {janelasDoProcesso.Count} janelas para este processo:");
+                Logger.Log($"[AVISO] Encontradas {janelasDoProcesso.Count} janelas para este processo:", LogLevel.Warn);
                 foreach (var j in janelasDoProcesso)
-                    Console.WriteLine($"  - Window: '{j.Name}' (ID: {j.Properties.AutomationId.ValueOrDefault})");
+                    Logger.Log($"  - Window: '{j.Name}' (ID: {j.Properties.AutomationId.ValueOrDefault})");
             }
 
             // Tenta localizar o container WPF principal ("elementHost1")
             var host = janela.FindFirstDescendant(automationIdHost);
             if (host != null){
-                Console.WriteLine("[OK] 'elementHost1' encontrado! Escaneando conteúdo profundo...");
+                Logger.Log("[OK] 'elementHost1' encontrado! Escaneando conteúdo profundo...");
                 
                 // Mágica do LINQ:
                 // 1. Filtra elementos válidos (que tenham Name ou AutomationId preenchido).
@@ -70,25 +70,25 @@ namespace AutomacaoPromobTeste.Utils{
                     .ToList();
 
                 foreach (var e in items)
-                    Console.WriteLine($"  -> Tipo: {e.ControlType}, Nome: '{e.Name}', Id: '{e.Properties.AutomationId.ValueOrDefault}'");
+                    Logger.Log($"  -> Tipo: {e.ControlType}, Nome: '{e.Name}', Id: '{e.Properties.AutomationId.ValueOrDefault}'");
             }
             else{
-                Console.WriteLine("[AVISO] elementHost1 não encontrado. Escaneando janela toda...");
+                Logger.Log("[AVISO] elementHost1 não encontrado. Escaneando janela toda...", LogLevel.Warn);
                 
                 // Fallback: Varre a janela inteira, agrupando duplicados para não poluir o console,
-                // e limita o relatório a no máximo 50 elementos para manter o log legível.
+                // e limita o relatório a no máximo 120 elementos para manter o log legível.
                 var all = janela.FindAllDescendants()
-                    .Where(e => !string.IsNullOrEmpty(e.Name))
+                    .Where(e => !string.IsNullOrEmpty(e.Name) || !string.IsNullOrEmpty(e.Properties.AutomationId.ValueOrDefault))
                     .GroupBy(e => (e.Properties.AutomationId.ValueOrDefault ?? "") + "|" + (e.Name ?? ""))
                     .Select(g => g.First())
-                    .Take(50)
+                    .Take(120)
                     .ToList();
 
                 foreach (var e in all)
-                    Console.WriteLine($"  -> Tipo: {e.ControlType}, Nome: '{e.Name}', Id: '{e.Properties.AutomationId.ValueOrDefault}'");
+                    Logger.Log($"  -> Tipo: {e.ControlType}, Nome: '{e.Name}', Id: '{e.Properties.AutomationId.ValueOrDefault}'");
             }
 
-            Console.WriteLine("------------------------------------------");
+            Logger.Log("------------------------------------------");
         }
 
         

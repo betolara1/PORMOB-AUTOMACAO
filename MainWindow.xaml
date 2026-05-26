@@ -131,7 +131,17 @@
                                 Style="{StaticResource ModernButton}" 
                                 Background="#3B82F6" 
                                 Height="45" 
+                                Margin="0,0,0,12"
                                 Click="BtnAbrirPromob_Click"/>
+
+                        <!-- Atualizar Promob Button -->
+                        <Button x:Name="btnAtualizarPromob" 
+                                Content="Atualizar Promob" 
+                                Style="{StaticResource ModernButton}" 
+                                Background="#0284C7" 
+                                Height="45" 
+                                IsEnabled="False"
+                                Click="BtnAtualizarPromob_Click"/>
                     </StackPanel>
                 </Border>
 

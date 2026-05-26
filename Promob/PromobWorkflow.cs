@@ -33,6 +33,9 @@ namespace AutomacaoPromobTeste.Promob{
         public static void ProcessarArquivo(UIA3Automation automation, string caminhoArquivo, CancellationToken token = default){
             token.ThrowIfCancellationRequested();
 
+            // Reseta sinalizadores de estado para o novo arquivo
+            AutomacaoEstado.FechouProjetoAtual = false;
+
             Logger.Log("  [1/8] Localizando janela do Promob...");
             var janela = PromobWindowHelper.AguardarJanelaPromob(automation, 300000)
                 ?? throw new Exception("Janela do Promob não encontrada. O Promob está aberto?");
@@ -146,6 +149,10 @@ namespace AutomacaoPromobTeste.Promob{
 
             Logger.Log("  [9/9] Fechando o projeto atual...");
             Diagnostics.Medir("Fechar projeto", () => PromobFecharProjeto.Fechar(automation, janela));
+
+            // Sinaliza ao monitor de atualização que o projeto foi fechado (janela Update pode prosseguir)
+            AutomacaoEstado.FechouProjetoAtual = true;
+            Logger.Log("  [INFO] Sinal FechouProjetoAtual emitido para o monitor de atualização.");
 
             token.ThrowIfCancellationRequested();
 

@@ -14,12 +14,15 @@ using AutomacaoPromobTeste.Promob;
 using AutomacaoPromobTeste.Automation;
 using AutomacaoPromobTeste.Network;
 using FlaUI.UIA3;
+using FlaUIWindow = FlaUI.Core.AutomationElements.Window;
 
 namespace AutomacaoPromobTeste{
     public partial class MainWindow : Window{
         private bool _isMonitoring = false;
         private CancellationTokenSource? _cts;
         private Task? _automationTask;
+        private CancellationTokenSource? _ctsUpdateMonitor;
+        private Task? _updateMonitorTask;
 
         private int _processadosCount = 0;
         private int _errosCount = 0;
@@ -240,6 +243,33 @@ namespace AutomacaoPromobTeste{
             }
         }
 
+        private void BtnAtualizarPromob_Click(object sender, RoutedEventArgs e){
+            if (AppMode.Mode == AppRunMode.Client){
+                _promobClient?.Send(WsMessage.CreateCommand("UPDATE_PROMOB"));
+                return;
+            }
+
+            // Local or Server mode:
+            btnAtualizarPromob.IsEnabled = false;
+            btnToggleAutomacao.IsEnabled = false;
+            btnAbrirPromob.IsEnabled = false;
+
+            Task.Run(() => {
+                try{
+                    using var automation = new UIA3Automation();
+                    PromobUpdater.ExecutarAtualizacao(automation);
+                }
+                catch (Exception ex){
+                    Logger.Log($"[ERRO ATUALIZAÇÃO] Falha ao atualizar: {ex.Message}", LogLevel.Error);
+                }
+                finally{
+                    Dispatcher.Invoke(() => {
+                        AtualizarBotaoIniciar();
+                    });
+                }
+            });
+        }
+
         private void BtnClearLog_Click(object sender, RoutedEventArgs e){
             txtLogTerminal.Clear();
         }
@@ -266,6 +296,10 @@ namespace AutomacaoPromobTeste{
             Logger.Log("[INFO] Modo contínuo iniciado. Monitorando arquivos na pasta...");
 
             _automationTask = Task.Run(() => ExecutarLoopAutomacao(_cts.Token), _cts.Token);
+
+            // Inicia o monitor de janela Promob Update em background
+            _ctsUpdateMonitor = new CancellationTokenSource();
+            _updateMonitorTask = Task.Run(() => MonitorarJanelaUpdate(_ctsUpdateMonitor.Token));
         }
 
         private void StopMonitoring(){
@@ -273,6 +307,7 @@ namespace AutomacaoPromobTeste{
             btnToggleAutomacao.Content = "Parando...";
             Logger.Log("[INFO] Solicitando parada da automação... Por favor, aguarde a conclusão da etapa atual.");
             _cts?.Cancel();
+            _ctsUpdateMonitor?.Cancel();
         }
 
         private void ExecutarLoopAutomacao(CancellationToken token){
@@ -321,6 +356,17 @@ namespace AutomacaoPromobTeste{
                     if (token.IsCancellationRequested)
                         break;
 
+                    // Se há atualização em andamento, aguarda terminar antes de pegar o arquivo!
+                    if (AutomacaoEstado.AtualizacaoEmAndamento) {
+                        Logger.Log("[AUTOMAÇÃO] Pausando automação de arquivos: Atualização do Promob em andamento...");
+                        while (AutomacaoEstado.AtualizacaoEmAndamento && !token.IsCancellationRequested) {
+                            Thread.Sleep(2000);
+                        }
+                        if (token.IsCancellationRequested)
+                            break;
+                        Logger.Log("[AUTOMAÇÃO] Atualização concluída ou finalizada. Retomando processamento de arquivos.");
+                    }
+
                     var nome = Path.GetFileName(arquivo);
 
                     Logger.Log("══════════════════════════════════════════");
@@ -331,7 +377,13 @@ namespace AutomacaoPromobTeste{
                     try{
                         Thread.Sleep(500);
 
-                        Diagnostics.Medir("Processar arquivo", () => PromobWorkflow.ProcessarArquivo(automation, arquivo, token));
+                        AutomacaoEstado.ArquivoEmProcessamento = true;
+                        try{
+                            Diagnostics.Medir("Processar arquivo", () => PromobWorkflow.ProcessarArquivo(automation, arquivo, token));
+                        }
+                        finally{
+                            AutomacaoEstado.ArquivoEmProcessamento = false;
+                        }
 
                         _processadosCount++;
                         UpdateMetricsOnUi();
@@ -404,7 +456,103 @@ namespace AutomacaoPromobTeste{
                 }
             }
 
+            AutomacaoEstado.ArquivoEmProcessamento = false;
             ResetUiStateOnStop();
+        }
+
+        //--------------------------------------------------------------------------------------
+            /// <summary>
+            /// Thread em background que monitora continuamente o desktop em busca da janela
+            /// "Promob Update" aberta automaticamente pelo Promob.
+            /// Quando detectada, aguarda o momento seguro (sem arquivo em processamento ou após
+            /// o passo 9/9) e aciona a atualização.
+            /// </summary>
+        //--------------------------------------------------------------------------------------
+        private void MonitorarJanelaUpdate(CancellationToken token){
+            Logger.Log("[UPDATE MONITOR] Monitor de atualização do Promob iniciado.");
+
+            while (!token.IsCancellationRequested){
+                try{
+                    // Verifica a cada 3 segundos
+                    token.WaitHandle.WaitOne(3000);
+                    if (token.IsCancellationRequested) break;
+
+                    // Busca a janela "Promob Update" aberta no desktop
+                    using var automation = new UIA3Automation();
+                    var desktopChildren = automation.GetDesktop().FindAllChildren();
+                    FlaUIWindow? janelaUpdate = null;
+                    foreach (var child in desktopChildren){
+                        if (child.ControlType != FlaUI.Core.Definitions.ControlType.Window) continue;
+                        var w = new FlaUIWindow(child.FrameworkAutomationElement);
+                        if ((w?.Title ?? "").Contains("Promob Update", StringComparison.OrdinalIgnoreCase)){
+                            janelaUpdate = w;
+                            break;
+                        }
+                    }
+
+                    if (janelaUpdate == null)
+                        continue;
+
+                    Logger.Log("[UPDATE MONITOR] ⚡ Janela 'Promob Update' detectada!");
+
+                    // Ativa a trava de atualização para evitar que a automação principal inicie novos arquivos
+                    AutomacaoEstado.AtualizacaoEmAndamento = true;
+
+                    try{
+                        // Se há um arquivo em processamento, aguarda o projeto ser fechado (passo 9/9)
+                        if (AutomacaoEstado.ArquivoEmProcessamento){
+                            Logger.Log("[UPDATE MONITOR] Arquivo em processamento. Aguardando conclusão do passo 9/9 (fechar projeto)...");
+
+                            const int timeoutEsperaMs = 10 * 60 * 1000; // 10 minutos de timeout
+                            var sw = System.Diagnostics.Stopwatch.StartNew();
+
+                            while (!AutomacaoEstado.FechouProjetoAtual && sw.ElapsedMilliseconds < timeoutEsperaMs){
+                                if (token.IsCancellationRequested) return;
+                                Thread.Sleep(500);
+                            }
+
+                            if (!AutomacaoEstado.FechouProjetoAtual){
+                                Logger.Log("[UPDATE MONITOR] Timeout aguardando fechamento do projeto. Atualização será tentada na próxima detecção.", LogLevel.Warn);
+                                continue;
+                            }
+
+                            Logger.Log("[UPDATE MONITOR] Projeto fechado (9/9 concluído). Iniciando atualização agora.");
+                        }
+                        else{
+                            Logger.Log("[UPDATE MONITOR] Nenhum arquivo em processamento. Iniciando atualização imediatamente.");
+                        }
+
+                        // Executa a atualização (o método re-localiza a janela internamente)
+                        bool sucesso = false;
+                        try{
+                            PromobUpdater.ExecutarAtualizacaoUpdate(automation);
+                            sucesso = true;
+                        }
+                        catch (Exception exUpdate){
+                            Logger.Log($"[UPDATE MONITOR] Falha ao executar atualização: {exUpdate.Message}", LogLevel.Error);
+                        }
+
+                        if (sucesso){
+                            Logger.Log("[UPDATE MONITOR] Atualização concluída com sucesso! Retomando automação de arquivos.");
+                        }
+                        else{
+                            Logger.Log("[UPDATE MONITOR] Tentativa falhou. O monitor continuará ativo e tentará novamente na próxima verificação...", LogLevel.Warn);
+                        }
+                    }
+                    finally{
+                        // Sempre garante a liberação da trava de atualização ao concluir ou falhar
+                        AutomacaoEstado.AtualizacaoEmAndamento = false;
+                    }
+                }
+                catch (OperationCanceledException){
+                    break;
+                }
+                catch (Exception ex){
+                    Logger.Log($"[UPDATE MONITOR] Erro no monitor: {ex.Message}", LogLevel.Debug);
+                }
+            }
+
+            Logger.Log("[UPDATE MONITOR] Monitor de atualização encerrado.");
         }
 
         private void UpdateMetricsOnUi(){
@@ -436,6 +584,7 @@ namespace AutomacaoPromobTeste{
                 bool promobRunning = IsPromobRunning();
                 btnToggleAutomacao.IsEnabled = promobRunning;
                 AtualizarEstadoBotaoPromob(promobRunning);
+                btnAtualizarPromob.IsEnabled = promobRunning;
 
                 Logger.Log("[INFO] Monitoramento parado. Automação inativa.");
             });
@@ -511,11 +660,13 @@ namespace AutomacaoPromobTeste{
             if (_isMonitoring){
                 bool isStopping = _cts?.IsCancellationRequested ?? false;
                 btnToggleAutomacao.IsEnabled = !isStopping;
+                btnAtualizarPromob.IsEnabled = false;
                 return;
             }
 
             if (!_isMonitoring){
                 btnToggleAutomacao.IsEnabled = promobAberto;
+                btnAtualizarPromob.IsEnabled = promobAberto;
             }
         }
 
@@ -526,10 +677,12 @@ namespace AutomacaoPromobTeste{
             if (_isMonitoring){
                 bool isStopping = _cts?.IsCancellationRequested ?? false;
                 btnToggleAutomacao.IsEnabled = !isStopping;
+                btnAtualizarPromob.IsEnabled = false;
                 return;
             }
 
             btnToggleAutomacao.IsEnabled = promobAberto;
+            btnAtualizarPromob.IsEnabled = promobAberto;
         }
 
         private void AtualizarEstadoBotaoPromob(bool promobAberto){
@@ -672,6 +825,12 @@ namespace AutomacaoPromobTeste{
                     case "CLOSE_PROMOB":
                         ForceClosePromob();
                         break;
+
+                    case "UPDATE_PROMOB":
+                        if (!_isMonitoring){
+                            BtnAtualizarPromob_Click(this, new RoutedEventArgs());
+                        }
+                        break;
                 }
             });
         }
@@ -729,6 +888,7 @@ namespace AutomacaoPromobTeste{
                         // Atualiza o botão Abrir/Fechar Promob e a disponibilidade do toggle
                         AtualizarEstadoBotaoPromob(msg.PromobRunning);
                         btnToggleAutomacao.IsEnabled = msg.PromobRunning || _isMonitoring;
+                        btnAtualizarPromob.IsEnabled = msg.PromobRunning && !_isMonitoring;
                         break;
                 }
             });
