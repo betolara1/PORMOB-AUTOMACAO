@@ -108,10 +108,34 @@ namespace AutomacaoPromobTeste.Promob{
                         
                         InteractionHelper.EsperarUiRespirar(1500);
                         
-                        // Navega Clientes → Projetos para desbloquear o botão Importar e retenta
-                        NavegarClientesEProjetos(janela);
-                        WindowFinder.CachedHost = null;
-                        continue;
+                        // Atualiza a interface clicando nas abas Clientes e Projetos para forçar o desbloqueio
+                        Logger.Log("  [ACTION] Clicando na aba 'Clientes' para forçar atualização da UI...");
+                        
+                        var abaClientes = janela.FindFirstDescendant(cf => cf.ByName("Clientes").And(cf.ByControlType(FlaUI.Core.Definitions.ControlType.TabItem).Or(cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button))))
+                                       ?? janela.FindFirstDescendant(cf => cf.ByName("Clientes"))
+                                       ?? janela.FindAllDescendants().FirstOrDefault(e => (e.Name ?? "").Equals("Clientes", StringComparison.OrdinalIgnoreCase));
+                        
+                        if (abaClientes != null) {
+                            InteractionHelper.ClicarComFallback(abaClientes);
+                            InteractionHelper.EsperarUiRespirar(1500);
+                        } else {
+                            Logger.Log("  [AVISO] Aba 'Clientes' não encontrada na janela inteira.", LogLevel.Warn);
+                        }
+
+                        Logger.Log("  [ACTION] Retornando para a aba 'Projetos'...");
+                        var abaProjetos = janela.FindFirstDescendant(cf => cf.ByName("Projetos").And(cf.ByControlType(FlaUI.Core.Definitions.ControlType.TabItem).Or(cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button))))
+                                       ?? janela.FindFirstDescendant(cf => cf.ByName("Projetos"))
+                                       ?? janela.FindAllDescendants().FirstOrDefault(e => (e.Name ?? "").Equals("Projetos", StringComparison.OrdinalIgnoreCase));
+                        
+                        if (abaProjetos != null) {
+                            InteractionHelper.ClicarComFallback(abaProjetos);
+                            InteractionHelper.EsperarUiRespirar(1500);
+                        } else {
+                            Logger.Log("  [AVISO] Aba 'Projetos' não encontrada na janela inteira.", LogLevel.Warn);
+                        }
+
+                        WindowFinder.CachedHost = null; // reseta cache para buscar botões novamente
+                        continue; // Recomeça a etapa de clicar em Importar
                     }
                 }
 
@@ -143,119 +167,19 @@ namespace AutomacaoPromobTeste.Promob{
                 throw new Exception($"Não foi possível abrir o wizard correto de importação após {maxTentativasWizard} tentativas. O botão '...' (Caminho) não apareceu.");
             }
 
-            // Loop de retry para falhas de rede durante o preenchimento / avanço do wizard.
-            // Se o Promob emitir erros de rede ao avançar, descartamos o wizard e recomeçamos do Importar.
-            const int maxTentativasImportacao = 5;
-            bool importacaoConcluida = false;
+            Logger.Log("  [3/8] Preenchendo caminho do arquivo no wizard...");
+            Diagnostics.Medir("Selecionar arquivo", () => PromobImportador.AbrirDialogoEPreencher(automation, janelaWizard, caminhoArquivo));
 
-            for (int tentativaImp = 1; tentativaImp <= maxTentativasImportacao; tentativaImp++){
-                token.ThrowIfCancellationRequested();
+            token.ThrowIfCancellationRequested();
 
-                // Se não é a primeira tentativa, precisamos reabrir o wizard antes de preencher
-                if (tentativaImp > 1){
-                    Logger.Log($"  [RETRY] Tentativa {tentativaImp}/{maxTentativasImportacao}: Reabrindo wizard de importação...");
-                    InteractionHelper.AtivarJanela(janela);
-                    Diagnostics.Medir("Clicar botão Importar (retry)", () => PromobImportador.ClicarBotaoImportar(janela));
-                    InteractionHelper.EsperarUiRespirar(1500);
-                    var wizardRetry = PromobWindowHelper.EncontrarJanelaWizard(automation, janela) ?? janela;
-                    if (PromobImportador.VerificarBotaoBrowseNoWizard(wizardRetry)){
-                        janelaWizard = wizardRetry;
-                    } else {
-                        Logger.Log("  [AVISO] Wizard incorreto no retry. Fechando e aguardando...", LogLevel.Warn);
-                        PromobImportador.FecharWizardAtual(wizardRetry);
-                        InteractionHelper.EsperarUiRespirar(1500);
-                        WindowFinder.CachedHost = null;
-                        continue;
-                    }
-                }
+            Logger.Log("  [4/8] Clicando em Avançar no Wizard...");
+            InteractionHelper.AtivarJanela(janelaWizard);
+            Diagnostics.Medir("Avançar wizard", () => PromobImportador.ClicarAvancarWizard(automation, janelaWizard));
 
-                try {
-                    Logger.Log($"  [3/8] Preenchendo caminho do arquivo no wizard (tentativa {tentativaImp})...");
-                    Diagnostics.Medir("Selecionar arquivo", () => PromobImportador.AbrirDialogoEPreencher(automation, janelaWizard, caminhoArquivo));
+            token.ThrowIfCancellationRequested();
 
-                    token.ThrowIfCancellationRequested();
-
-                    Logger.Log($"  [4/8] Clicando em Avançar no Wizard (tentativa {tentativaImp})...");
-                    InteractionHelper.AtivarJanela(janelaWizard);
-                    Diagnostics.Medir("Avançar wizard", () => PromobImportador.ClicarAvancarWizard(automation, janelaWizard));
-
-                    token.ThrowIfCancellationRequested();
-
-                    // Após avançar, verifica se surgiram erros de rede (popup de erro antes da importação concluir)
-                    InteractionHelper.EsperarUiRespirar(1000);
-                    bool erroRedeDetectado = false;
-                    for (int erroPop = 0; erroPop < 2; erroPop++) {
-                        var desktop = automation.GetDesktop();
-                        var popupErro = PromobWindowHelper.EncontrarPopupAtencao(desktop, PromobWindowHelper.CachedProcessIdPromob);
-                        if (popupErro == null) break;
-
-                        var textoErro = popupErro.FindFirstDescendant(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Text))?.Properties.Name.ValueOrDefault ?? "";
-                        Logger.Log($"  [AVISO] Popup de erro detectado após Avançar: '{textoErro}'. Clicando OK...", LogLevel.Warn);
-
-                        var btnOkErro = popupErro.FindFirstDescendant(cf =>
-                            cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button).And(
-                                cf.ByName(PromobConfig.BtnOk).Or(cf.ByName(PromobConfig.BtnOkAlt)).Or(cf.ByName(PromobConfig.BtnConcluir))));
-
-                        if (btnOkErro != null) InteractionHelper.ClicarComFallback(btnOkErro);
-                        else {
-                            InteractionHelper.AtivarJanela(popupErro);
-                            Keyboard.Type(VirtualKeyShort.RETURN);
-                        }
-                        InteractionHelper.EsperarUiRespirar(1000);
-                        erroRedeDetectado = true;
-                    }
-
-                    if (erroRedeDetectado) {
-                        Logger.Log("  [AVISO] Erros de rede detectados. Cancelando o wizard e retentando importação...", LogLevel.Warn);
-
-                        // Clica em "Cancelar" no wizard
-                        var wizardAtual = PromobWindowHelper.EncontrarJanelaWizard(automation, janela) ?? janelaWizard;
-                        var btnCancelar = wizardAtual.FindFirstDescendant(cf =>
-                            cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button).And(cf.ByName(PromobConfig.BtnCancelar)));
-
-                        if (btnCancelar != null) {
-                            Logger.Log("  [ACTION] Clicando em 'Cancelar' no wizard...");
-                            InteractionHelper.ClicarComFallback(btnCancelar);
-                        } else {
-                            Logger.Log("  [AVISO] Botão 'Cancelar' não encontrado. Usando ESC...", LogLevel.Warn);
-                            Keyboard.Type(VirtualKeyShort.ESCAPE);
-                        }
-                        InteractionHelper.EsperarUiRespirar(1000);
-
-                        // Confirma o cancelamento clicando em "Sim"
-                        var desktop2 = automation.GetDesktop();
-                        var popupConfirm = PromobWindowHelper.EncontrarPopupAtencao(desktop2, PromobWindowHelper.CachedProcessIdPromob);
-                        if (popupConfirm != null) {
-                            var btnSim = popupConfirm.FindFirstDescendant(cf =>
-                                cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button).And(cf.ByName(PromobConfig.BtnSim)));
-                            if (btnSim != null) {
-                                Logger.Log("  [ACTION] Clicando em 'Sim' para confirmar o cancelamento...");
-                                InteractionHelper.ClicarComFallback(btnSim);
-                            } else {
-                                Keyboard.Type(VirtualKeyShort.RETURN);
-                            }
-                            InteractionHelper.EsperarUiRespirar(1000);
-                        }
-
-                        // Navega Clientes → Projetos para desbloquear e retenta
-                        NavegarClientesEProjetos(janela);
-                        WindowFinder.CachedHost = null;
-                        continue; // Próxima tentativa do loop de importação
-                    }
-
-                    Logger.Log($"  [5/8] Aguardando conclusão da importação (tentativa {tentativaImp})...");
-                    Diagnostics.Medir("Aguardar importação", () => PromobImportador.AguardarImportacaoETratarPopups(automation, janelaWizard));
-                    importacaoConcluida = true;
-                    break; // Importação OK — sai do loop
-                }
-                catch (Exception exImp) when (!token.IsCancellationRequested) {
-                    Logger.Log($"  [AVISO] Falha na tentativa {tentativaImp} de importação: {exImp.Message}. Retentando...", LogLevel.Warn);
-                    WindowFinder.CachedHost = null;
-                }
-            }
-
-            if (!importacaoConcluida)
-                throw new Exception($"Falha na importação após {maxTentativasImportacao} tentativas consecutivas.");
+            Logger.Log("  [5/8] Aguardando conclusão da importação...");
+            Diagnostics.Medir("Aguardar importação", () => PromobImportador.AguardarImportacaoETratarPopups(automation, janelaWizard));
 
             token.ThrowIfCancellationRequested();
 
@@ -304,39 +228,6 @@ namespace AutomacaoPromobTeste.Promob{
         //--------------------------------------------------------------------------------------
         public static void TentarRecuperar(UIA3Automation automation){
             PromobRecuperacao.TentarRecuperar(automation);
-        }
-
-        //--------------------------------------------------------------------------------------
-            /// <summary>
-            /// Clica na aba 'Clientes' e depois em 'Projetos' na janela principal do Promob
-            /// para forçar a atualização de estado da interface e desbloquear o botão de Importar.
-            /// </summary>
-            /// <param name="janela">A janela principal do Promob.</param>
-        //--------------------------------------------------------------------------------------
-        private static void NavegarClientesEProjetos(Window janela){
-            Logger.Log("  [ACTION] Navegando: clicando na aba 'Clientes'...");
-            var abaClientes = janela.FindFirstDescendant(cf => cf.ByName("Clientes").And(cf.ByControlType(FlaUI.Core.Definitions.ControlType.TabItem).Or(cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button))))
-                           ?? janela.FindFirstDescendant(cf => cf.ByName("Clientes"))
-                           ?? janela.FindAllDescendants().FirstOrDefault(e => (e.Name ?? "").Equals("Clientes", StringComparison.OrdinalIgnoreCase));
-
-            if (abaClientes != null) {
-                InteractionHelper.ClicarComFallback(abaClientes);
-                InteractionHelper.EsperarUiRespirar(1500);
-            } else {
-                Logger.Log("  [AVISO] Aba 'Clientes' não encontrada.", LogLevel.Warn);
-            }
-
-            Logger.Log("  [ACTION] Navegando: clicando na aba 'Projetos'...");
-            var abaProjetos = janela.FindFirstDescendant(cf => cf.ByName("Projetos").And(cf.ByControlType(FlaUI.Core.Definitions.ControlType.TabItem).Or(cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button))))
-                           ?? janela.FindFirstDescendant(cf => cf.ByName("Projetos"))
-                           ?? janela.FindAllDescendants().FirstOrDefault(e => (e.Name ?? "").Equals("Projetos", StringComparison.OrdinalIgnoreCase));
-
-            if (abaProjetos != null) {
-                InteractionHelper.ClicarComFallback(abaProjetos);
-                InteractionHelper.EsperarUiRespirar(1500);
-            } else {
-                Logger.Log("  [AVISO] Aba 'Projetos' não encontrada.", LogLevel.Warn);
-            }
         }
 
         //--------------------------------------------------------------------------------------
