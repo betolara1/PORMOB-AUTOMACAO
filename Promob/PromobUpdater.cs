@@ -14,11 +14,11 @@ using FlaUI.Core.WindowsAPI;
 
 namespace AutomacaoPromobTeste.Promob{
     //--------------------------------------------------------------------------------------
-        /// <summary>
-        /// Componente responsável por automatizar a rotina de atualização do Promob,
-        /// cobrindo o acionamento do menu Arquivo > Atualizar o Promob, verificação do status
-        /// dos módulos (Desatualizado vs Atualizado) e tomada de decisão de atualizar ou fechar.
-        /// </summary>
+    /// <summary>
+    /// Componente responsável por gerenciar a rotina de atualização do Promob,
+    /// cobrindo o acionamento do menu Arquivo > Atualizar o Promob, verificação do status
+    /// dos módulos (Desatualizado vs Atualizado) e tomada de decisão de atualizar ou fechar.
+    /// </summary>
     //--------------------------------------------------------------------------------------
     public static class PromobUpdater{
 
@@ -63,24 +63,22 @@ namespace AutomacaoPromobTeste.Promob{
         // ==================================================================================
 
         //--------------------------------------------------------------------------------------
-            /// <summary>
-            /// Executa a rotina completa de atualização acionada pelo botão "Atualizar Promob" na UI.
-            /// Abre o menu Arquivo, clica em "Atualizar o Promob", e delega para o fluxo unificado.
-            /// </summary>
-            /// <param name="automation">A instância ativa do motor de automação UIA3.</param>
+        /// <summary>
+        /// Executa a rotina completa de atualização acionada pelo botão "Atualizar Promob" na UI.
+        /// Abre o menu Arquivo, clica em "Atualizar o Promob", e delega para o fluxo unificado.
+        /// </summary>
+        /// <param name="automation">A instância ativa do motor de automação UIA3.</param>
         //--------------------------------------------------------------------------------------
         public static void ExecutarAtualizacao(UIA3Automation automation){
-            Logger.Log("══════════════════════════════════════════");
-            Logger.Log("║   Iniciando Rotina de Atualização      ║");
-            Logger.Log("══════════════════════════════════════════");
+            AppLogs.LogUpdaterIniciandoRotina();
 
-            Logger.Log("  [1/4] Localizando janela principal do Promob...");
+            AppLogs.LogUpdaterLocalizandoJanela();
             var janela = PromobWindowHelper.AguardarJanelaPromob(automation, 15000)
                 ?? throw new Exception("Janela do Promob não encontrada. Abra o Promob antes de atualizar.");
 
             InteractionHelper.AtivarJanela(janela);
             
-            Logger.Log("  [2/4] Localizando menu 'Arquivo'...");
+            AppLogs.LogUpdaterLocalizandoMenuArquivo();
             var buscaEm = WindowFinder.ObterHostOuJanela(janela, PromobConfig.AutomationIdHost, PromobWindowHelper.CachedProcessIdPromob);
 
             AutomationElement? menuArquivo = WindowFinder.BuscarElementoComFallback(
@@ -91,7 +89,7 @@ namespace AutomacaoPromobTeste.Promob{
                 processId: PromobWindowHelper.CachedProcessIdPromob
             );
 
-            // Logger.Log("[INFO] Procurando janela do Promob para listar botões...");
+            // AppLogs.LogWorkflowProcurandoJanelaBotoes();
             // var janelaInicial = PromobWindowHelper.AguardarJanelaPromob(automation, 5000);
             // if (janelaInicial != null){
             //     Diagnostics.ListarBotoesProject(janelaInicial, PromobConfig.AutomationIdHost);
@@ -104,7 +102,7 @@ namespace AutomacaoPromobTeste.Promob{
             // Verifica se o botão "Atualizar o Promob" já está visível e habilitado na tela.
             // Se já estiver visível (Ribbon expandido na aba Arquivo), clicar no menu "Arquivo" iria
             // recolher/esconder o Ribbon, fazendo o botão desaparecer!
-            Logger.Log("  [2.5/4] Verificando se o botão 'Atualizar o Promob' já está visível...");
+            AppLogs.LogUpdaterVerificandoBotaoVisivel();
             AutomationElement? btnPrevia = WindowFinder.BuscarElementoComFallback(
                 buscaEm,
                 cf => cf.ByAutomationId("OpenProcadUpdate"),
@@ -115,74 +113,68 @@ namespace AutomacaoPromobTeste.Promob{
             );
 
             if (btnPrevia != null && btnPrevia.IsEnabled) {
-                Logger.Log("  [OK] O botão 'Atualizar o Promob' já está visível e ativo na tela. Pulando clique no menu 'Arquivo'.");
+                AppLogs.LogUpdaterBotaoJaVisivel();
             }
             else {
-                Logger.Log("  [3/4] Clicando no menu 'Arquivo' para abrir as opções...");
+                AppLogs.LogUpdaterClicandoMenuArquivo();
                 InteractionHelper.ClicarComFallback(menuArquivo);
                 InteractionHelper.EsperarUiRespirar(1000);
             }
 
-            Logger.Log("  [3/4] Localizando botão 'Atualizar o Promob' (ID: OpenProcadUpdate)...");
+            AppLogs.LogUpdaterLocalizandoBotaoAtualizar();
             AutomationElement? btnAtualizarPromob = LocalizarBotaoAtualizarPromob(automation, buscaEm);
 
             if (btnAtualizarPromob == null){
                 throw new Exception("Botão 'Atualizar o Promob' (OpenProcadUpdate) não encontrado no menu 'Arquivo' (tentativas na janela principal e popups do desktop esgotadas).");
             }
 
-            Logger.Log("  [4/4] Clicando em 'Atualizar o Promob'...");
+            AppLogs.LogUpdaterClicandoAtualizar();
             InteractionHelper.ClicarComFallback(btnAtualizarPromob);
 
-            Logger.Log("  [INFO] Aguardando janela do 'Promob Update' abrir...");
+            AppLogs.LogUpdaterAguardandoJanelaUpdate();
             Window? janelaUpdate = AguardarJanelaUpdate(automation, 25000);
 
             if (janelaUpdate == null){
                 throw new Exception("Janela 'Promob Update' não apareceu a tempo.");
             }
 
-            Logger.Log("  [OK] Janela 'Promob Update' detectada com sucesso!");
+            AppLogs.LogUpdaterJanelaUpdateDetectada();
 
             // Delega para o fluxo unificado de verificação + atualização
             VerificarStatusEAtualizar(janelaUpdate, automation);
-
-            Logger.Log("══════════════════════════════════════════");
-            Logger.Log("║   Rotina de Atualização Concluída      ║");
-            Logger.Log("══════════════════════════════════════════");
         }
 
         //--------------------------------------------------------------------------------------
-            /// <summary>
-            /// Interage com a janela "Promob Update" que foi aberta automaticamente pelo próprio Promob.
-            /// Ao contrário de <see cref="ExecutarAtualizacao"/>, aqui a janela já está aberta —
-            /// o método apenas a localiza e delega para o fluxo unificado.
-            /// </summary>
-            /// <param name="automation">A instância ativa do motor de automação UIA3.</param>
+        /// <summary>
+        /// Interage com a janela "Promob Update" que foi aberta automaticamente pelo próprio Promob.
+        /// Ao contrário de <see cref="ExecutarAtualizacao"/>, aqui a janela já está aberta —
+        /// o método apenas a localiza e delega para o fluxo unificado.
+        /// </summary>
+        /// <param name="automation">A instância ativa do motor de automação UIA3.</param>
         //--------------------------------------------------------------------------------------
         public static void ExecutarAtualizacaoUpdate(UIA3Automation automation){
-            Logger.Log("══════════════════════════════════════════");
-            Logger.Log("║  [UPDATE] Iniciando Atualização Auto   ║");
-            Logger.Log("══════════════════════════════════════════");
+            AppLogs.LogUpdaterIniciandoVerificacaoAutomatica();
 
             // 1. ANTES DE QUALQUER COISA: Verifica se o popup de sucesso "PromobUpdate" já está aberto.
             // Se estiver, pulamos todas as etapas intermediárias e fechamos ele diretamente.
-            Logger.Log("  [UPDATE] Verificando se a atualização já foi concluída anteriormente...");
+            AppLogs.LogUpdaterVerificandoConclusaoAnterior();
             var (janelaSucessoPrevia, btnFecharSucessoPrevio) = BuscarPopupSucessoNoDesktop(automation);
 
             if (janelaSucessoPrevia != null && btnFecharSucessoPrevio != null) {
-                Logger.Log("  [UPDATE] A atualização já foi concluída! Popup de sucesso detectado. Pulando direto para o fechamento...");
+                AppLogs.LogUpdaterConcluidaSucessoAnterior();
                 FinalizarEFecharPopupSucesso(janelaSucessoPrevia, btnFecharSucessoPrevio);
                 return;
             }
 
             // 2. Fluxo Normal: Re-localiza a janela principal "Promob Update"
-            Logger.Log("  [UPDATE] Re-localizando janela 'Promob Update' no desktop...");
+            AppLogs.LogUpdaterRelocalizandoJanelaUpdate();
             Window? janelaUpdate = AguardarJanelaUpdate(automation, 10000);
 
             if (janelaUpdate == null){
                 throw new Exception("[UPDATE] Janela 'Promob Update' não encontrada para clicar em Atualizar.");
             }
 
-            Logger.Log("  [UPDATE] Janela localizada. Forçando foco...");
+            AppLogs.LogUpdaterForcandoFoco();
             try { janelaUpdate.SetForeground(); } catch { }
             InteractionHelper.EsperarUiRespirar(800);
             try { janelaUpdate.SetForeground(); } catch { }
@@ -190,10 +182,6 @@ namespace AutomacaoPromobTeste.Promob{
 
             // Delega para o fluxo unificado de verificação + atualização
             VerificarStatusEAtualizar(janelaUpdate, automation);
-
-            Logger.Log("══════════════════════════════════════════");
-            Logger.Log("║  [UPDATE] Atualização Auto Concluída   ║");
-            Logger.Log("══════════════════════════════════════════");
         }
 
         // ==================================================================================
@@ -201,17 +189,17 @@ namespace AutomacaoPromobTeste.Promob{
         // ==================================================================================
 
         //--------------------------------------------------------------------------------------
-            /// <summary>
-            /// Fluxo unificado: clica na aba "Status", verifica se há módulos desatualizados
-            /// e decide se fecha a janela ou inicia o processo completo de atualização.
-            /// </summary>
+        /// <summary>
+        /// Fluxo unificado: clica na aba "Status", verifica se há módulos desatualizados
+        /// e decide se fecha a janela ou inicia o processo completo de atualização.
+        /// </summary>
         //--------------------------------------------------------------------------------------
         private static void VerificarStatusEAtualizar(Window janelaUpdate, UIA3Automation automation){
             InteractionHelper.AtivarJanela(janelaUpdate);
             InteractionHelper.EsperarUiRespirar(1500);
 
             // --- Clicar na aba "Status" ---
-            Logger.Log("  [STATUS] Procurando e clicando na aba/botão 'Status' no menu lateral esquerdo...");
+            AppLogs.LogUpdaterClicandoAbaStatus();
             var btnStatus = janelaUpdate.FindFirstDescendant(cf => cf.ByName("Status"))
                 ?? janelaUpdate.FindAllDescendants()
                     .FirstOrDefault(e => (e.Name ?? "").Contains("Status", StringComparison.OrdinalIgnoreCase));
@@ -221,11 +209,11 @@ namespace AutomacaoPromobTeste.Promob{
             }
 
             InteractionHelper.ClicarComFallback(btnStatus);
-            Logger.Log("  [STATUS] Aba 'Status' clicada. Aguardando 3 segundos para carregar o status dos módulos...");
+            AppLogs.LogUpdaterAbaStatusClicada();
             InteractionHelper.EsperarUiRespirar(3000);
 
             // --- Analisar status dos módulos ---
-            Logger.Log("  [STATUS] Analisando status dos módulos do Promob...");
+            AppLogs.LogUpdaterAnalisandoStatusModulos();
             var todosElementos = janelaUpdate.FindAllDescendants().ToList();
             
             bool temDesatualizado = todosElementos.Any(e => 
@@ -234,14 +222,14 @@ namespace AutomacaoPromobTeste.Promob{
             );
 
             if (!temDesatualizado){
-                Logger.Log("  [OK] Parabéns! Todos os módulos do Promob estão 100% ATUALIZADOS.");
+                AppLogs.LogUpdaterModulosAtualizados();
                 FecharJanela(janelaUpdate);
                 return;
             }
 
             // --- Há módulos desatualizados: iniciar atualização ---
-            Logger.Log("  [AVISO] ATENÇÃO: Há módulos DESATUALIZADOS detectados!", LogLevel.Warn);
-            Logger.Log("  [ACTION] Procurando e clicando no botão/aba 'Atualizar' para voltar à tela de atualizações...");
+            AppLogs.LogUpdaterModulosDesatualizadosDetectados();
+            AppLogs.LogUpdaterClicandoAbaAtualizar();
             
             var btnAtualizarAba = janelaUpdate.FindFirstDescendant(cf => cf.ByName("Atualizar"))
                 ?? janelaUpdate.FindAllDescendants()
@@ -252,21 +240,21 @@ namespace AutomacaoPromobTeste.Promob{
             }
 
             InteractionHelper.ClicarComFallback(btnAtualizarAba);
-            Logger.Log("  [OK] Clique na aba 'Atualizar' efetuado. Iniciando fluxo completo de atualização...");
+            AppLogs.LogUpdaterAbaAtualizarClicada();
 
             ExecutarFluxoAtualizacao(janelaUpdate, automation);
         }
 
         //--------------------------------------------------------------------------------------
-            /// <summary>
-            /// Executa o fluxo completo de atualização após a decisão de atualizar:
-            /// aguarda botão "Atualizar" no rodapé → clica → aguarda "Instalar" → clica →
-            /// aguarda "Ok" no alerta → clica → aguarda popup de sucesso → fecha.
-            /// Também trata o caso de "Não existem novas atualizações".
-            /// </summary>
+        /// <summary>
+        /// Executa o fluxo completo de atualização após a decisão de atualizar:
+        /// aguarda botão "Atualizar" no rodapé → clica → aguarda "Instalar" → clica →
+        /// aguarda "Ok" no alerta → clica → aguarda popup de sucesso → fecha.
+        /// Também trata o caso de "Não existem novas atualizações".
+        /// </summary>
         //--------------------------------------------------------------------------------------
         private static void ExecutarFluxoAtualizacao(Window janelaUpdate, UIA3Automation automation){
-            Logger.Log("  [FLUXO] Aguardando o carregamento das atualizações e o aparecimento do botão 'Atualizar' no rodapé...");
+            AppLogs.LogUpdaterAguardandoRodape();
             
             AutomationElement? btnAtualizar = null;
             var swCarregando = Stopwatch.StartNew();
@@ -283,7 +271,7 @@ namespace AutomacaoPromobTeste.Promob{
                 );
 
                 if (btnAtualizar != null) {
-                    Logger.Log("  [FLUXO] Botão 'btnUpdate' localizado e habilitado!");
+                    AppLogs.LogUpdaterBtnUpdateHabilitado();
                     break;
                 }
 
@@ -306,7 +294,7 @@ namespace AutomacaoPromobTeste.Promob{
 
                     if (candidatoRodape != null) {
                         btnAtualizar = candidatoRodape;
-                        Logger.Log("  [FLUXO] Botão 'Atualizar' no rodapé localizado via proximidade de 'Fechar'!");
+                        AppLogs.LogUpdaterBtnUpdateProximidade();
                         break;
                     }
                 }
@@ -318,7 +306,7 @@ namespace AutomacaoPromobTeste.Promob{
                 );
 
                 if (txtSemAtualizacao != null) {
-                    Logger.Log("  [FLUXO] Verificação Concluída: 'Não existem novas atualizações' detectado!");
+                    AppLogs.LogUpdaterNenhumaAtualizacaoDisponivel();
                     FecharJanela(janelaUpdate);
                     return;
                 }
@@ -330,10 +318,10 @@ namespace AutomacaoPromobTeste.Promob{
                         (e.Name ?? "").Contains("Verificando arquivos", StringComparison.OrdinalIgnoreCase)
                     );
                     if (txtBuscando != null) {
-                        Logger.Log($"  [FLUXO] Promob ainda está buscando atualizações ('{txtBuscando.Name}'). Aguardando...");
+                        AppLogs.LogUpdaterBuscandoAtualizacoesPendentes(txtBuscando.Name);
                     }
                     else {
-                        Logger.Log("  [FLUXO] Aguardando o carregamento/verificação de arquivos terminar...");
+                        AppLogs.LogUpdaterAguardandoCarregamentoArquivos();
                     }
                 }
 
@@ -343,17 +331,16 @@ namespace AutomacaoPromobTeste.Promob{
             if (btnAtualizar == null){
                 var todosElementosFinal = janelaUpdate.FindAllDescendants();
                 var botoes = todosElementosFinal.Where(e => e.ControlType == FlaUI.Core.Definitions.ControlType.Button).ToList();
-                Logger.Log($"  [FLUXO] [Erro] Botões disponíveis na janela após timeout: " +
-                    string.Join(" | ", botoes.Select(b => $"'{b.Name}' (ID: {b.Properties.AutomationId.ValueOrDefault})")));
+                AppLogs.LogUpdaterBotoesDisponiveisTimeout(string.Join(" | ", botoes.Select(b => $"'{b.Name}' (ID: {b.Properties.AutomationId.ValueOrDefault})")));
                 throw new Exception("[FLUXO] Timeout: O botão 'Atualizar' (btnUpdate) não apareceu no rodapé da janela do Promob Update.");
             }
 
             // --- Clicar no botão "Atualizar" do rodapé ---
-            Logger.Log($"  [FLUXO] Botão 'Atualizar' definido: Tipo={btnAtualizar.ControlType}, Nome='{btnAtualizar.Name}', Id='{btnAtualizar.Properties.AutomationId.ValueOrDefault}'");
+            AppLogs.LogUpdaterBotaoAtualizarDefinido(btnAtualizar.ControlType.ToString(), btnAtualizar.Name, btnAtualizar.Properties.AutomationId.ValueOrDefault);
             ClicarBotaoComEstrategias(janelaUpdate, btnAtualizar, "Atualizar");
 
             // --- Aguardar download e clicar em "Instalar" ---
-            Logger.Log("  [FLUXO] Aguardando o download das atualizações concluir (até 10 minutos)...");
+            AppLogs.LogUpdaterBaixandoAtualizacoes();
             
             AutomationElement? btnInstalar = null;
             var swDownload = Stopwatch.StartNew();
@@ -371,7 +358,7 @@ namespace AutomacaoPromobTeste.Promob{
                 );
 
                 if (btnInstalar != null) {
-                    Logger.Log("  [FLUXO] Botão 'Instalar' localizado e habilitado!");
+                    AppLogs.LogUpdaterBtnInstalarHabilitado();
                     break;
                 }
 
@@ -384,10 +371,10 @@ namespace AutomacaoPromobTeste.Promob{
                     );
 
                     if (txtProgresso != null) {
-                        Logger.Log($"  [FLUXO] Baixando atualizações: '{txtProgresso.Name}'. Por favor, aguarde...");
+                        AppLogs.LogUpdaterProgressoDownload(txtProgresso.Name);
                     }
                     else {
-                        Logger.Log($"  [FLUXO] Download em andamento... (Tempo decorrido: {swDownload.Elapsed.Minutes}m {swDownload.Elapsed.Seconds}s)");
+                        AppLogs.LogUpdaterTempoDownload(swDownload.Elapsed.Minutes, swDownload.Elapsed.Seconds);
                     }
                 }
 
@@ -398,11 +385,11 @@ namespace AutomacaoPromobTeste.Promob{
                 throw new Exception("[FLUXO] Timeout: O download demorou mais de 10 minutos ou o botão 'Instalar' não apareceu.");
             }
 
-            Logger.Log($"  [FLUXO] Botão 'Instalar' definido: Tipo={btnInstalar.ControlType}, Nome='{btnInstalar.Name}', Id='{btnInstalar.Properties.AutomationId.ValueOrDefault}'");
+            AppLogs.LogUpdaterBotaoInstalarDefinido(btnInstalar.ControlType.ToString(), btnInstalar.Name, btnInstalar.Properties.AutomationId.ValueOrDefault);
             ClicarBotaoComEstrategias(janelaUpdate, btnInstalar, "Instalar");
 
             // --- Aguardar e clicar no botão "Ok" do alerta de fechamento ---
-            Logger.Log("  [FLUXO] Aguardando o surgimento da confirmação 'Ok' (Alerta) para fechar o Promob (até 25 segundos)...");
+            AppLogs.LogUpdaterConfirmandoFechamento();
             
             AutomationElement? btnOk = null;
             var swAlerta = Stopwatch.StartNew();
@@ -423,7 +410,7 @@ namespace AutomacaoPromobTeste.Promob{
                     btnOk = candidatosOk.FirstOrDefault(e => e.ControlType == FlaUI.Core.Definitions.ControlType.Button)
                          ?? candidatosOk.First();
                     
-                    Logger.Log($"  [FLUXO] Elemento 'Ok' localizado! Nome: '{btnOk.Name}', Tipo: {btnOk.ControlType}, Id: '{btnOk.Properties.AutomationId.ValueOrDefault}'");
+                    AppLogs.LogUpdaterElementoOkLocalizado(btnOk.Name, btnOk.ControlType.ToString(), btnOk.Properties.AutomationId.ValueOrDefault);
                     break;
                 }
 
@@ -434,9 +421,9 @@ namespace AutomacaoPromobTeste.Promob{
                 throw new Exception("[FLUXO] Timeout: O botão 'Ok' de confirmação de fechamento não apareceu na tela.");
             }
 
-            Logger.Log($"  [FLUXO] Botão 'Ok' definido para ação: Tipo={btnOk.ControlType}, Nome='{btnOk.Name}', Id='{btnOk.Properties.AutomationId.ValueOrDefault}'");
+            AppLogs.LogUpdaterBotaoOkDefinido(btnOk.ControlType.ToString(), btnOk.Name, btnOk.Properties.AutomationId.ValueOrDefault);
             ClicarBotaoComEstrategias(janelaUpdate, btnOk, "Ok");
-            Logger.Log("  [FLUXO] Clique no botão 'Ok' do Alerta concluído com sucesso! Promob será fechado e atualizado.");
+            AppLogs.LogUpdaterCliqueOkSucesso();
 
             // --- Aguardar popup de sucesso da instalação e fechar ---
             AguardarEFecharPopupSucesso(automation);
@@ -447,12 +434,12 @@ namespace AutomacaoPromobTeste.Promob{
         // ==================================================================================
 
         //--------------------------------------------------------------------------------------
-            /// <summary>
-            /// Executa a sequência completa de estratégias de clique para acionar um botão:
-            /// 1. Clique físico por coordenadas absolutas (Mouse real)
-            /// 2. Clique via UIA Invoke/Click fallback
-            /// 3. Envio direto de teclado (Focus + ENTER + SPACE)
-            /// </summary>
+        /// <summary>
+        /// Executa a sequência completa de estratégias de clique para acionar um botão:
+        /// 1. Clique físico por coordenadas absolutas (Mouse real)
+        /// 2. Clique via UIA Invoke/Click fallback
+        /// 3. Envio direto de teclado (Focus + ENTER + SPACE)
+        /// </summary>
         //--------------------------------------------------------------------------------------
         private static void ClicarBotaoComEstrategias(Window janela, AutomationElement botao, string label){
             // Garante foco na janela e no botão
@@ -468,25 +455,25 @@ namespace AutomacaoPromobTeste.Promob{
                     int x = (int)(rect.X + (rect.Width / 2));
                     int y = (int)(rect.Y + (rect.Height / 2));
                     
-                    Logger.Log($"  [CLIQUE FÍSICO {label.ToUpper()}] Movendo cursor e clicando em X={x}, Y={y}...");
+                    AppLogs.LogUpdaterMovendoCursor(x, y);
                     Mouse.MoveTo(x, y);
                     InteractionHelper.EsperarUiRespirar(250);
                     Mouse.Click();
                     InteractionHelper.EsperarUiRespirar(1000);
                 }
                 catch (Exception exMouse) {
-                    Logger.Log($"  [Aviso] Falha no clique físico de mouse em '{label}': {exMouse.Message}", LogLevel.Warn);
+                    AppLogs.LogUpdaterFalhaCliqueFisico(label, exMouse.Message);
                 }
             }
 
             // ESTRATÉGIA 2: Clicar com Fallback UIA (Invoke -> Click -> Keyboard Space)
-            Logger.Log($"  [UIA FALLBACK {label.ToUpper()}] Acionando ClicarComFallback...");
+            AppLogs.LogUpdaterAcionandoFallback();
             InteractionHelper.ClicarComFallback(botao);
             InteractionHelper.EsperarUiRespirar(500);
 
             // ESTRATÉGIA 3: Envio Direto de Teclado (Focus + ENTER / ESPAÇO)
             try {
-                Logger.Log($"  [KEYBOARD FALLBACK {label.ToUpper()}] Enviando Focus + ENTER + SPACE...");
+                AppLogs.LogUpdaterEnviandoFocusEnterSpace();
                 botao.Focus();
                 InteractionHelper.EsperarUiRespirar(150);
                 Keyboard.Type(VirtualKeyShort.ENTER);
@@ -494,17 +481,17 @@ namespace AutomacaoPromobTeste.Promob{
                 Keyboard.Type(VirtualKeyShort.SPACE);
             }
             catch (Exception exKey) {
-                Logger.Log($"  [Aviso] Falha ao enviar teclado para '{label}': {exKey.Message}", LogLevel.Debug);
+                AppLogs.LogUpdaterFalhaTeclado(label, exKey.Message);
             }
         }
 
         //--------------------------------------------------------------------------------------
-            /// <summary>
-            /// Faz polling buscando a janela "Promob Update" até que seja encontrada ou o
-            /// timeout expire. Além do scan normal do desktop via FlaUI, usa EnumWindows para
-            /// detectar janelas ocultas/em segundo plano (ícone na área de notificação) e as
-            /// restaura automaticamente via ShowWindow antes de retorná-las.
-            /// </summary>
+        /// <summary>
+        /// Faz polling buscando a janela "Promob Update" até que seja encontrada ou o
+        /// timeout expire. Além do scan normal do desktop via FlaUI, usa EnumWindows para
+        /// detectar janelas ocultas/em segundo plano (ícone na área de notificação) e as
+        /// restaura automaticamente via ShowWindow antes de retorná-las.
+        /// </summary>
         //--------------------------------------------------------------------------------------
         private static Window? AguardarJanelaUpdate(UIA3Automation automation, int timeoutMs){
             var sw = Stopwatch.StartNew();
@@ -541,7 +528,7 @@ namespace AutomacaoPromobTeste.Promob{
                         try {
                             var titulo = child.Name ?? child.Properties.Name.ValueOrDefault ?? "";
                             if (titulo.Contains("Promob Update", StringComparison.OrdinalIgnoreCase)){
-                                Logger.Log("  [WIN32] Janela 'Promob Update' restaurada e localizada via FlaUI!");
+                                AppLogs.LogUpdaterJanelaRestaurada();
                                 return child.AsWindow();
                             }
                         }
@@ -549,16 +536,16 @@ namespace AutomacaoPromobTeste.Promob{
                     }
 
                     // Se o FlaUI ainda não vê, tenta acessar direto pelo HWND via UIA
-                    Logger.Log("  [WIN32] FlaUI não localizou após restauração. Tentando acesso direto pelo HWND...");
+                    AppLogs.LogUpdaterAcessoDiretoHwnd();
                     try {
                         var elDireto = automation.FromHandle(hWnd);
                         if (elDireto != null) {
-                            Logger.Log($"  [WIN32] Elemento obtido diretamente pelo HWND: '{elDireto.Name}'");
+                            AppLogs.LogUpdaterElementoObtidoHwnd(elDireto.Name);
                             return elDireto.AsWindow();
                         }
                     }
                     catch (Exception exDirect) {
-                        Logger.Log($"  [WIN32] Falha ao acessar HWND diretamente: {exDirect.Message}", LogLevel.Debug);
+                        AppLogs.LogUpdaterFalhaHwnd(exDirect.Message);
                     }
                 }
 
@@ -568,13 +555,13 @@ namespace AutomacaoPromobTeste.Promob{
         }
 
         //--------------------------------------------------------------------------------------
-            /// <summary>
-            /// Usa EnumWindows do Win32 para varrer TODAS as janelas do sistema (incluindo
-            /// visíveis e ocultas) buscando aquelas cujo título contém <paramref name="tituloContem"/>.
-            /// Loga TODAS as janelas relacionadas ao Promob encontradas para diagnóstico.
-            /// Restaura via ShowWindow qualquer janela encontrada que esteja minimizada/oculta.
-            /// </summary>
-            /// <returns>O HWND da janela encontrada e restaurada, ou IntPtr.Zero se não encontrada.</returns>
+        /// <summary>
+        /// Usa EnumWindows do Win32 para varrer TODAS as janelas do sistema (incluindo
+        /// visíveis e ocultas) buscando aquelas cujo título contém <paramref name="tituloContem"/>.
+        /// Loga TODAS as janelas relacionadas ao Promob encontradas para diagnóstico.
+        /// Restaura via ShowWindow qualquer janela encontrada que esteja minimizada/oculta.
+        /// </summary>
+        /// <returns>O HWND da janela encontrada e restaurada, ou IntPtr.Zero se não encontrada.</returns>
         //--------------------------------------------------------------------------------------
         private static IntPtr BuscarERestaurarJanelaOculta(string tituloContem, bool logDiagnostico = false){
             IntPtr resultado = IntPtr.Zero;
@@ -593,7 +580,7 @@ namespace AutomacaoPromobTeste.Promob{
                     GetWindowPlacement(hWnd, ref wp);
                     int exStyle = GetWindowLong(hWnd, GWL_EXSTYLE);
                     bool isToolWin = (exStyle & WS_EX_TOOLWINDOW) != 0;
-                    Logger.Log($"  [DIAG-WIN32] HWND={hWnd} | Título='{titulo}' | Visível={visivel} | showCmd={wp.showCmd} | ToolWindow={isToolWin}");
+                    AppLogs.LogUpdaterHwndDetalhe(hWnd, titulo, visivel, wp.showCmd, isToolWin);
                 }
 
                 if (!titulo.Contains(tituloContem, StringComparison.OrdinalIgnoreCase))
@@ -605,8 +592,8 @@ namespace AutomacaoPromobTeste.Promob{
                 bool janelaVisivel = IsWindowVisible(hWnd);
                 int exStyleJanela  = GetWindowLong(hWnd, GWL_EXSTYLE);
 
-                Logger.Log($"  [WIN32] Janela '{tituloContem}' encontrada! HWND={hWnd}, Título='{titulo}'");
-                Logger.Log($"  [WIN32] Estado: Visível={janelaVisivel}, showCmd={placement.showCmd}, ToolWindow={(exStyleJanela & WS_EX_TOOLWINDOW) != 0}");
+                AppLogs.LogUpdaterJanelaEncontradaHwnd(tituloContem, hWnd, titulo);
+                AppLogs.LogUpdaterJanelaEstado(janelaVisivel, placement.showCmd, (exStyleJanela & WS_EX_TOOLWINDOW) != 0);
 
                 // Restaura em todos os casos onde não está em estado normal visível
                 bool precisaRestaurar = !janelaVisivel
@@ -615,17 +602,17 @@ namespace AutomacaoPromobTeste.Promob{
                     || (exStyleJanela & WS_EX_TOOLWINDOW) != 0;
 
                 if (precisaRestaurar) {
-                    Logger.Log($"  [WIN32] Restaurando janela do segundo plano/tray...");
+                    AppLogs.LogUpdaterRestaurandoTray();
                     ShowWindow(hWnd, SW_RESTORE);
                     InteractionHelper.EsperarUiRespirar(200);
                     ShowWindow(hWnd, SW_SHOWNORMAL);
                     InteractionHelper.EsperarUiRespirar(200);
                     ShowWindow(hWnd, SW_SHOW);
                     SetForegroundWindow(hWnd);
-                    Logger.Log($"  [WIN32] ShowWindow executado. Janela restaurada para primeiro plano.");
+                    AppLogs.LogUpdaterRestauradaPrimeiroPlano();
                 }
                 else {
-                    Logger.Log($"  [WIN32] Janela já está visível/normal. Apenas trazendo para frente...");
+                    AppLogs.LogUpdaterJanelaVisivelTrazendoFrente();
                     SetForegroundWindow(hWnd);
                 }
 
@@ -637,15 +624,15 @@ namespace AutomacaoPromobTeste.Promob{
         }
 
         //--------------------------------------------------------------------------------------
-            /// <summary>
-            /// Localiza o botão "Atualizar o Promob" (OpenProcadUpdate) na janela principal
-            /// ou nos popups do desktop pertencentes ao processo do Promob.
-            /// </summary>
+        /// <summary>
+        /// Localiza o botão "Atualizar o Promob" (OpenProcadUpdate) na janela principal
+        /// ou nos popups do desktop pertencentes ao processo do Promob.
+        /// </summary>
         //--------------------------------------------------------------------------------------
         private static AutomationElement? LocalizarBotaoAtualizarPromob(UIA3Automation automation, AutomationElement buscaEm){
             AutomationElement? btnAtualizarPromob = null;
             var swBusca = Stopwatch.StartNew();
-            const int timeoutBuscaMs = 5000;
+            const int timeoutBuscaMs = 500;
             
             while (swBusca.ElapsedMilliseconds < timeoutBuscaMs){
                 // Invalida cache de host para busca limpa
@@ -671,7 +658,7 @@ namespace AutomacaoPromobTeste.Promob{
                             btnAtualizarPromob = child.FindFirstDescendant(cf => cf.ByAutomationId("OpenProcadUpdate"))
                                               ?? child.FindFirstDescendant(cf => cf.ByName("Atualizar o Promob"));
                             if (btnAtualizarPromob != null){
-                                Logger.Log($"  [OK] Botão encontrado em uma sub-janela/popup do Desktop: '{btnAtualizarPromob.Name}'");
+                                AppLogs.LogUpdaterBotaoEncontradoPopup(btnAtualizarPromob.Name);
                                 return btnAtualizarPromob;
                             }
                         }
@@ -686,13 +673,13 @@ namespace AutomacaoPromobTeste.Promob{
         }
 
         //--------------------------------------------------------------------------------------
-            /// <summary>
-            /// Fecha a janela "Promob Update" clicando no botão "Fechar" do rodapé
-            /// e, se necessário, confirma o alerta clicando em "Sim".
-            /// </summary>
+        /// <summary>
+        /// Fecha a janela "Promob Update" clicando no botão "Fechar" do rodapé
+        /// e, se necessário, confirma o alerta clicando em "Sim".
+        /// </summary>
         //--------------------------------------------------------------------------------------
         private static void FecharJanela(Window janelaUpdate){
-            Logger.Log("  [FECHAR] Clicando no botão 'Fechar' para encerrar a janela do assistente...");
+            AppLogs.LogUpdaterClicandoFecharJanela();
 
             var todosElementos = janelaUpdate.FindAllDescendants();
 
@@ -717,7 +704,7 @@ namespace AutomacaoPromobTeste.Promob{
             ClicarBotaoComEstrategias(janelaUpdate, btnFechar, "Fechar");
 
             // --- Confirmar fechamento clicando em "Sim" no alerta (se aparecer) ---
-            Logger.Log("  [FECHAR] Aguardando o surgimento do alerta de confirmação 'Sim' (até 15 segundos)...");
+            AppLogs.LogUpdaterAlertaSimNaoApareceu();
             
             AutomationElement? btnSim = null;
             var swSim = Stopwatch.StartNew();
@@ -734,7 +721,7 @@ namespace AutomacaoPromobTeste.Promob{
                 );
 
                 if (btnSim != null) {
-                    Logger.Log("  [FECHAR] Botão 'Sim' de confirmação localizado e habilitado!");
+                    AppLogs.LogUpdaterBtnSimLocalizado();
                     break;
                 }
 
@@ -742,29 +729,29 @@ namespace AutomacaoPromobTeste.Promob{
             }
 
             if (btnSim != null) {
-                Logger.Log($"  [FECHAR] Botão 'Sim' definido: Tipo={btnSim.ControlType}, Nome='{btnSim.Name}'");
+                AppLogs.LogUpdaterBtnSimDefinido(btnSim.ControlType.ToString(), btnSim.Name);
                 ClicarBotaoComEstrategias(janelaUpdate, btnSim, "Sim");
-                Logger.Log("  [FECHAR] Clique em 'Sim' efetuado! Assistente encerrado com sucesso.");
+                AppLogs.LogUpdaterSimClicado();
             }
             else {
-                Logger.Log("  [FECHAR] Alerta de confirmação 'Sim' não apareceu (janela pode ter fechado diretamente).");
+                AppLogs.LogUpdaterAlertaSimNaoApareceu();
             }
             
-            Logger.Log("  [FECHAR] Janela de atualizações fechada com sucesso!");
+            AppLogs.LogUpdaterJanelaFechada();
         }
 
         //--------------------------------------------------------------------------------------
-            /// <summary>
-            /// Busca no desktop o popup de sucesso "PromobUpdate" (sem espaço) que contém
-            /// um botão "Fechar". Retorna a janela e o botão, ou (null, null).
-            /// </summary>
+        /// <summary>
+        /// Busca no desktop o popup de sucesso "PromobUpdate" (sem espaço) que contém
+        /// um botão "Fechar". Retorna a janela e o botão, ou (null, null).
+        /// </summary>
         //--------------------------------------------------------------------------------------
         private static (Window? janela, AutomationElement? btnFechar) BuscarPopupSucessoNoDesktop(UIA3Automation automation){
             // ETAPA 1: Tenta restaurar a janela caso esteja oculta (ícone em segundo plano)
             // O popup "PromobUpdate" pode estar invisível para o FlaUI
             var hOculta = BuscarERestaurarJanelaOculta("PromobUpdate");
             if (hOculta != IntPtr.Zero){
-                Logger.Log("  [WIN32] Popup 'PromobUpdate' oculto restaurado. Aguardando tornar-se acessível...");
+                AppLogs.LogUpdaterPopupSucessoOcultoRestaurado();
                 InteractionHelper.EsperarUiRespirar(800);
             }
 
@@ -788,20 +775,20 @@ namespace AutomacaoPromobTeste.Promob{
                 }
             }
             catch (Exception exCheck) {
-                Logger.Log($"  [Aviso] Falha ao verificar popup de sucesso: {exCheck.Message}", LogLevel.Debug);
+                AppLogs.LogUpdaterFalhaVerificarPopupSucesso(exCheck.Message);
             }
 
             return (null, null);
         }
 
         //--------------------------------------------------------------------------------------
-            /// <summary>
-            /// Aguarda o popup de sucesso "PromobUpdate" aparecer no desktop (até 5 minutos)
-            /// e aciona o fechamento via <see cref="FinalizarEFecharPopupSucesso"/>.
-            /// </summary>
+        /// <summary>
+        /// Aguarda o popup de sucesso "PromobUpdate" aparecer no desktop (até 5 minutos)
+        /// e aciona o fechamento via <see cref="FinalizarEFecharPopupSucesso"/>.
+        /// </summary>
         //--------------------------------------------------------------------------------------
         private static void AguardarEFecharPopupSucesso(UIA3Automation automation){
-            Logger.Log("  [SUCESSO] Aguardando a conclusão da instalação e o surgimento do popup de sucesso (até 5 minutos)...");
+            AppLogs.LogUpdaterBaixandoAtualizacoes(); // Usa a mensagem de andamento
             
             AutomationElement? btnFecharSucesso = null;
             Window? janelaSucesso = null;
@@ -817,7 +804,7 @@ namespace AutomacaoPromobTeste.Promob{
                 }
 
                 if (((int)swSucesso.Elapsed.TotalSeconds) % 10 == 0) {
-                    Logger.Log($"  [SUCESSO] Instalando atualizações... (Tempo decorrido: {swSucesso.Elapsed.Minutes}m {swSucesso.Elapsed.Seconds}s)");
+                    AppLogs.LogUpdaterTempoInstalacao(swSucesso.Elapsed.Minutes, swSucesso.Elapsed.Seconds);
                 }
 
                 Thread.Sleep(2000);
@@ -831,16 +818,15 @@ namespace AutomacaoPromobTeste.Promob{
         }
 
         //--------------------------------------------------------------------------------------
-            /// <summary>
-            /// Executa a sequência de cliques e atalhos de teclado para focar e
-            /// acionar o botão "Fechar" da janela de sucesso "PromobUpdate".
-            /// </summary>
+        /// <summary>
+        /// Executa a sequência de cliques e atalhos de teclado para focar e
+        /// acionar o botão "Fechar" da janela de sucesso "PromobUpdate".
+        /// </summary>
         //--------------------------------------------------------------------------------------
         private static void FinalizarEFecharPopupSucesso(Window janelaSucesso, AutomationElement btnFecharSucesso) {
-            Logger.Log($"  [SUCESSO] Botão 'Fechar' de sucesso definido: Tipo={btnFecharSucesso.ControlType}, Nome='{btnFecharSucesso.Name}', Id='{btnFecharSucesso.Properties.AutomationId.ValueOrDefault}'");
+            AppLogs.LogUpdaterBtnFecharSucessoDefinido(btnFecharSucesso.ControlType.ToString(), btnFecharSucesso.Name);
             ClicarBotaoComEstrategias(janelaSucesso, btnFecharSucesso, "Fechar Sucesso");
-            Logger.Log("  [SUCESSO] Clique no botão 'Fechar' de sucesso concluído! A atualização foi finalizada com êxito!");
-            Logger.Log("══════════════════════════════════════════");
+            AppLogs.LogUpdaterConcluidaSucesso();
         }
 
     }

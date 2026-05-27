@@ -26,7 +26,7 @@ namespace AutomacaoPromobTeste.Utils{
                 acao(); 
             }
             finally { 
-                Logger.Log($"  [TEMPO] {nome}: {sw.ElapsedMilliseconds} ms", LogLevel.Debug); 
+                AppLogs.LogTempoOperacao(nome, sw.ElapsedMilliseconds); 
             }
         }
 
@@ -40,7 +40,7 @@ namespace AutomacaoPromobTeste.Utils{
         //--------------------------------------------------------------------------------------
         public static void ListarBotoesProject(Window janela, string automationIdHost){
             var processId = janela.Properties.ProcessId.ValueOrDefault;
-            Logger.Log($"[INFO] Analisando estrutura para Processo: {processId}");
+            AppLogs.LogAnalisandoEstruturaProcesso(processId);
 
             // Busca todas as janelas do Windows que pertencem especificamente a este ProcessID do Promob.
             // Popups ou assistentes nativos às vezes flutuam como janelas de topo órfãs no Desktop.
@@ -49,15 +49,15 @@ namespace AutomacaoPromobTeste.Utils{
                 .ToList();
 
             if (janelasDoProcesso.Count > 1){
-                Logger.Log($"[AVISO] Encontradas {janelasDoProcesso.Count} janelas para este processo:", LogLevel.Warn);
+                AppLogs.LogJanelasEncontradasProcesso(janelasDoProcesso.Count);
                 foreach (var j in janelasDoProcesso)
-                    Logger.Log($"  - Window: '{j.Name}' (ID: {j.Properties.AutomationId.ValueOrDefault})");
+                    AppLogs.LogDetalheJanelaProcesso(j.Name, j.Properties.AutomationId.ValueOrDefault);
             }
 
             // Tenta localizar o container WPF principal ("elementHost1")
             var host = janela.FindFirstDescendant(automationIdHost);
             if (host != null){
-                Logger.Log("[OK] 'elementHost1' encontrado! Escaneando conteúdo profundo...");
+                AppLogs.LogElementHostEncontrado();
                 
                 // Mágica do LINQ:
                 // 1. Filtra elementos válidos (que tenham Name ou AutomationId preenchido).
@@ -70,10 +70,10 @@ namespace AutomacaoPromobTeste.Utils{
                     .ToList();
 
                 foreach (var e in items)
-                    Logger.Log($"  -> Tipo: {e.ControlType}, Nome: '{e.Name}', Id: '{e.Properties.AutomationId.ValueOrDefault}'");
+                    AppLogs.LogDetalheElementoUI(e.ControlType.ToString(), e.Name, e.Properties.AutomationId.ValueOrDefault);
             }
             else{
-                Logger.Log("[AVISO] elementHost1 não encontrado. Escaneando janela toda...", LogLevel.Warn);
+                AppLogs.LogElementHostNaoEncontrado();
                 
                 // Fallback: Varre a janela inteira, agrupando duplicados para não poluir o console,
                 // e limita o relatório a no máximo 120 elementos para manter o log legível.
@@ -85,10 +85,10 @@ namespace AutomacaoPromobTeste.Utils{
                     .ToList();
 
                 foreach (var e in all)
-                    Logger.Log($"  -> Tipo: {e.ControlType}, Nome: '{e.Name}', Id: '{e.Properties.AutomationId.ValueOrDefault}'");
+                    AppLogs.LogDetalheElementoUI(e.ControlType.ToString(), e.Name, e.Properties.AutomationId.ValueOrDefault);
             }
 
-            Logger.Log("------------------------------------------");
+            AppLogs.LogDivisor();
         }
 
         

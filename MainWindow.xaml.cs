@@ -54,12 +54,9 @@ namespace AutomacaoPromobTeste{
             // Inscreve a interface no evento de logs (sempre, inclusive para mensagens locais do cliente)
             Logger.OnLog += LogToTerminal;
 
-            Logger.Log("══════════════════════════════════════════");
-            Logger.Log("║   Painel de Controle de Automação      ║");
-            Logger.Log("║   Pronto para iniciar o monitoramento. ║");
-            Logger.Log("══════════════════════════════════════════");
+            AppLogs.LogMainWindowPanelReady();
 
-            // Inicializa o modo de rede conforme selecionado na StartupWindow
+            // Initialize the networking mode according to selection in StartupWindow
             InitializeNetworking();
 
             // Timer de monitoramento do Promob — apenas em modo Local ou Servidor
@@ -143,7 +140,7 @@ namespace AutomacaoPromobTeste{
                 if (result == MessageBoxResult.Yes){
                     btnAbrirPromob.IsEnabled = false;
                     try{
-                        Logger.Log("[INFO] Fechando o Promob conforme solicitado pelo usuário...");
+                        AppLogs.LogMainWindowClosingPromobByUser();
 
                         var currentProcId = Process.GetCurrentProcess().Id;
                         var processos = Process.GetProcesses()
@@ -161,10 +158,10 @@ namespace AutomacaoPromobTeste{
                             catch { }
                         }
 
-                        Logger.Log("[OK] Processos do Promob encerrados com sucesso.");
+                        AppLogs.LogMainWindowProcessesClosedSuccess();
                     }
                     catch (Exception ex){
-                        Logger.Log($"[ERRO] Falha ao fechar o Promob: {ex.Message}", LogLevel.Error);
+                        AppLogs.LogMainWindowClosingPromobError(ex.Message);
                     }
                     finally{
                         bool promobAberto = IsPromobRunning();
@@ -185,7 +182,7 @@ namespace AutomacaoPromobTeste{
                                          !p.ProcessName.Contains("Automacao", StringComparison.OrdinalIgnoreCase));
 
                 if (promobProc != null){
-                    Logger.Log($"[INFO] Promob já está em execução (PID: {promobProc.Id}). Trazendo para a tela...");
+                    AppLogs.LogMainWindowPromobAlreadyRunning(promobProc.Id);
                     try{
                         using var automation = new UIA3Automation();
                         var janela = PromobWindowHelper.AguardarJanelaPromob(automation, 2000);
@@ -220,7 +217,7 @@ namespace AutomacaoPromobTeste{
                 }
 
                 if (!string.IsNullOrEmpty(caminhoExe) && File.Exists(caminhoExe)){
-                    Logger.Log($"[INFO] Iniciando Promob a partir de: {caminhoExe}");
+                    AppLogs.LogMainWindowStartingPromob(caminhoExe);
                     var info = new ProcessStartInfo{
                         FileName = caminhoExe,
                         WorkingDirectory = Path.GetDirectoryName(caminhoExe) ?? "",
@@ -231,11 +228,11 @@ namespace AutomacaoPromobTeste{
                     Process.Start(info);
                 }
                 else{
-                    Logger.Log("[AVISO] Operação cancelada ou executável do Promob não foi encontrado.", LogLevel.Warn);
+                    AppLogs.LogMainWindowPromobExeNotFound();
                 }
             }
             catch (Exception ex){
-                Logger.Log($"[ERRO] Não foi possível iniciar o Promob: {ex.Message}", LogLevel.Error);
+                AppLogs.LogMainWindowStartingPromobError(ex.Message);
             }
             finally{
                 bool promobAberto = IsPromobRunning();
@@ -260,7 +257,7 @@ namespace AutomacaoPromobTeste{
                     PromobUpdater.ExecutarAtualizacao(automation);
                 }
                 catch (Exception ex){
-                    Logger.Log($"[ERRO ATUALIZAÇÃO] Falha ao atualizar: {ex.Message}", LogLevel.Error);
+                    AppLogs.LogMainWindowUpdateError(ex.Message);
                 }
                 finally{
                     Dispatcher.Invoke(() => {
@@ -293,7 +290,7 @@ namespace AutomacaoPromobTeste{
             btnToggleAutomacao.Background = new SolidColorBrush(Color.FromRgb(239, 68, 68));
             btnAbrirPromob.IsEnabled = false;
 
-            Logger.Log("[INFO] Modo contínuo iniciado. Monitorando arquivos na pasta...");
+            AppLogs.LogMainWindowAutomationStarted();
 
             _automationTask = Task.Run(() => ExecutarLoopAutomacao(_cts.Token), _cts.Token);
 
@@ -305,7 +302,7 @@ namespace AutomacaoPromobTeste{
         private void StopMonitoring(){
             btnToggleAutomacao.IsEnabled = false;
             btnToggleAutomacao.Content = "Parando...";
-            Logger.Log("[INFO] Solicitando parada da automação... Por favor, aguarde a conclusão da etapa atual.");
+            AppLogs.LogMainWindowStoppingAutomationRequested();
             _cts?.Cancel();
             _ctsUpdateMonitor?.Cancel();
         }
@@ -314,7 +311,7 @@ namespace AutomacaoPromobTeste{
             VisionHelper.Inicializar();
 
             if (!Directory.Exists(PromobConfig.PastaPromob)){
-                Logger.Log($"[ERRO] Pasta do Promob na Área de Trabalho não encontrada: {PromobConfig.PastaPromob}", LogLevel.Error);
+                AppLogs.LogMainWindowDesktopFolderNotFound(PromobConfig.PastaPromob);
                 ResetUiStateOnStop();
                 return;
             }
@@ -342,7 +339,7 @@ namespace AutomacaoPromobTeste{
 
                 if (arquivos.Count == 0){
                     if (!loggedWaiting){
-                        Logger.Log($"[AGUARDANDO] Nenhum arquivo para processar. Aguardando novos arquivos...");
+                        AppLogs.LogMainWindowWaitingForFiles();
                         loggedWaiting = true;
                     }
 
@@ -358,21 +355,18 @@ namespace AutomacaoPromobTeste{
 
                     // Se há atualização em andamento, aguarda terminar antes de pegar o arquivo!
                     if (AutomacaoEstado.AtualizacaoEmAndamento) {
-                        Logger.Log("[AUTOMAÇÃO] Pausando automação de arquivos: Atualização do Promob em andamento...");
+                        AppLogs.LogMainWindowPausandoProcessamentoAtualizacao();
                         while (AutomacaoEstado.AtualizacaoEmAndamento && !token.IsCancellationRequested) {
                             Thread.Sleep(2000);
                         }
                         if (token.IsCancellationRequested)
                             break;
-                        Logger.Log("[AUTOMAÇÃO] Atualização concluída ou finalizada. Retomando processamento de arquivos.");
+                        AppLogs.LogMainWindowAtualizacaoFinalizadaRetomando();
                     }
 
                     var nome = Path.GetFileName(arquivo);
 
-                    Logger.Log("══════════════════════════════════════════");
-                    Logger.Log($"[NOVO] Iniciando processamento: {nome}");
-                    Logger.Log($"  Status: Processados: {_processadosCount} | Erros: {_errosCount}");
-                    Logger.Log("══════════════════════════════════════════");
+                    AppLogs.LogMainWindowStartingProcessingFile(nome);
 
                     try{
                         Thread.Sleep(500);
@@ -388,21 +382,20 @@ namespace AutomacaoPromobTeste{
                         _processadosCount++;
                         UpdateMetricsOnUi();
 
-                        Logger.Log($"[OK] {nome} processado com sucesso!");
+                        AppLogs.LogMainWindowProcessingSuccess(nome);
 
                         try{
                             File.Delete(arquivo);
-                            Logger.Log($"  [OK] Arquivo original '{nome}' excluído.");
                         }
                         catch (Exception exDel){
-                            Logger.Log($"  [AVISO] Não foi possível excluir '{nome}': {exDel.Message}", LogLevel.Warn);
+                            AppLogs.LogMainWindowDeleteFileWarning(nome, exDel.Message);
                         }
                     }
                     catch (PromobExportException exErp){
                         _errosCount++;
                         UpdateMetricsOnUi();
 
-                        Logger.Log($"[ERRO EXPORTAÇÃO] {nome}: {exErp.Message}", LogLevel.Error);
+                        AppLogs.LogMainWindowExportFailure(nome, exErp.Message);
                         Logger.RegistrarErro(nome, exErp);
 
                         // Notifica via Telegram
@@ -416,14 +409,13 @@ namespace AutomacaoPromobTeste{
                                 destino = Path.Combine(PromobConfig.PastaPromobErro, $"{semExtensao}_{DateTime.Now:yyyyMMdd_HHmmss}{extensao}");
                             }
                             File.Move(arquivo, destino);
-                            Logger.Log($"  [OK] Arquivo com erro movido para '{PromobConfig.PastaPromobErro}'.");
+                            AppLogs.LogMainWindowFileMovedToErrorFolder(Path.GetFileName(PromobConfig.PastaPromobErro));
                         }
                         catch (Exception exMove){
-                            Logger.Log($"  [AVISO] Não foi possível mover '{nome}' para 'promob erro': {exMove.Message}", LogLevel.Warn);
+                            AppLogs.LogMainWindowMoveToErrorFolderWarning(nome, exMove.Message);
                         }
                     }
                     catch (OperationCanceledException){
-                        Logger.Log($"[INFO] Processamento de '{nome}' cancelado manualmente pelo usuário.");
                         break;
                     }
                     catch (Exception ex){
@@ -433,14 +425,13 @@ namespace AutomacaoPromobTeste{
                             ex.InnerException is OperationCanceledException ||
                             (ex is AggregateException ae && ae.InnerExceptions.Any(e => e is OperationCanceledException))){
 
-                            Logger.Log($"[INFO] Processamento de '{nome}' cancelado manualmente pelo usuário.");
                             break;
                         }
 
                         _errosCount++;
                         UpdateMetricsOnUi();
 
-                        Logger.Log($"[ERRO] Falha no processamento de {nome}: {ex.Message}", LogLevel.Error);
+                        AppLogs.LogMainWindowProcessingError(nome, ex.Message);
                         Logger.RegistrarErro(nome, ex);
 
                         // Notifica via Telegram
@@ -451,7 +442,7 @@ namespace AutomacaoPromobTeste{
                         }
                         catch { }
 
-                        Logger.Log($"  [INFO] O arquivo '{nome}' permanecerá na pasta para reprocessamento.");
+                        AppLogs.LogMainWindowFileKeptForReprocessing(nome);
                     }
                 }
             }
@@ -461,15 +452,14 @@ namespace AutomacaoPromobTeste{
         }
 
         //--------------------------------------------------------------------------------------
-            /// <summary>
-            /// Thread em background que monitora continuamente o desktop em busca da janela
-            /// "Promob Update" aberta automaticamente pelo Promob.
-            /// Quando detectada, aguarda o momento seguro (sem arquivo em processamento ou após
-            /// o passo 9/9) e aciona a atualização.
-            /// </summary>
+        /// <summary>
+        /// Thread em background que monitora continuamente o desktop em busca da janela
+        /// "Promob Update" aberta automaticamente pelo Promob.
+        /// Quando detectada, aguarda o momento seguro (sem arquivo em processamento ou após
+        /// o passo 9/9) e aciona a atualização.
+        /// </summary>
         //--------------------------------------------------------------------------------------
         private void MonitorarJanelaUpdate(CancellationToken token){
-            Logger.Log("[UPDATE MONITOR] Monitor de atualização do Promob iniciado.");
 
             while (!token.IsCancellationRequested){
                 try{
@@ -493,7 +483,7 @@ namespace AutomacaoPromobTeste{
                     if (janelaUpdate == null)
                         continue;
 
-                    Logger.Log("[UPDATE MONITOR] ⚡ Janela 'Promob Update' detectada!");
+                    AppLogs.LogMainWindowUpdateWindowDetected();
 
                     // Ativa a trava de atualização para evitar que a automação principal inicie novos arquivos
                     AutomacaoEstado.AtualizacaoEmAndamento = true;
@@ -501,7 +491,7 @@ namespace AutomacaoPromobTeste{
                     try{
                         // Se há um arquivo em processamento, aguarda o projeto ser fechado (passo 9/9)
                         if (AutomacaoEstado.ArquivoEmProcessamento){
-                            Logger.Log("[UPDATE MONITOR] Arquivo em processamento. Aguardando conclusão do passo 9/9 (fechar projeto)...");
+                            AppLogs.LogMainWindowProjectInProgressAwaitingClose();
 
                             const int timeoutEsperaMs = 10 * 60 * 1000; // 10 minutos de timeout
                             var sw = System.Diagnostics.Stopwatch.StartNew();
@@ -512,14 +502,14 @@ namespace AutomacaoPromobTeste{
                             }
 
                             if (!AutomacaoEstado.FechouProjetoAtual){
-                                Logger.Log("[UPDATE MONITOR] Timeout aguardando fechamento do projeto. Atualização será tentada na próxima detecção.", LogLevel.Warn);
+                                AppLogs.LogMainWindowTimeoutAwaitingClose();
                                 continue;
                             }
 
-                            Logger.Log("[UPDATE MONITOR] Projeto fechado (9/9 concluído). Iniciando atualização agora.");
+                            AppLogs.LogMainWindowProjectFinishedStartingUpdateCheck();
                         }
                         else{
-                            Logger.Log("[UPDATE MONITOR] Nenhum arquivo em processamento. Iniciando atualização imediatamente.");
+                            AppLogs.LogMainWindowStartingUpdateCheckDirectly();
                         }
 
                         // Executa a atualização (o método re-localiza a janela internamente)
@@ -529,14 +519,11 @@ namespace AutomacaoPromobTeste{
                             sucesso = true;
                         }
                         catch (Exception exUpdate){
-                            Logger.Log($"[UPDATE MONITOR] Falha ao executar atualização: {exUpdate.Message}", LogLevel.Error);
+                            AppLogs.LogMainWindowUpdateExecutionError(exUpdate.Message);
                         }
 
                         if (sucesso){
-                            Logger.Log("[UPDATE MONITOR] Atualização concluída com sucesso! Retomando automação de arquivos.");
-                        }
-                        else{
-                            Logger.Log("[UPDATE MONITOR] Tentativa falhou. O monitor continuará ativo e tentará novamente na próxima verificação...", LogLevel.Warn);
+                            AppLogs.LogMainWindowUpdateSuccess();
                         }
                     }
                     finally{
@@ -548,11 +535,11 @@ namespace AutomacaoPromobTeste{
                     break;
                 }
                 catch (Exception ex){
-                    Logger.Log($"[UPDATE MONITOR] Erro no monitor: {ex.Message}", LogLevel.Debug);
+                    AppLogs.LogMainWindowUpdateMonitorError(ex.Message);
                 }
             }
 
-            Logger.Log("[UPDATE MONITOR] Monitor de atualização encerrado.");
+            AppLogs.LogMainWindowUpdateMonitorFinished();
         }
 
         private void UpdateMetricsOnUi(){
@@ -586,7 +573,7 @@ namespace AutomacaoPromobTeste{
                 AtualizarEstadoBotaoPromob(promobRunning);
                 btnAtualizarPromob.IsEnabled = promobRunning;
 
-                Logger.Log("[INFO] Monitoramento parado. Automação inativa.");
+                AppLogs.LogMainWindowAutomationStopped();
             });
         }
 
@@ -754,7 +741,7 @@ namespace AutomacaoPromobTeste{
             };
             _metricsTimer.Start();
 
-            Logger.Log($"[REDE] Modo Servidor ativo. Porta: {AppMode.Port}. Aguardando clientes...");
+            AppLogs.LogMainWindowServerActive(AppMode.Port);
             UpdateNetworkStatus();
         }
 
@@ -767,7 +754,7 @@ namespace AutomacaoPromobTeste{
             btnToggleAutomacao.IsEnabled = false;
             btnAbrirPromob.IsEnabled     = false;
 
-            Logger.Log($"[REDE] Modo Cliente. Conectando ao servidor {AppMode.ServerHost}:{AppMode.Port}...");
+            AppLogs.LogMainWindowClientConnecting(AppMode.ServerHost, AppMode.Port);
             UpdateNetworkStatus("Conectando...", false);
 
             _ = ConnectClientAsync();
@@ -778,12 +765,12 @@ namespace AutomacaoPromobTeste{
 
             Dispatcher.Invoke(() => {
                 if (success){
-                    Logger.Log("[REDE] Conectado ao servidor com sucesso!");
+                    AppLogs.LogMainWindowClientConnected();
                     UpdateNetworkStatus("Cliente Conectado", true);
                     btnToggleAutomacao.IsEnabled = true;
                     btnAbrirPromob.IsEnabled     = true;
                 } else{
-                    Logger.Log($"[REDE] Falha ao conectar em {AppMode.ServerHost}:{AppMode.Port}. Verifique se o Servidor está rodando.", LogLevel.Error);
+                    AppLogs.LogMainWindowClientConnectionFailed(AppMode.ServerHost, AppMode.Port);
                     UpdateNetworkStatus("Falha na Conexão", false);
                 }
             });
@@ -795,11 +782,9 @@ namespace AutomacaoPromobTeste{
                     case "START_AUTOMATION":
                         if (!_isMonitoring) StartMonitoring();
                         break;
-
                     case "STOP_AUTOMATION":
                         if (_isMonitoring) StopMonitoring();
                         break;
-
                     case "OPEN_PROMOB":
                         var exe = DetectarPromobExe();
                         if (!string.IsNullOrEmpty(exe) && File.Exists(exe)){
@@ -812,20 +797,18 @@ namespace AutomacaoPromobTeste{
                                 };
                                 info.EnvironmentVariables["__COMPAT_LAYER"] = "RunAsInvoker";
                                 Process.Start(info);
-                                Logger.Log("[INFO] Promob iniciado remotamente pelo operador.");
+                                AppLogs.LogMainWindowRemotePromobStarted();
                             }
                             catch (Exception ex){
-                                Logger.Log($"[ERRO] Falha ao iniciar Promob remotamente: {ex.Message}", LogLevel.Error);
+                                AppLogs.LogMainWindowRemoteStartError(ex.Message);
                             }
                         } else{
-                            Logger.Log("[AVISO] Executável do Promob não encontrado. Configure o caminho primeiro.", LogLevel.Warn);
+                            AppLogs.LogMainWindowRemoteStartExeNotFound();
                         }
                         break;
-
                     case "CLOSE_PROMOB":
                         ForceClosePromob();
                         break;
-
                     case "UPDATE_PROMOB":
                         if (!_isMonitoring){
                             BtnAtualizarPromob_Click(this, new RoutedEventArgs());
@@ -838,7 +821,6 @@ namespace AutomacaoPromobTeste{
         private void HandleClientMessage(WsMessage msg){
             Dispatcher.Invoke(() => {
                 switch (msg.Type){
-
                     case MessageType.Log:
                         var level = msg.Level switch{
                             "Error" => LogLevel.Error,
@@ -896,7 +878,7 @@ namespace AutomacaoPromobTeste{
 
         private void HandleClientDisconnected(){
             Dispatcher.Invoke(() => {
-                Logger.Log("[REDE] Conexão com o servidor foi perdida.", LogLevel.Error);
+                AppLogs.LogMainWindowServerConnectionLost();
                 UpdateNetworkStatus("Desconectado do Servidor", false);
                 _isMonitoring = false;
                 btnToggleAutomacao.IsEnabled = false;
@@ -972,10 +954,10 @@ namespace AutomacaoPromobTeste{
                     try { p.Kill(); p.WaitForExit(1000); } catch { }
                 }
 
-                Logger.Log("[OK] Promob encerrado remotamente pelo operador.");
+                AppLogs.LogMainWindowRemotePromobClosed();
             }
             catch (Exception ex){
-                Logger.Log($"[ERRO] Falha ao encerrar o Promob remotamente: {ex.Message}", LogLevel.Error);
+                AppLogs.LogMainWindowRemoteCloseError(ex.Message);
             }
         }
 

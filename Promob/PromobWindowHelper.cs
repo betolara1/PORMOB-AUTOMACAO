@@ -77,8 +77,8 @@ namespace AutomacaoPromobTeste.Promob{
                 return false;
             }, timeoutMs);
 
-            if (encontrada != null)
-                Logger.Log($"  [OK] Janela encontrada (PID: {CachedProcessIdPromob}): '{encontrada.Name}'");
+            //if (encontrada != null)
+                //Logger.Log($"Janela encontrada (PID: {CachedProcessIdPromob}): '{encontrada.Name}'", LogLevel.Debug);
 
             return encontrada;
         }
@@ -131,12 +131,12 @@ namespace AutomacaoPromobTeste.Promob{
                     (!CachedProcessIdPromob.HasValue || j.Properties.ProcessId.ValueOrDefault == CachedProcessIdPromob.Value));
 
                 if (wizard != null){
-                    Logger.Log($"    [OK] Janela Wizard localizada no Desktop ({wizard.Name}).");
+                    AppLogs.LogWizardEncontradoDesktop(wizard.Name);
                     return wizard.AsWindow();
                 }
             }
             catch (Exception ex){
-                Logger.Log($"    [DEBUG] Erro ao buscar wizard no Desktop: {ex.Message}", LogLevel.Debug);
+                AppLogs.LogWizardSearchDesktopError(ex.Message);
             }
 
             // Tentativa 2: Busca rasa (até nível 2) apenas dentro da janela principal se não foi achado no desktop.
@@ -148,12 +148,12 @@ namespace AutomacaoPromobTeste.Promob{
                     (e.Properties.Name.ValueOrDefault ?? "").Equals(PromobConfig.NomeJanelaWizardImportacao, StringComparison.OrdinalIgnoreCase));
 
                 if (wizardDesc != null){
-                    Logger.Log($"    [OK] Janela Wizard localizada sob a Janela Principal ({wizardDesc.Name}).");
+                    AppLogs.LogWizardEncontradoJanelaPrincipal(wizardDesc.Name);
                     return wizardDesc.AsWindow();
                 }
             }
             catch (Exception ex){
-                Logger.Log($"    [DEBUG] Erro ao buscar wizard na janela principal: {ex.Message}", LogLevel.Debug);
+                AppLogs.LogWizardSearchMainWindowError(ex.Message);
             }
 
             return null;

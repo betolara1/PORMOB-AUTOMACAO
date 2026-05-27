@@ -14,28 +14,28 @@ using FlaUI.UIA3;
 
 namespace AutomacaoPromobTeste.Promob{
     //--------------------------------------------------------------------------------------
-        /// <summary>
-        /// Componente responsável por gerenciar a etapa de importação de arquivos no Promob,
-        /// cobrindo o acionamento do botão Importar, o preenchimento do FileDialog e o avanço no Wizard.
-        /// </summary>
+    /// <summary>
+    /// Componente responsável por gerenciar a etapa de importação de arquivos no Promob,
+    /// cobrindo o acionamento do botão Importar, o preenchimento do FileDialog e o avanço no Wizard.
+    /// </summary>
     //--------------------------------------------------------------------------------------
     public static class PromobImportador{
 
         //--------------------------------------------------------------------------------------
-            /// <summary>
-            /// Realiza a busca ativa e clica no botão "Importar Projeto" na tela de início do Promob.
-            /// </summary>
-            /// <param name="janelaPromob">A janela principal ativa do Promob.</param>
+        /// <summary>
+        /// Realiza a busca ativa e clica no botão "Importar Projeto" na tela de início do Promob.
+        /// </summary>
+        /// <param name="janelaPromob">A janela principal ativa do Promob.</param>
         //--------------------------------------------------------------------------------------
         public static void ClicarBotaoImportar(Window janelaPromob){
             int tentativas = 1;
             while (true){
                 try{
                     var swTotal = Stopwatch.StartNew();
-                    Logger.Log($"  [INFO] Procurando botão 'Importar' (Tentativa {tentativas})...");
+                    AppLogs.LogImportadorProcurandoBotao(tentativas);
 
                     var swBusca = Stopwatch.StartNew();
-                    Logger.Log("    [SEARCH] Iniciando busca persistente do botão 'Importar Projeto'...");
+                    AppLogs.LogImportadorIniciandoBusca();
 
                     var buscaEm = WindowFinder.ObterHostOuJanela(janelaPromob, PromobConfig.AutomationIdHost, PromobWindowHelper.CachedProcessIdPromob);
 
@@ -49,29 +49,29 @@ namespace AutomacaoPromobTeste.Promob{
                     );
                     swBusca.Stop();
 
-                    if (btnFound != null) Logger.Log($"    [OK] Botão localizado em {swBusca.ElapsedMilliseconds}ms.");
-                    else Logger.Log($"    [AVISO] Botão não encontrado após {swBusca.ElapsedMilliseconds}ms.");
+                    if (btnFound != null) AppLogs.LogImportadorBotaoLocalizado(swBusca.ElapsedMilliseconds);
+                    else AppLogs.LogImportadorBotaoNaoEncontrado(swBusca.ElapsedMilliseconds);
 
                     if (btnFound != null){
                         InteractionHelper.AtivarJanela(janelaPromob);
 
-                        Logger.Log("    [INFO] Botão 'Importar' encontrado. Aguardando 2 segundos para estabilização antes de clicar...");
+                        AppLogs.LogImportadorAguardandoEstabilizacao();
                         Thread.Sleep(2000);
 
-                        Logger.Log("    [ACTION] Clicando no botão 'Importar'...");
+                        AppLogs.LogImportadorClicandoBotao();
                         InteractionHelper.ClicarComFallback(btnFound);
 
                         swTotal.Stop();
-                        Logger.Log($"  [SUCESSO] Clique executado com sucesso (Tempo total: {swTotal.ElapsedMilliseconds}ms).");
+                        AppLogs.LogImportadorCliqueSucesso(swTotal.ElapsedMilliseconds);
                         break;
                     }
                     else{
                         swTotal.Stop();
-                        Logger.Log($"  [AVISO] Tentativa {tentativas} falhou ({swTotal.ElapsedMilliseconds}ms). Aguardando 5s...", LogLevel.Warn);
+                        AppLogs.LogImportadorTentativaFalhou(tentativas, swTotal.ElapsedMilliseconds);
                     }
                 }
                 catch (Exception ex){
-                    Logger.Log($"  [AVISO] Erro na busca do botão 'Importar' na tentativa {tentativas}: {ex.Message}. Aguardando 5s...", LogLevel.Warn);
+                    AppLogs.LogImportadorErroBusca(tentativas, ex.Message);
                     WindowFinder.CachedHost = null;
                 }
 
@@ -81,18 +81,18 @@ namespace AutomacaoPromobTeste.Promob{
         }
 
         //--------------------------------------------------------------------------------------
-            /// <summary>
-            /// Verifica se a janela do Wizard de importação que está aberta é a correta,
-            /// ou seja, se contém o botão "..." (Browse/Caminho) que permite selecionar o arquivo .promob.
-            /// O Promob pode abrir um wizard errado (importação por sistema cloud/ERP) sem esse botão.
-            /// </summary>
-            /// <param name="janelaWizard">A janela de wizard aberta a ser inspecionada.</param>
-            /// <returns>true se o botão "..." foi encontrado (wizard correto); false caso contrário (wizard errado).</returns>
+        /// <summary>
+        /// Verifica se the janela do Wizard de importação que está aberta é a correta,
+        /// ou seja, se contém o botão "..." (Browse/Caminho) que permite selecionar o arquivo .promob.
+        /// O Promob pode abrir um wizard errado (importação por sistema cloud/ERP) sem esse botão.
+        /// </summary>
+        /// <param name="janelaWizard">A janela de wizard aberta a ser inspecionada.</param>
+        /// <returns>true se o botão "..." foi encontrado (wizard correto); false caso contrário (wizard errado).</returns>
         //--------------------------------------------------------------------------------------
         public static bool VerificarBotaoBrowseNoWizard(Window janelaWizard){
             try{
                 var swVerificacao = Stopwatch.StartNew();
-                Logger.Log("  [INFO] Analisando estrutura visual do wizard de importação...");
+                AppLogs.LogImportadorAnalisandoEstruturaWizard();
 
                 // Obtém os elementos dos primeiros 4 níveis do wizard (que cobrem todos os botões e campos estruturais WPF do Promob)
                 var elementos = WindowFinder.BuscarAteNivel(janelaWizard, maxNivel: 4).ToList();
@@ -108,28 +108,28 @@ namespace AutomacaoPromobTeste.Promob{
                 swVerificacao.Stop();
 
                 if (btnBrowse != null){
-                    Logger.Log($"  [OK] Wizard correto detectado em {swVerificacao.ElapsedMilliseconds}ms: botão '{btnBrowse.Name}' (ID: '{btnBrowse.Properties.AutomationId.ValueOrDefault}') encontrado.");
+                    AppLogs.LogImportadorWizardCorreto(swVerificacao.ElapsedMilliseconds, btnBrowse.Name, btnBrowse.Properties.AutomationId.ValueOrDefault);
                     return true;
                 }
 
-                Logger.Log($"  [AVISO] Wizard INCORRETO detectado em {swVerificacao.ElapsedMilliseconds}ms: botão '...' não encontrado. Iniciando sequência de recomeço.", LogLevel.Warn);
+                AppLogs.LogImportadorWizardIncorreto(swVerificacao.ElapsedMilliseconds);
                 return false;
             }
             catch (Exception ex){
-                Logger.Log($"  [AVISO] Erro ao verificar wizard: {ex.Message}. Assumindo wizard incorreto.", LogLevel.Warn);
+                AppLogs.LogImportadorErroVerificacaoWizard(ex.Message);
                 return false;
             }
         }
 
         //--------------------------------------------------------------------------------------
-            /// <summary>
-            /// Fecha o wizard de importação que está aberto (quando é o wizard errado/incorreto),
-            /// clicando em 'Cancelar' ou no botão 'X' da janela, para retornar à tela inicial do Promob.
-            /// </summary>
-            /// <param name="janelaWizard">A janela do wizard a ser fechada.</param>
+        /// <summary>
+        /// Fecha o wizard de importação que está aberto (quando é o wizard errado/incorreto),
+        /// clicando em 'Cancelar' ou no botão 'X' da janela, para retornar à tela inicial do Promob.
+        /// </summary>
+        /// <param name="janelaWizard">A janela do wizard a ser fechada.</param>
         //--------------------------------------------------------------------------------------
         public static void FecharWizardAtual(Window janelaWizard){
-            Logger.Log("  [INFO] Fechando wizard incorreto para tentar novamente...");
+            AppLogs.LogImportadorFechandoWizardIncorreto();
             try{
                 InteractionHelper.AtivarJanela(janelaWizard);
 
@@ -141,21 +141,21 @@ namespace AutomacaoPromobTeste.Promob{
                      (e.Properties.AutomationId.ValueOrDefault ?? "").Contains("Cancel", StringComparison.OrdinalIgnoreCase)));
 
                 if (btnCancelar != null){
-                    Logger.Log("    [ACTION] Clicando em 'Cancelar' para fechar o wizard...");
+                    AppLogs.LogImportadorClicandoCancelarWizard();
                     InteractionHelper.ClicarComFallback(btnCancelar);
                     InteractionHelper.EsperarUiRespirar(800);
-                    Logger.Log("    [OK] Wizard fechado via 'Cancelar'.");
+                    AppLogs.LogImportadorWizardFechadoCancelar();
                     return;
                 }
 
                 // Fallback: pressiona ESC para fechar o wizard
-                Logger.Log("    [AVISO] Botão 'Cancelar' não encontrado superficialmente. Usando ESC...", LogLevel.Warn);
+                AppLogs.LogImportadorBotaoCancelarNaoEncontrado();
                 Keyboard.Type(VirtualKeyShort.ESCAPE);
                 InteractionHelper.EsperarUiRespirar(800);
-                Logger.Log("    [OK] Wizard fechado via ESC.");
+                AppLogs.LogImportadorWizardFechadoEsc();
             }
             catch (Exception ex){
-                Logger.Log($"    [AVISO] Erro ao fechar wizard: {ex.Message}. Tentando ESC como último recurso...", LogLevel.Warn);
+                AppLogs.LogImportadorErroFecharWizard(ex.Message);
                 try{
                     Keyboard.Type(VirtualKeyShort.ESCAPE);
                     InteractionHelper.EsperarUiRespirar(800);
@@ -166,13 +166,13 @@ namespace AutomacaoPromobTeste.Promob{
 
 
         //--------------------------------------------------------------------------------------
-            /// <summary>
-            /// Abre o diálogo nativo do Windows para seleção de arquivos clicando no botão "Procurar" no Wizard
-            /// e preenche com o caminho absoluto do arquivo a ser importado.
-            /// </summary>
-            /// <param name="automation">A instância ativa do motor de automação UIA3.</param>
-            /// <param name="janelaPromob">A janela de Wizard ou janela principal ativa do Promob.</param>
-            /// <param name="caminhoArquivo">O caminho absoluto do arquivo C# do projeto a ser selecionado.</param>
+        /// <summary>
+        /// Abre o diálogo nativo do Windows para seleção de arquivos clicando no botão "Procurar" no Wizard
+        /// e preenche com o caminho absoluto do arquivo a ser importado.
+        /// </summary>
+        /// <param name="automation">A instância ativa do motor de automação UIA3.</param>
+        /// <param name="janelaPromob">A janela de Wizard ou janela principal ativa do Promob.</param>
+        /// <param name="caminhoArquivo">O caminho absoluto do arquivo C# do projeto a ser selecionado.</param>
         //--------------------------------------------------------------------------------------
         public static void AbrirDialogoEPreencher(UIA3Automation automation, Window janelaPromob, string caminhoArquivo){
             InteractionHelper.AtivarJanela(janelaPromob);
@@ -193,11 +193,11 @@ namespace AutomacaoPromobTeste.Promob{
             }
 
             if (btnBrowse != null){
-                Logger.Log($"  [OK] Botão de busca encontrado: {btnBrowse.Name}");
+                AppLogs.LogImportadorBotaoBuscaEncontrado(btnBrowse.Name);
                 InteractionHelper.ClicarComFallback(btnBrowse);
             }
             else{
-                Logger.Log("  [AVISO] Botão de busca não encontrado. Usando TAB + SPACE...", LogLevel.Warn);
+                AppLogs.LogImportadorBotaoBuscaNaoEncontrado();
                 InteractionHelper.AtivarJanela(janelaPromob);
                 Keyboard.Press(VirtualKeyShort.TAB);
                 InteractionHelper.EsperarUiRespirar();
@@ -216,21 +216,21 @@ namespace AutomacaoPromobTeste.Promob{
         }
 
         //--------------------------------------------------------------------------------------
-            /// <summary>
-            /// Insere o caminho do arquivo no campo de texto de seleção de arquivo do Windows FileDialog
-            /// e confirma a seleção de forma robusta e resiliente (tentando SetValue, Clipboard e Teclado).
-            /// </summary>
-            /// <param name="automation">A instância ativa do motor de automação UIA3.</param>
-            /// <param name="caminhoCompleto">O caminho completo do arquivo a ser importado.</param>
-            /// <param name="dialogo">A janela do FileDialog nativo do Windows aberta.</param>
+        /// <summary>
+        /// Insere o caminho do arquivo no campo de texto de seleção de arquivo do Windows FileDialog
+        /// e confirma a seleção de forma robusta e resiliente (tentando SetValue, Clipboard e Teclado).
+        /// </summary>
+        /// <param name="automation">A instância ativa do motor de automação UIA3.</param>
+        /// <param name="caminhoCompleto">O caminho completo do arquivo a ser importado.</param>
+        /// <param name="dialogo">A janela do FileDialog nativo do Windows aberta.</param>
         //--------------------------------------------------------------------------------------
         public static void PreencherDialogoNativo(UIA3Automation automation, string caminhoCompleto, Window dialogo){
-            Logger.Log($"  [OK] Diálogo encontrado: {dialogo.Name}");
+            AppLogs.LogImportadorDialogoEncontrado(dialogo.Name);
             InteractionHelper.AtivarJanela(dialogo);
 
             // LOGICA ALTERADA: Usamos o caminho completo (Path) para garantir que o Windows encontre o arquivo, 
             // mesmo se o diálogo abrir na pasta errada.
-            Logger.Log($"  [INFO] Preenchendo caminho completo via UIA: {caminhoCompleto}");
+            AppLogs.LogImportadorPreenchendoCaminhoUia(caminhoCompleto);
 
             bool preenchidoViaUia = false;
             AutomationElement? campoNome =
@@ -249,18 +249,18 @@ namespace AutomacaoPromobTeste.Promob{
             }
 
             if (campoNome != null){
-                Logger.Log($"  [INFO] Campo 'Nome' encontrado (Id: {campoNome.AutomationId}, Tipo: {campoNome.ControlType}).");
+                AppLogs.LogImportadorCampoNomeEncontrado(campoNome.AutomationId, campoNome.ControlType);
 
                 var editInterno = campoNome.FindFirstDescendant(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Edit));
                 var alvo = editInterno ?? campoNome;
-                if (editInterno != null) Logger.Log("  [INFO] Usando elemento 'Edit' interno do ComboBox para SetValue.");
+                if (editInterno != null) AppLogs.LogImportadorUsandoEditInterno();
 
                 if (InteractionHelper.TentarDefinirValor(alvo, caminhoCompleto)){
                     preenchidoViaUia = true;
-                    Logger.Log("  [OK] Valor definido via UIA (SetValue).");
+                    AppLogs.LogImportadorValorDefinidoUia();
                 }
                 else{
-                    Logger.Log("  [INFO] SetValue falhou. Tentando foco + seleção + digitação...");
+                    AppLogs.LogImportadorSetValueFalhou();
                     try{
                         InteractionHelper.AtivarJanela(dialogo);
                         campoNome.Focus();
@@ -271,7 +271,7 @@ namespace AutomacaoPromobTeste.Promob{
                         InteractionHelper.AtivarJanela(dialogo);
                         Keyboard.Type(caminhoCompleto);
                         
-                        Logger.Log("  [INFO] Aguardando campo refletir a digitação...");
+                        AppLogs.LogImportadorAguardandoDigitacao();
                         InteractionHelper.EsperarAte(() => {
                             try{
                                 string? txt = campoNome.Patterns.Value.IsSupported ? campoNome.Patterns.Value.Pattern.Value.ValueOrDefault : campoNome.AsTextBox().Text;
@@ -285,16 +285,16 @@ namespace AutomacaoPromobTeste.Promob{
                         preenchidoViaUia = true;
                     }
                     catch (Exception ex){
-                        Logger.Log($"  [AVISO] Fallback de teclado falhou: {ex.Message}", LogLevel.Warn);
+                        AppLogs.LogImportadorFallbackTecladoFalhou(ex.Message);
                     }
                 }
             }
             else{
-                Logger.Log("  [AVISO] Campo 'Nome' não encontrado via UIA.", LogLevel.Warn);
+                AppLogs.LogImportadorCampoNomeNaoEncontrado();
             }
 
             if (!preenchidoViaUia){
-                Logger.Log("  [AVISO] Usando clipboard como último recurso...", LogLevel.Warn);
+                AppLogs.LogImportadorUsandoClipboardFallback();
                 InteractionHelper.AtivarJanela(dialogo);
 
                 // Preserva o estado atual do clipboard do usuário
@@ -305,7 +305,7 @@ namespace AutomacaoPromobTeste.Promob{
                 InteractionHelper.AtivarJanela(dialogo);
                 Keyboard.TypeSimultaneously(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_V);
                 
-                Logger.Log("  [INFO] Aguardando o Ctrl+V surtir efeito...");
+                AppLogs.LogImportadorAguardandoCtrlV();
                 InteractionHelper.EsperarAte(() => {
                     try{
                         var edit = dialogo.FindFirstDescendant(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Edit));
@@ -317,7 +317,7 @@ namespace AutomacaoPromobTeste.Promob{
                 // Restaura o conteúdo original imediatamente após o uso
                 if (conteudoAnterior != null){
                     NativeClipboard.CopiarParaClipboardNativo(conteudoAnterior);
-                    Logger.Log("  [OK] Clipboard do usuário restaurado.");
+                    AppLogs.LogImportadorClipboardRestaurado();
                 }
 
                 InteractionHelper.AtivarJanela(dialogo);
@@ -335,15 +335,15 @@ namespace AutomacaoPromobTeste.Promob{
             bool fechou = false;
             for (int tentativa = 1; tentativa <= 3; tentativa++){
                 if (btnAbrir != null) {
-                    Logger.Log($"  [INFO] Tentativa {tentativa} de clicar no botão 'Abrir'...");
+                    AppLogs.LogImportadorTentativaCliqueAbrir(tentativa);
                     InteractionHelper.ClicarComFallback(btnAbrir); // Usa Invoke Pattern preferencialmente
                 } else {
-                    Logger.Log($"  [INFO] Tentativa {tentativa} de confirmar diálogo (ENTER)...");
+                    AppLogs.LogImportadorTentativaConfirmarEnter(tentativa);
                     InteractionHelper.AtivarJanela(dialogo);
                     Keyboard.Type(VirtualKeyShort.RETURN);
                 }
 
-                Logger.Log("  [INFO] Aguardando fechamento do diálogo...");
+                AppLogs.LogImportadorAguardandoFechamentoDialogo();
                 var swAguardar = System.Diagnostics.Stopwatch.StartNew();
                 bool popupInterceptado = false;
                 
@@ -358,7 +358,7 @@ namespace AutomacaoPromobTeste.Promob{
                         var popup = PromobWindowHelper.EncontrarPopupAtencao(desktop, PromobWindowHelper.CachedProcessIdPromob);
                         
                         if (popup != null && popup.Name != dialogo.Name) {
-                            Logger.Log($"  [AVISO] Notificação do Promob roubou o foco do clique: '{popup.Name}'. Fechando...");
+                            AppLogs.LogImportadorNotificacaoRoubouFoco(popup.Name);
                             PromobCarregadorProjeto.TratarPopupGenerico(popup);
                             InteractionHelper.AtivarJanela(dialogo);
                             popupInterceptado = true;
@@ -374,12 +374,12 @@ namespace AutomacaoPromobTeste.Promob{
                 if (fechou) break;
 
                 if (!popupInterceptado) {
-                    Logger.Log($"  [AVISO] Diálogo não fechou após 4s. O clique pode ter sido ignorado.", LogLevel.Warn);
+                    AppLogs.LogImportadorDialogoNaoFechouAviso();
                 }
             }
 
             if (fechou) {
-                Logger.Log("  [OK] Diálogo de arquivo fechado e projeto selecionado com sucesso.");
+                AppLogs.LogImportadorDialogoFechadoSucesso();
             } else {
                 throw new Exception("Falha Crítica: O Diálogo nativo de abrir arquivo não fechou, impedindo o carregamento ao Wizard.");
             }
@@ -388,15 +388,15 @@ namespace AutomacaoPromobTeste.Promob{
         }
 
         //--------------------------------------------------------------------------------------
-            /// <summary>
-            /// Verifica e valida se o campo obrigatório de "Caminho do arquivo" foi devidamente 
-            /// preenchido pelo robô no assistente de importação antes de disparar o clique de avançar.
-            /// </summary>
-            /// <param name="janelaWizard">A janela ativa do assistente (Wizard) de Importação.</param>
-            /// <returns><c>true</c> se a validação passar ou se o campo não puder ser verificado; caso contrário, <c>false</c>.</returns>
+        /// <summary>
+        /// Verifica e valida se o campo obrigatório de "Caminho do arquivo" foi devidamente 
+        /// preenchido pelo robô no assistente de importação antes de disparar o clique de avançar.
+        /// </summary>
+        /// <param name="janelaWizard">A janela ativa do assistente (Wizard) de Importação.</param>
+        /// <returns><c>true</c> se a validação passar ou se o campo não puder ser verificado; caso contrário, <c>false</c>.</returns>
         //--------------------------------------------------------------------------------------
         public static bool ValidarCamposWizard(Window janelaWizard){
-            Logger.Log("  [INFO] Validando preenchimento dos campos obrigatórios no Wizard...");
+            AppLogs.LogImportadorValidandoCamposWizard();
             
             // Pequena espera para dar tempo da UI atualizar após o fechamento do diálogo
             InteractionHelper.EsperarUiRespirar(800);
@@ -417,24 +417,24 @@ namespace AutomacaoPromobTeste.Promob{
             if (campoCaminho != null){
                 var valor = campoCaminho.AsTextBox().Text;
                 if (string.IsNullOrWhiteSpace(valor)){
-                    Logger.Log("  [ERRO] O campo 'Caminho' está vazio no Wizard.", LogLevel.Error);
+                    AppLogs.LogImportadorCampoCaminhoVazio();
                     return false;
                 }
-                Logger.Log($"  [OK] Campo 'Caminho' preenchido: {valor}");
+                AppLogs.LogImportadorCampoCaminhoPreenchido(valor);
                 return true;
             }
 
-            Logger.Log("  [AVISO] Não foi possível encontrar o campo 'Caminho' para validação. Prosseguindo no escuro...", LogLevel.Warn);
+            AppLogs.LogImportadorCampoCaminhoNaoEncontradoVerificacao();
             return true; // Retorna true para não travar se não achar o elemento, mas loga o aviso
         }
 
         //--------------------------------------------------------------------------------------
-            /// <summary>
-            /// Localiza e clica no botão "Avançar" do Wizard de importação, gerenciando ativamente possíveis
-            /// diálogos de cancelamento, avisos de validação de formulário ou erros emitidos pelo Promob.
-            /// </summary>
-            /// <param name="automation">A instância ativa do motor de automação UIA3.</param>
-            /// <param name="janelaWizard">A janela do assistente (Wizard) ativa.</param>
+        /// <summary>
+        /// Localiza e clica no botão "Avançar" do Wizard de importação, gerenciando ativamente possíveis
+        /// diálogos de cancelamento, avisos de validação de formulário ou erros emitidos pelo Promob.
+        /// </summary>
+        /// <param name="automation">A instância ativa do motor de automação UIA3.</param>
+        /// <param name="janelaWizard">A janela do assistente (Wizard) ativa.</param>
         //--------------------------------------------------------------------------------------
         public static void ClicarAvancarWizard(UIA3Automation automation, Window janelaWizard){
             InteractionHelper.AtivarJanela(janelaWizard);
@@ -442,28 +442,28 @@ namespace AutomacaoPromobTeste.Promob{
             for (int tentativa = 1; tentativa <= 3; tentativa++){
                 // Validação antes de avançar
                 if (tentativa == 1 && !ValidarCamposWizard(janelaWizard)){
-                    Logger.Log("  [AVISO] Campos obrigatórios parecem estar vazios. Tentando avançar mesmo assim para ver o erro do Promob...");
+                    AppLogs.LogImportadorCamposVaziosAvançarAviso();
                 }
 
-                Logger.Log($"  [INFO] Procurando botão 'Avançar' (Tentativa {tentativa}/3)...");
+                AppLogs.LogImportadorProcurandoAvancar(tentativa);
                 var btnAvancar = janelaWizard.FindFirstDescendant(cf =>
                     cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button)
                       .And(cf.ByName(PromobConfig.BtnAvancar).Or(cf.ByName(PromobConfig.BtnAvancarAlt)).Or(cf.ByName(PromobConfig.BtnNext))));
 
                 if (btnAvancar != null){
                     if (!btnAvancar.IsEnabled){
-                        Logger.Log("  [ERRO] O botão 'Avançar' está desabilitado. Provavelmente faltam campos obrigatórios.", LogLevel.Error);
+                        AppLogs.LogImportadorBotaoAvancarDesabilitado();
                     }
                     InteractionHelper.ClicarComFallback(btnAvancar);
-                    Logger.Log("  [OK] Botão 'Avançar' clicado.");
+                    AppLogs.LogImportadorBotaoAvancarClicado();
                 }
                 else{
-                    Logger.Log("  [AVISO] Botão 'Avançar' não encontrado. Tentando ENTER...", LogLevel.Warn);
+                    AppLogs.LogImportadorBotaoAvancarNaoEncontrado();
                     InteractionHelper.AtivarJanela(janelaWizard);
                     Keyboard.Type(VirtualKeyShort.RETURN);
                 }
 
-                Logger.Log("  [INFO] Analisando comportamento do Wizard após o clique...");
+                AppLogs.LogImportadorAnalisandoWizardAposClique();
                 bool precisouTentarDenovo = false;
 
                 // Pequena pausa para garantir que o Promob processe a validação do formulário
@@ -486,7 +486,7 @@ namespace AutomacaoPromobTeste.Promob{
                         var texto = textElement?.Properties.Name.ValueOrDefault ?? "";
                         
                         if (texto.Contains(PromobConfig.MsgConfirmarCancelamento, StringComparison.OrdinalIgnoreCase)){
-                            Logger.Log($"  [AVISO] Popup de cancelamento interceptado: '{texto}'. Clicando em '{PromobConfig.BtnNao}'...");
+                            AppLogs.LogImportadorPopupCancelamentoInterceptado(texto, PromobConfig.BtnNao);
                             
                             var btnNao = popup.FindFirstDescendant(cf => 
                                 cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button).And(cf.ByName(PromobConfig.BtnNao).Or(cf.ByName(PromobConfig.BtnNaoAlt))));
@@ -498,7 +498,7 @@ namespace AutomacaoPromobTeste.Promob{
                             }
                         }
                         else {
-                            Logger.Log($"  [INFO] Popup de Atenção detectado ('{texto}'). Tratando como informativo (OK/Nao).");
+                            AppLogs.LogImportadorPopupAtencaoGenerico(texto);
                             PromobCarregadorProjeto.TratarPopupGenerico(popup.AsWindow());
                         }
                         precisouTentarDenovo = true;
@@ -509,7 +509,7 @@ namespace AutomacaoPromobTeste.Promob{
                     if (InteractionHelper.ContemQualquer(name, PromobConfig.TitulosAviso)){
                         var textElement = popup.FindFirstDescendant(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Text));
                         var texto = textElement?.Properties.Name.ValueOrDefault ?? "";
-                        Logger.Log($"  [ERRO] O Promob exibiu um erro/aviso: '{texto}'", LogLevel.Error);
+                        AppLogs.LogImportadorPromobErroExibido(texto);
 
                         var btnOk = popup.FindFirstDescendant(cf => 
                             cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button).And(cf.ByName(PromobConfig.BtnOk).Or(cf.ByName(PromobConfig.BtnOkAlt)).Or(cf.ByName(PromobConfig.BtnConcluir))));
@@ -526,7 +526,7 @@ namespace AutomacaoPromobTeste.Promob{
                 }
 
                 if (precisouTentarDenovo){
-                    Logger.Log("  [INFO] Voltando ao loop para tentar resolver campos ou avançar novamente.");
+                    AppLogs.LogImportadorRetornandoLoopResolucao();
                     continue; 
                 }
 
@@ -535,15 +535,15 @@ namespace AutomacaoPromobTeste.Promob{
         }
 
         //--------------------------------------------------------------------------------------
-            /// <summary>
-            /// Aguarda a conclusão da importação (fechamento do Wizard) e trata popups que podem 
-            /// surgir durante o processo, como a confirmação de "Deseja importar como novo projeto?".
-            /// </summary>
-            /// <param name="automation">A instância ativa do motor de automação UIA3.</param>
-            /// <param name="janelaWizard">A janela do wizard de importação.</param>
+        /// <summary>
+        /// Aguarda a conclusão da importação (fechamento do Wizard) e trata popups que podem 
+        /// surgir durante o processo, como a confirmação de "Deseja importar como novo projeto?".
+        /// </summary>
+        /// <param name="automation">A instância ativa do motor de automação UIA3.</param>
+        /// <param name="janelaWizard">A janela do wizard de importação.</param>
         //--------------------------------------------------------------------------------------
         public static void AguardarImportacaoETratarPopups(UIA3Automation automation, Window janelaWizard){
-            Logger.Log("  [INFO] Aguardando conclusão da importação e verificando popups (Timeout: 45s)...");
+            AppLogs.LogImportadorAguardandoConclusaoImportacao();
 
             var swAguardar = System.Diagnostics.Stopwatch.StartNew();
             
@@ -551,33 +551,33 @@ namespace AutomacaoPromobTeste.Promob{
                 try{
                     // Se o wizard sumiu ou fechou, a importação terminou.
                     if (janelaWizard.IsAvailable == false || janelaWizard.Properties.IsOffscreen.ValueOrDefault){
-                        Logger.Log("  [OK] Janela do Wizard foi fechada. Importação concluída.");
+                        AppLogs.LogImportadorWizardFechadoImportacaoConcluida();
                         break;
                     }
                 }
                 catch{
-                    Logger.Log("  [OK] Janela do Wizard não está mais acessível. Importação concluída.");
+                    AppLogs.LogImportadorWizardInacessivelImportacaoConcluida();
                     break;
                 }
 
                 var popup = PromobWindowHelper.EncontrarPopupAtencao(automation.GetDesktop(), PromobWindowHelper.CachedProcessIdPromob);
                 if (popup != null && popup.Name != janelaWizard.Name){
-                    Logger.Log($"  [INFO] Popup encontrado durante importação: {popup.Name}");
+                    AppLogs.LogImportadorPopupDuranteImportacao(popup.Name);
                     InteractionHelper.AtivarJanela(popup);
 
                     var textElement = popup.FindFirstDescendant(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Text));
                     var texto = textElement?.Properties.Name.ValueOrDefault ?? "";
-                    Logger.Log($"  [INFO] Texto do popup: {texto}");
+                    AppLogs.LogImportadorPopupDuranteImportacaoTexto(texto);
 
                     AutomationElement? btnClicar = null;
 
                     if (texto.Contains("novo projeto", StringComparison.OrdinalIgnoreCase)){
-                        Logger.Log("  [INFO] O Promob perguntou se deseja importar como novo projeto. Selecionando 'Cancelar'...");
+                        AppLogs.LogImportadorPopupNovoProjeto();
                         btnClicar = popup.FindFirstDescendant(cf => 
                             cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button).And(cf.ByName(PromobConfig.BtnCancelar)));
                     }
                     else if (texto.Contains("substituir", StringComparison.OrdinalIgnoreCase) || texto.Contains("sobrepor", StringComparison.OrdinalIgnoreCase)){
-                        Logger.Log("  [INFO] O Promob perguntou se deseja substituir o projeto existente. Selecionando 'Sim'...");
+                        AppLogs.LogImportadorPopupSubstituirProjeto();
                         btnClicar = popup.FindFirstDescendant(cf => 
                             cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button).And(cf.ByName(PromobConfig.BtnSim)));
                     }
@@ -593,7 +593,7 @@ namespace AutomacaoPromobTeste.Promob{
                     }
 
                     if (btnClicar != null){
-                        Logger.Log($"  [ACTION] Clicando no botão '{btnClicar.Name}' no popup...");
+                        AppLogs.LogImportadorClicandoBotaoPopup(btnClicar.Name);
                         InteractionHelper.ClicarComFallback(btnClicar);
                         
                         // Aguarda o popup fechar para evitar cliques duplicados e lidar com múltiplos popups
@@ -603,7 +603,7 @@ namespace AutomacaoPromobTeste.Promob{
                         }, 2000, 200);
                     }
                     else{
-                        Logger.Log("  [AVISO] Botão de confirmação não encontrado no popup. Tentando ENTER...", LogLevel.Warn);
+                        AppLogs.LogImportadorBotaoConfirmacaoNaoEncontradoPopup();
                         Keyboard.Type(VirtualKeyShort.RETURN);
                         InteractionHelper.EsperarUiRespirar(1000);
                     }
@@ -613,7 +613,7 @@ namespace AutomacaoPromobTeste.Promob{
             }
 
             // Uma espera extra para garantir que a UI principal atualizou a lista de projetos recentes
-            Logger.Log("  [INFO] Aguardando 1.5 segundos para estabilização da lista de projetos...");
+            AppLogs.LogImportadorAguardandoEstabilizacaoListaProjetos();
             InteractionHelper.EsperarUiRespirar(1500);
         }
     }

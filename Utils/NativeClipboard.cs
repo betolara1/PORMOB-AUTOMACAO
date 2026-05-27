@@ -75,7 +75,7 @@ namespace AutomacaoPromobTeste.Utils{
                 }
             }
             catch (Exception ex){
-                Logger.Log($"  [AVISO] Falha ao ler do clipboard: {ex.Message}", LogLevel.Debug);
+                AppLogs.LogClipboardReadFailure(ex.Message);
             }
             return null;
         }
@@ -122,7 +122,7 @@ namespace AutomacaoPromobTeste.Utils{
 
                             // Define o bloco de memória como o dado oficial do clipboard
                             SetClipboardData(CF_UNICODETEXT, hGlobal);
-                            Logger.Log("  [OK] Caminho copiado para o Clipboard (Win32).", LogLevel.Debug);
+                            AppLogs.LogClipboardCopiedWin32();
                             return;
                         }
                         finally{
@@ -138,7 +138,7 @@ namespace AutomacaoPromobTeste.Utils{
                 CopiarParaClipboardPowerShell(texto);
             }
             catch (Exception ex){
-                Logger.Log($"  [AVISO] Falha no clipboard nativo: {ex.Message}. Tentando PowerShell...", LogLevel.Warn);
+                AppLogs.LogClipboardNativeFallback(ex.Message);
                 CopiarParaClipboardPowerShell(texto);
             }
         }
@@ -161,10 +161,10 @@ namespace AutomacaoPromobTeste.Utils{
                 
                 using var p = Process.Start(startInfo);
                 p?.WaitForExit(2000); // Aguarda até 2 segundos para o PowerShell completar
-                Logger.Log("  [OK] Caminho copiado via PowerShell.", LogLevel.Debug);
+                AppLogs.LogClipboardCopiedPowerShell();
             }
             catch (Exception ex){
-                Logger.Log($"  [AVISO] Falha ao copiar para Clipboard: {ex.Message}", LogLevel.Warn);
+                AppLogs.LogClipboardCopyFailure(ex.Message);
             }
         }
     }

@@ -25,7 +25,7 @@ namespace AutomacaoPromobTeste.Promob{
             /// <param name="janela">A janela principal ativa do Promob.</param>
         //--------------------------------------------------------------------------------------
         public static void FecharProjetoPendenteSeNecessario(UIA3Automation automation, Window janela){
-            Logger.Log("  [INFO] Verificando se o Promob está pronto na tela inicial...");
+            //Logger.Log("  [INFO] Verificando se o Promob está pronto na tela inicial...");
             
             bool achouImportar = false;
             bool achouFechar = false;
@@ -35,7 +35,7 @@ namespace AutomacaoPromobTeste.Promob{
             
             for (int tentativa = 1; tentativa <= maxTentativas; tentativa++){
                 try{
-                    Logger.Log($"    -> Verificando estado do Promob (Tentativa {tentativa}/{maxTentativas})...");
+                    AppLogs.LogFecharProjetoVerificandoEstado(tentativa, maxTentativas);
                     
                     var raiz = WindowFinder.ObterHostOuJanela(janela, PromobConfig.AutomationIdHost, PromobWindowHelper.CachedProcessIdPromob);
                     
@@ -43,7 +43,7 @@ namespace AutomacaoPromobTeste.Promob{
                     // significa que o Promob ainda está na fase inicial de carregamento de plugins/splash.
                     // Procurar botões internos agora causará timeouts e lentidão extrema no UIA.
                     if (raiz == janela && WindowFinder.CachedHost == null){
-                        Logger.Log($"    [INFO] Interface gráfica (elementHost1) ainda não foi renderizada pelo Promob. Aguardando inicialização...");
+                        AppLogs.LogFecharProjetoInterfaceAindaNaoRenderizada();
                         Thread.Sleep(tempoEsperaMs);
                         continue;
                     }
@@ -93,7 +93,7 @@ namespace AutomacaoPromobTeste.Promob{
                 }
                 catch (Exception ex){
                     // Captura erros de timeout, janelas não responsivas ou COMExceptions comuns de inicialização do Promob
-                    Logger.Log($"    [INFO] Promob ainda não respondeu ou está carregando ({ex.Message}). Continuando busca...", LogLevel.Debug);
+                    AppLogs.LogFecharProjetoNaoRespondeuOuCarregando(ex.Message);
                     // Invalidamos o cache do host para forçar uma nova varredura física na próxima tentativa
                     WindowFinder.CachedHost = null;
                 }
@@ -102,14 +102,14 @@ namespace AutomacaoPromobTeste.Promob{
             }
 
             if (achouImportar){
-                Logger.Log("  [INFO] Promob está na tela inicial (pronto para importar). Nenhum projeto aberto detectado.");
+                //Logger.Log("  [INFO] Promob está na tela inicial (pronto para importar). Nenhum projeto aberto detectado.");
                 return;
             }
 
             if (achouFechar){
-                Logger.Log("  [AVISO] Projeto aberto detectado. Fechando projeto antes de importar...", LogLevel.Warn);
+                //Logger.Log("  [AVISO] Projeto aberto detectado. Fechando projeto antes de importar...", LogLevel.Warn);
                 Fechar(automation, janela);
-                Logger.Log("  [OK] Projeto anterior fechado. Promob retornou à tela inicial.");
+                //Logger.Log("  [OK] Projeto anterior fechado. Promob retornou à tela inicial.");
                 return;
             }
 
@@ -127,12 +127,12 @@ namespace AutomacaoPromobTeste.Promob{
         //--------------------------------------------------------------------------------------
         public static void Fechar(UIA3Automation automation, Window janela){
             var swTotal = Stopwatch.StartNew();
-            Logger.Log("  [INFO] Iniciando sequência de fechamento do projeto...");
+            //Logger.Log("Iniciando sequência de fechamento do projeto...");
             InteractionHelper.AtivarJanela(janela);
             var raizBusca = WindowFinder.ObterHostOuJanela(janela, PromobConfig.AutomationIdHost, PromobWindowHelper.CachedProcessIdPromob);
 
             var swAba = Stopwatch.StartNew();
-            Logger.Log("    -> Procurando aba 'Arquivo' (FileTab)...");
+            //Logger.Log("    -> Procurando aba 'Arquivo' (FileTab)...");
             var abaArquivo = WindowFinder.BuscarElementoComFallback(
                 raizBusca,
                 cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.TabItem)
@@ -146,16 +146,16 @@ namespace AutomacaoPromobTeste.Promob{
             swAba.Stop();
 
             if (abaArquivo != null){
-                Logger.Log($"    [OK] Aba 'Arquivo' localizada ({swAba.ElapsedMilliseconds}ms). Clicando...");
+                //Logger.Log($"    [OK] Aba 'Arquivo' localizada ({swAba.ElapsedMilliseconds}ms). Clicando...");
                 InteractionHelper.SelecionarOuClicar(abaArquivo);
                 InteractionHelper.EsperarUiRespirar(400);
             }
             else{
-                Logger.Log($"    [AVISO] Aba 'Arquivo' não encontrada após {swAba.ElapsedMilliseconds}ms.", LogLevel.Warn);
+                //Logger.Log($"    [AVISO] Aba 'Arquivo' não encontrada após {swAba.ElapsedMilliseconds}ms.", LogLevel.Warn);
             }
 
             var swBtn = Stopwatch.StartNew();
-            Logger.Log("    -> Procurando botão 'Fechar' (ProjectClose)...");
+            //Logger.Log("    -> Procurando botão 'Fechar' (ProjectClose)...");
             var btnFechar = WindowFinder.BuscarElementoComFallback(
                 raizBusca,
                 cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button)
@@ -169,18 +169,18 @@ namespace AutomacaoPromobTeste.Promob{
             swBtn.Stop();
 
             if (btnFechar != null){
-                Logger.Log($"    [OK] Botão 'Fechar' localizado ({swBtn.ElapsedMilliseconds}ms). Clicando...");
+                //Logger.Log($"    [OK] Botão 'Fechar' localizado ({swBtn.ElapsedMilliseconds}ms). Clicando...");
                 InteractionHelper.AtivarJanela(janela); // Garante foco antes de clicar
                 InteractionHelper.ClicarComFallback(btnFechar);
             }
             else{
-                Logger.Log($"    [AVISO] Botão 'Fechar' não encontrado após {swBtn.ElapsedMilliseconds}ms. Tentando atalho Alt+F...", LogLevel.Warn);
+                //Logger.Log($"    [AVISO] Botão 'Fechar' não encontrado após {swBtn.ElapsedMilliseconds}ms. Tentando atalho Alt+F...", LogLevel.Warn);
                 Keyboard.TypeSimultaneously(VirtualKeyShort.ALT, VirtualKeyShort.KEY_F);
                 InteractionHelper.EsperarUiRespirar(800);
             }
 
             // Aguardar ativamente o fechamento do projeto
-            Logger.Log("    [INFO] Aguardando fechamento do projeto (e possível popup 'Deseja salvar?')...");
+            //Logger.Log("    [INFO] Aguardando fechamento do projeto (e possível popup 'Deseja salvar?')...");
             var swFechamento = Stopwatch.StartNew();
             bool projetoFechado = false;
             int ciclosSemPopup = 0;
@@ -198,7 +198,7 @@ namespace AutomacaoPromobTeste.Promob{
                 );
 
                 if (btnImportar != null && !btnImportar.Properties.IsOffscreen.ValueOrDefault){
-                    Logger.Log($"    [SUCESSO] Botão 'Importar' detectado! Projeto fechado ({swFechamento.ElapsedMilliseconds}ms).");
+                    //Logger.Log($"    [SUCESSO] Botão 'Importar' detectado! Projeto fechado ({swFechamento.ElapsedMilliseconds}ms).");
                     projetoFechado = true;
                     break;
                 }
@@ -222,20 +222,20 @@ namespace AutomacaoPromobTeste.Promob{
 
                 if (popup != null){
                     ciclosSemPopup = 0;
-                    Logger.Log($"    [INFO] Popup '{popup.Name}' detectado. Buscando botão 'Não'...");
+                    AppLogs.LogFecharProjetoPopupSalvarDetectado(popup.Name);
                     // Busca profunda: FindAllDescendants para achar botões dentro de Panels intermediários
                     var btnNao = popup.FindAllDescendants(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button))
                         .FirstOrDefault(b => b.Name == PromobConfig.BtnNao || b.Name == PromobConfig.BtnNaoAlt || b.Name == "No" || b.Name == "Nao");
 
                     if (btnNao != null){
-                        Logger.Log($"    [OK] Botão 'Não' localizado. Clicando...");
+                        AppLogs.LogFecharProjetoBotaoNaoLocalizadoClicando();
                         InteractionHelper.AtivarJanela(popup.AsWindow());
                         InteractionHelper.ClicarComFallback(btnNao);
                         InteractionHelper.EsperarUiRespirar(1000);
                     }
                     else{
                         // Fallback: ativa o popup e pressiona Alt+N (atalho do botão 'Não')
-                        Logger.Log($"    [AVISO] Botão 'Não' não encontrado na árvore de '{popup.Name}'. Enviando Alt+N via teclado...", LogLevel.Warn);
+                        AppLogs.LogFecharProjetoBotaoNaoNaoEncontradoTeclado(popup.Name);
                         InteractionHelper.AtivarJanela(popup.AsWindow());
                         InteractionHelper.EsperarUiRespirar(300);
                         Keyboard.TypeSimultaneously(VirtualKeyShort.ALT, VirtualKeyShort.KEY_N);
@@ -247,7 +247,7 @@ namespace AutomacaoPromobTeste.Promob{
                     // Fallback redundante a cada 4 ciclos (~2s): se há modal com foco não detectado via UIA,
                     // Alt+N fecha direto sem afetar outros elementos
                     if (swFechamento.ElapsedMilliseconds > 1500 && ciclosSemPopup % 4 == 0){
-                        Logger.Log($"    [DEBUG] Nenhum popup UIA detectado. Disparando Alt+N preventivo...", LogLevel.Debug);
+                        AppLogs.LogFecharProjetoDisparandoAltNPreventivo();
                         Keyboard.TypeSimultaneously(VirtualKeyShort.ALT, VirtualKeyShort.KEY_N);
                         InteractionHelper.EsperarUiRespirar(500);
                     }
@@ -257,11 +257,11 @@ namespace AutomacaoPromobTeste.Promob{
             }
 
             if (!projetoFechado){
-                Logger.Log($"    [AVISO] Timeout de 60s atingido e botão 'Importar' não foi detectado. O Promob pode estar travado.", LogLevel.Warn);
+                AppLogs.LogFecharProjetoTimeoutImportarNaoDetectado();
             }
 
             swTotal.Stop();
-            Logger.Log($"  [SUCESSO] Sequência de fechamento concluída em {swTotal.ElapsedMilliseconds}ms.");
+            AppLogs.LogFecharProjetoConcluido(swTotal.ElapsedMilliseconds);
         }
     }
 }

@@ -289,7 +289,7 @@ namespace AutomacaoPromobTeste.Automation{
             // 1. Invoke Pattern (botão padrão, menu item)
             try {
                 if (el.Patterns.Invoke.IsSupported){
-                    Logger.Log("    [UIA] Acionando via Invoke Pattern.");
+                    AppLogs.LogInteractionHelperUiaInvoke();
                     el.Patterns.Invoke.Pattern.Invoke();
                     return;
                 }
@@ -298,7 +298,7 @@ namespace AutomacaoPromobTeste.Automation{
             // 2. Toggle Pattern (RibbonToggleButton, como Integradores)
             try {
                 if (el.Patterns.Toggle.IsSupported){
-                    Logger.Log("    [UIA] Acionando via Toggle Pattern.");
+                    AppLogs.LogInteractionHelperUiaToggle();
                     el.Patterns.Toggle.Pattern.Toggle();
                     return;
                 }
@@ -307,7 +307,7 @@ namespace AutomacaoPromobTeste.Automation{
             // 3. ExpandCollapse Pattern (menus que expandem)
             try {
                 if (el.Patterns.ExpandCollapse.IsSupported){
-                    Logger.Log("    [UIA] Acionando via ExpandCollapse Pattern.");
+                    AppLogs.LogInteractionHelperUiaExpandCollapse();
                     el.Patterns.ExpandCollapse.Pattern.Expand();
                     return;
                 }
@@ -316,7 +316,7 @@ namespace AutomacaoPromobTeste.Automation{
             // 4. SelectionItem Pattern (itens de lista/menu)
             try {
                 if (el.Patterns.SelectionItem.IsSupported){
-                    Logger.Log("    [UIA] Acionando via SelectionItem Pattern.");
+                    AppLogs.LogInteractionHelperUiaSelectionItem();
                     el.Patterns.SelectionItem.Pattern.Select();
                     return;
                 }
@@ -324,7 +324,7 @@ namespace AutomacaoPromobTeste.Automation{
 
             // 5. Focus + SPACE (simula ação sem mouse)
             try {
-                Logger.Log("    [UIA] Nenhum Pattern suportado. Tentando Focus + SPACE...");
+                AppLogs.LogInteractionHelperUiaNoPatternFocusSpace();
                 el.Focus();
                 EsperarUiRespirar(200);
                 Keyboard.Type(VirtualKeyShort.SPACE);
@@ -332,7 +332,7 @@ namespace AutomacaoPromobTeste.Automation{
             } catch { }
 
             // 6. Último recurso: mouse
-            Logger.Log("    [FALLBACK] Usando clique de mouse como último recurso.", LogLevel.Warn);
+            AppLogs.LogInteractionHelperFallbackMouseClick();
             try { el.Click(); } catch { }
         }
     }

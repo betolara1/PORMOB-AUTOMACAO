@@ -29,7 +29,7 @@ namespace AutomacaoPromobTeste.Promob{
             /// <param name="automation">A instância ativa do motor de automação UIA3.</param>
         //--------------------------------------------------------------------------------------
         public static void TentarRecuperar(UIA3Automation automation){
-            Logger.Log("  [INFO] Executando rotina de recuperação...");
+            AppLogs.LogRecoveryIniciando();
 
             try{
                 WindowFinder.CachedHost = null; // Invalida cache de UI
@@ -58,7 +58,7 @@ namespace AutomacaoPromobTeste.Promob{
                             var texto = textElement?.Properties.Name.ValueOrDefault ?? "";
 
                             if (texto.Contains(PromobConfig.MsgConfirmarCancelamento, StringComparison.OrdinalIgnoreCase)){
-                                Logger.Log($"    [RECOVERY] Popup de cancelamento detectado. Clicando em '{PromobConfig.BtnNao}' para manter a aplicação aberta.");
+                                AppLogs.LogRecoveryPopupCancelamentoDetectado(PromobConfig.BtnNao);
                                 
                                 // Busca rasa (FindAllChildren) filtrada em memória para evitar COM hangs
                                 var btnNao = popup.FindAllChildren(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button))
@@ -88,7 +88,7 @@ namespace AutomacaoPromobTeste.Promob{
                 }
             }
             catch (Exception ex){
-                Logger.Log($"  [AVISO] Recuperação falhou: {ex.Message}", LogLevel.Warn);
+                AppLogs.LogRecoveryFalhou(ex.Message);
             }
 
             InteractionHelper.EsperarUiRespirar(1000);
@@ -102,7 +102,7 @@ namespace AutomacaoPromobTeste.Promob{
             /// <param name="janelaPromob">A janela principal do Promob.</param>
         //--------------------------------------------------------------------------------------
         public static void FecharProjetoEIgnorarSalvar(Window janelaPromob){
-            Logger.Log("  [RECOVERY] Tentando fechar projeto atual de forma segura...");
+            AppLogs.LogRecoveryTentandoFecharProjeto();
             InteractionHelper.AtivarJanela(janelaPromob);
 
             var raizBusca = WindowFinder.ObterHostOuJanela(janelaPromob, PromobConfig.AutomationIdHost, PromobWindowHelper.CachedProcessIdPromob);
@@ -115,11 +115,11 @@ namespace AutomacaoPromobTeste.Promob{
             );
 
             if (btnFechar != null) {
-                Logger.Log("    [RECOVERY] Fechando projeto via UIA Pattern (Background)...");
+                AppLogs.LogRecoveryFechandoProjetoUia();
                 InteractionHelper.ClicarComFallback(btnFechar);
             } 
             else {
-                Logger.Log("    [RECOVERY] Fallback de teclado para fechar projeto...");
+                AppLogs.LogRecoveryFallbackTecladoFecharProjeto();
                 InteractionHelper.AtivarJanela(janelaPromob);
                 Keyboard.TypeSimultaneously(VirtualKeyShort.ALT, VirtualKeyShort.KEY_A);
                 InteractionHelper.EsperarUiRespirar(300);
@@ -128,7 +128,7 @@ namespace AutomacaoPromobTeste.Promob{
                 Keyboard.Type("f");
             }
 
-            Logger.Log("    [RECOVERY] Tratando popup de salvamento...");
+            AppLogs.LogRecoveryTratandoPopupSalvamento();
             bool fechou = InteractionHelper.EsperarAte(() => {
                 var popup = PromobWindowHelper.EncontrarPopupAtencao(janelaPromob.Automation.GetDesktop(), PromobWindowHelper.CachedProcessIdPromob);
                 if (popup != null) {

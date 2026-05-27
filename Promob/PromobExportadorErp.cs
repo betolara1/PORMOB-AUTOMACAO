@@ -13,27 +13,27 @@ using FlaUI.UIA3;
 
 namespace AutomacaoPromobTeste.Promob{
     //--------------------------------------------------------------------------------------
-        /// <summary>
-        /// Componente responsável por gerenciar a navegação e a exportação de dados para o ERP,
-        /// cobrindo o acionamento do integrador no menu e o monitoramento da geração do XML.
-        /// </summary>
+    /// <summary>
+    /// Componente responsável por gerenciar a navegação e a exportação de dados para o ERP,
+    /// cobrindo o acionamento do integrador no menu e o monitoramento da geração do XML.
+    /// </summary>
     //--------------------------------------------------------------------------------------
     public static class PromobExportadorErp{
 
         //--------------------------------------------------------------------------------------
-            /// <summary>
-            /// Navega pela interface gráfica do Promob ativando o menu 'Ferramentas', abrindo a opção
-            /// 'Integradores' e disparando o integrador 'Promob ERP'.
-            /// </summary>
-            /// <param name="automation">A instância ativa do motor de automação UIA3.</param>
-            /// <param name="janela">A janela principal ativa do Promob.</param>
+        /// <summary>
+        /// Navega pela interface gráfica do Promob ativando o menu 'Ferramentas', abrindo a opção
+        /// 'Integradores' e disparando o integrador 'Promob ERP'.
+        /// </summary>
+        /// <param name="automation">A instância ativa do motor de automação UIA3.</param>
+        /// <param name="janela">A janela principal ativa do Promob.</param>
         //--------------------------------------------------------------------------------------
         public static void AbrirIntegradorErp(UIA3Automation automation, Window janela){
             InteractionHelper.AtivarJanela(janela);
 
             var raizBusca = WindowFinder.ObterHostOuJanela(janela, PromobConfig.AutomationIdHost, PromobWindowHelper.CachedProcessIdPromob);
 
-            Logger.Log("  [INFO] Procurando aba 'Ferramentas'...");
+            AppLogs.LogExportadorProcurandoAbaFerramentas();
             var abaFerramentas = WindowFinder.BuscarElementoComFallback(
                 raizBusca,
                 cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.TabItem)
@@ -46,15 +46,15 @@ namespace AutomacaoPromobTeste.Promob{
             );
 
             if (abaFerramentas != null){
-                Logger.Log("  [OK] Aba 'Ferramentas' encontrada. Selecionando...");
+                AppLogs.LogExportadorAbaFerramentasEncontrada();
                 InteractionHelper.SelecionarOuClicar(abaFerramentas);
                 InteractionHelper.EsperarUiRespirar(800);
             }
             else{
-                Logger.Log("  [AVISO] Aba 'Ferramentas' não encontrada.", LogLevel.Warn);
+                AppLogs.LogExportadorAbaFerramentasNaoEncontrada();
             }
 
-            Logger.Log("  [INFO] Procurando botão 'Integradores'...");
+            AppLogs.LogExportadorProcurandoBotaoIntegradores();
             var btnIntegradores = WindowFinder.BuscarElementoComFallback(
                 raizBusca,
                 cf => cf.ByName(PromobConfig.BotaoIntegradores).Or(cf.ByName(PromobConfig.BotaoIntegradores.ToUpperInvariant())),
@@ -64,10 +64,10 @@ namespace AutomacaoPromobTeste.Promob{
             );
 
             if (btnIntegradores != null){
-                Logger.Log("  [OK] Botão 'Integradores' encontrado. Acionando via UIA (sem mouse)...");
+                AppLogs.LogExportadorBotaoIntegradoresEncontrado();
                 InteractionHelper.AcionarElementoSemMouse(btnIntegradores);
 
-                Logger.Log("  [INFO] Aguardando menu dropdown e procurando 'Promob ERP'...");
+                AppLogs.LogExportadorAguardandoDropdown();
                 AutomationElement? optErp = null;
 
                 bool encontrou = InteractionHelper.EsperarAte(() => {
@@ -89,35 +89,35 @@ namespace AutomacaoPromobTeste.Promob{
                 }, timeoutMs: 5000, intervaloMs: 500);
 
                 if (encontrou && optErp != null){
-                    Logger.Log($"  [OK] Opção 'Promob ERP' encontrada (Tipo: {optErp.ControlType}). Acionando via UIA (sem mouse)...");
+                    AppLogs.LogExportadorOpcaoErpEncontrada(optErp.ControlType);
                     InteractionHelper.AcionarElementoSemMouse(optErp);
                     InteractionHelper.EsperarUiRespirar(500);
                 }
                 else{
-                    Logger.Log("  [ERRO] Opção 'Promob ERP' não encontrada no menu dropdown.", LogLevel.Error);
+                    AppLogs.LogExportadorOpcaoErpNaoEncontrada();
                 }
             }
             else{
-                Logger.Log("  [AVISO] Botão 'Integradores' não encontrado.", LogLevel.Warn);
+                AppLogs.LogExportadorBotaoIntegradoresNaoEncontrado();
             }
         }
 
         //--------------------------------------------------------------------------------------
-            /// <summary>
-            /// Monitora ativamente o processamento pesado de exportação do Promob ERP, aguardando que o
-            /// texto de sucesso apareça, fechando a janela de status e fechando o Explorer que abre ao fim.
-            /// </summary>
-            /// <param name="automation">A instância ativa do motor de automação UIA3.</param>
-            /// <param name="janela">A janela principal ativa do Promob.</param>
+        /// <summary>
+        /// Monitora ativamente o processamento pesado de exportação do Promob ERP, aguardando que o
+        /// texto de sucesso apareça, fechando a janela de status e fechando o Explorer que abre ao fim.
+        /// </summary>
+        /// <param name="automation">A instância ativa do motor de automação UIA3.</param>
+        /// <param name="janela">A janela principal ativa do Promob.</param>
         //--------------------------------------------------------------------------------------
         public static void AguardarExportacaoErp(UIA3Automation automation, Window janela){
             var swTotal = Stopwatch.StartNew();
-            Logger.Log("  [INFO] Aguardando a exportação do Promob ERP finalizar (timeout: 35min)...");
+            AppLogs.LogExportadorAguardandoExportacaoFinalizar();
 
             // ====================================================================
-                // FASE 1: Aguardar a mensagem de sucesso OU erro
-                // O popup de carregamento e a janela de exportação vão aparecer e sumir
-                // sozinhos. Monitoramos até o texto de sucesso ou erro surgir.
+            // FASE 1: Aguardar a mensagem de sucesso OU erro
+            // O popup de carregamento e a janela de exportação vão aparecer e sumir
+            // sozinhos. Monitoramos até o texto de sucesso ou erro surgir.
             // ====================================================================
             AutomationElement? textoSucesso = null;
             Window? janelaExportacao = null;
@@ -128,7 +128,7 @@ namespace AutomacaoPromobTeste.Promob{
             bool exportouComResultado = InteractionHelper.EsperarAte(() => {
                 // Log de progresso periódico para não parecer travado
                 if (swUltimoLog.ElapsedMilliseconds >= logIntervalMs){
-                    Logger.Log($"    [AGUARDE] Exportação em andamento... ({swTotal.ElapsedMilliseconds / 1000}s decorridos)");
+                    AppLogs.LogExportadorEmAndamento(swTotal.ElapsedMilliseconds / 1000);
                     swUltimoLog.Restart();
                 }
 
@@ -158,7 +158,7 @@ namespace AutomacaoPromobTeste.Promob{
 
                                         // Verifica ERRO primeiro (prioridade sobre sucesso)
                                         if (conteudo.Contains(PromobConfig.MsgExportacaoErro, StringComparison.OrdinalIgnoreCase)){
-                                            Logger.Log($"  [ERRO] Mensagem de erro detectada: '{conteudo}'", LogLevel.Error);
+                                            AppLogs.LogExportadorErroDetectado(conteudo);
                                             janelaExportacao = win.AsWindow();
                                             detectouErro = true;
                                             return true;
@@ -181,16 +181,16 @@ namespace AutomacaoPromobTeste.Promob{
             }, timeoutMs: PromobConfig.TimeoutExportacaoErp, intervaloMs: 5000);
 
             if (!exportouComResultado){
-                Logger.Log($"  [ERRO] Timeout de 35 minutos atingido sem detectar resultado. Exportação pode ter falhado.", LogLevel.Error);
+                AppLogs.LogExportadorTimeoutSemResultado();
                 return;
             }
 
             // ====================================================================
-                // FASE 2: Clicar no botão "Fechar" da janela de exportação
-                // (tanto para sucesso quanto para erro)
+            // FASE 2: Clicar no botão "Fechar" da janela de exportação
+            // (tanto para sucesso quanto para erro)
             // ====================================================================
             if (janelaExportacao != null){
-                Logger.Log("  [INFO] Procurando botão 'Fechar' na janela de exportação...");
+                AppLogs.LogExportadorProcurandoBotaoFechar();
                 InteractionHelper.EsperarUiRespirar(500);
 
                 AutomationElement? btnFechar = null;
@@ -209,12 +209,12 @@ namespace AutomacaoPromobTeste.Promob{
                 }, timeoutMs: 10000, intervaloMs: 500);
 
                 if (achouFechar && btnFechar != null){
-                    Logger.Log("  [OK] Botão 'Fechar' encontrado e habilitado. Clicando...");
+                    AppLogs.LogExportadorBotaoFecharClicando();
                     InteractionHelper.ClicarComFallback(btnFechar);
                     InteractionHelper.EsperarUiRespirar(1500);
                 }
                 else{
-                    Logger.Log("  [AVISO] Botão 'Fechar' não encontrado. Tentando ALT+F4...", LogLevel.Warn);
+                    AppLogs.LogExportadorBotaoFecharNaoEncontradoAltF4();
                     InteractionHelper.AtivarJanela(janelaExportacao);
                     Keyboard.TypeSimultaneously(VirtualKeyShort.ALT, VirtualKeyShort.F4);
                     InteractionHelper.EsperarUiRespirar(1500);
@@ -224,7 +224,7 @@ namespace AutomacaoPromobTeste.Promob{
             // Se detectou erro, lança exceção APÓS fechar a janela de exportação
             // para que o fluxo principal saiba que precisa mover o arquivo e fechar o projeto
             if (detectouErro){
-                Logger.Log("  [ERRO] Exportação ERP abortada com erro. Sinalizando para mover arquivo e continuar.", LogLevel.Error);
+                AppLogs.LogExportadorAbortadaErro();
 
                 // Retorna foco para o Promob antes de lançar a exceção
                 InteractionHelper.AtivarJanela(janela);
@@ -234,12 +234,12 @@ namespace AutomacaoPromobTeste.Promob{
                 throw new PromobExportException($"Exportação ERP abortada com erro após {swTotal.ElapsedMilliseconds / 1000}s.");
             }
 
-            Logger.Log($"  [SUCESSO] Mensagem 'completado com sucesso' detectada após {swTotal.ElapsedMilliseconds / 1000}s!");
+            AppLogs.LogExportadorCompletadoSucesso(swTotal.ElapsedMilliseconds / 1000);
 
             // ====================================================================
-                // FASE 3: Fechar a pasta 01_XML que abre automaticamente no Explorer
+            // FASE 3: Fechar a pasta 01_XML que abre automaticamente no Explorer
             // ====================================================================
-            Logger.Log("  [INFO] Procurando janela do Explorer (pasta 01_XML) para fechar...");
+            AppLogs.LogExportadorProcurandoExplorer();
             bool fechouExplorer = InteractionHelper.EsperarAte(() => {
                 try {
                     var desktop = automation.GetDesktop();
@@ -249,7 +249,7 @@ namespace AutomacaoPromobTeste.Promob{
                         try {
                             var nome = win.Properties.Name.ValueOrDefault ?? "";
                             if (nome.Contains(PromobConfig.NomePastaXmlExport, StringComparison.OrdinalIgnoreCase)){
-                                Logger.Log($"  [OK] Janela do Explorer encontrada: '{nome}'. Fechando...");
+                                AppLogs.LogExportadorExplorerEncontradoFechando(nome);
                                 var winExplorer = win.AsWindow();
                                 InteractionHelper.AtivarJanela(winExplorer);
                                 Keyboard.TypeSimultaneously(VirtualKeyShort.ALT, VirtualKeyShort.F4);
@@ -263,18 +263,18 @@ namespace AutomacaoPromobTeste.Promob{
             }, timeoutMs: 10000, intervaloMs: 1000);
 
             if (!fechouExplorer){
-                Logger.Log("  [AVISO] Janela do Explorer com '01_XML' não foi detectada. Prosseguindo...", LogLevel.Warn);
+                AppLogs.LogExportadorExplorerNaoDetectado();
             }
 
             // ====================================================================
-                // FASE 4: Retornar o foco para o Promob
+            // FASE 4: Retornar o foco para o Promob
             // ====================================================================
-            Logger.Log("  [INFO] Retornando foco para o Promob...");
+            AppLogs.LogExportadorRetornandoFoco();
             InteractionHelper.AtivarJanela(janela);
             InteractionHelper.EsperarUiRespirar(500);
 
             swTotal.Stop();
-            Logger.Log($"  [SUCESSO] Exportação ERP concluída em {swTotal.ElapsedMilliseconds / 1000}s.");
+            AppLogs.LogExportadorConcluidaSucesso(swTotal.ElapsedMilliseconds / 1000);
         }
     }
 }
