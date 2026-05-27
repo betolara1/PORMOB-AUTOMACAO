@@ -71,6 +71,13 @@ namespace AutomacaoPromobTeste.Promob{
             int tentativaWizard = 0;
             const int maxTentativasWizard = 10;
 
+
+            // Logger.Log("[INFO] Procurando janela do Promob para listar botões...");
+            // var janelaInicial = PromobWindowHelper.AguardarJanelaPromob(automation, 5000);
+            // if (janelaInicial != null){
+            //     Diagnostics.ListarBotoesProject(janelaInicial, PromobConfig.AutomationIdHost);
+            // }
+
             while (tentativaWizard < maxTentativasWizard){
                 token.ThrowIfCancellationRequested();
                 tentativaWizard++;
@@ -83,6 +90,55 @@ namespace AutomacaoPromobTeste.Promob{
                 Logger.Log("  [3/8] Aguardando e verificando wizard de importação...");
                 // Espera um momento para o wizard abrir
                 InteractionHelper.EsperarUiRespirar(1500);
+
+                var popupAviso = PromobWindowHelper.EncontrarPopupAtencao(automation.GetDesktop(), PromobWindowHelper.CachedProcessIdPromob);
+                if (popupAviso != null) {
+                    var textoPopup = popupAviso.FindFirstDescendant(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Text))?.Properties.Name.ValueOrDefault ?? "";
+                    if (textoPopup.Contains("Operação não autorizada", StringComparison.OrdinalIgnoreCase)) {
+                        Logger.Log($"  [AVISO] Mensagem 'Operação não autorizada' detectada. Fechando popup e reiniciando a rotina de importação...", LogLevel.Warn);
+                        
+                        var btnOk = popupAviso.FindFirstDescendant(cf => 
+                            cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button).And(cf.ByName(PromobConfig.BtnOk).Or(cf.ByName(PromobConfig.BtnOkAlt)).Or(cf.ByName(PromobConfig.BtnConcluir))));
+                        
+                        if (btnOk != null) InteractionHelper.ClicarComFallback(btnOk);
+                        else {
+                            InteractionHelper.AtivarJanela(popupAviso);
+                            Keyboard.Type(VirtualKeyShort.RETURN);
+                        }
+                        
+                        InteractionHelper.EsperarUiRespirar(1500);
+                        
+                        // Atualiza a interface clicando nas abas Clientes e Projetos para forçar o desbloqueio
+                        Logger.Log("  [ACTION] Clicando na aba 'Clientes' para forçar atualização da UI...");
+                        
+                        var abaClientes = janela.FindFirstDescendant(cf => cf.ByName("Clientes").And(cf.ByControlType(FlaUI.Core.Definitions.ControlType.TabItem).Or(cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button))))
+                                       ?? janela.FindFirstDescendant(cf => cf.ByName("Clientes"))
+                                       ?? janela.FindAllDescendants().FirstOrDefault(e => (e.Name ?? "").Equals("Clientes", StringComparison.OrdinalIgnoreCase));
+                        
+                        if (abaClientes != null) {
+                            InteractionHelper.ClicarComFallback(abaClientes);
+                            InteractionHelper.EsperarUiRespirar(1500);
+                        } else {
+                            Logger.Log("  [AVISO] Aba 'Clientes' não encontrada na janela inteira.", LogLevel.Warn);
+                        }
+
+                        Logger.Log("  [ACTION] Retornando para a aba 'Projetos'...");
+                        var abaProjetos = janela.FindFirstDescendant(cf => cf.ByName("Projetos").And(cf.ByControlType(FlaUI.Core.Definitions.ControlType.TabItem).Or(cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button))))
+                                       ?? janela.FindFirstDescendant(cf => cf.ByName("Projetos"))
+                                       ?? janela.FindAllDescendants().FirstOrDefault(e => (e.Name ?? "").Equals("Projetos", StringComparison.OrdinalIgnoreCase));
+                        
+                        if (abaProjetos != null) {
+                            InteractionHelper.ClicarComFallback(abaProjetos);
+                            InteractionHelper.EsperarUiRespirar(1500);
+                        } else {
+                            Logger.Log("  [AVISO] Aba 'Projetos' não encontrada na janela inteira.", LogLevel.Warn);
+                        }
+
+                        WindowFinder.CachedHost = null; // reseta cache para buscar botões novamente
+                        continue; // Recomeça a etapa de clicar em Importar
+                    }
+                }
+
                 var wizardEncontrado = PromobWindowHelper.EncontrarJanelaWizard(automation, janela) ?? janela;
 
                 token.ThrowIfCancellationRequested();
