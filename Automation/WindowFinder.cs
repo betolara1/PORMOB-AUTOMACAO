@@ -38,7 +38,6 @@ namespace AutomacaoPromobTeste.Automation{
             if (InteractionHelper.ElementoValido(CachedHost))
                 return CachedHost!;
 
-            //Logger.Log($"    [DEBUG] Buscando {automationIdHost}...", LogLevel.Debug);
             var swHost = Stopwatch.StartNew();
 
             // Sendo o elementHost1 (o painel WPF principal), ele sempre fica nos níveis superficiais (1 ou 2) da janela.
@@ -55,13 +54,6 @@ namespace AutomacaoPromobTeste.Automation{
             }
 
             swHost.Stop();
-
-            // if (CachedHost != null){
-            //     Logger.Log($"    [OK] {automationIdHost} localizado superficialmente ({swHost.ElapsedMilliseconds}ms) e cacheado.", LogLevel.Debug);
-            // }
-            // else{
-            //     Logger.Log($"    [AVISO] {automationIdHost} não encontrado na busca superficial rápida ({swHost.ElapsedMilliseconds}ms). Usando janela principal como raiz temporária.", LogLevel.Debug);
-            // }
 
             return CachedHost ?? janela;
         }
@@ -120,19 +112,14 @@ namespace AutomacaoPromobTeste.Automation{
             // Ativada como Plano B. A varredura rasa falhou ou não pôde ser utilizada.
             // Ela varre toda a estrutura em profundidade. É mais demorada, mas é 100% precisa.
             
-            
-            //Logger.Log($"      [PERF] Varredura Rasa falhou ou ignorada ({swFase1.ElapsedMilliseconds}ms). Ativando Busca Profunda...", LogLevel.Debug);
-
             var swFase2 = Stopwatch.StartNew();
             var direto = raiz.FindFirstDescendant(buscaPrincipal);
             swFase2.Stop();
 
             if (direto != null){
-                //Logger.Log($"      [PERF] Busca Profunda (UIA) encontrou em {swFase2.ElapsedMilliseconds}ms.", LogLevel.Debug);
                 return direto;
             }
 
-            //Logger.Log($"      [PERF] Ambas as buscas falharam (Total: {swFase1.ElapsedMilliseconds + swFase2.ElapsedMilliseconds}ms).", LogLevel.Debug);
             return null;
         }
 

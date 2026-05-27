@@ -25,7 +25,6 @@ namespace AutomacaoPromobTeste.Promob{
             /// <param name="janela">A janela principal ativa do Promob.</param>
         //--------------------------------------------------------------------------------------
         public static void FecharProjetoPendenteSeNecessario(UIA3Automation automation, Window janela){
-            //Logger.Log("  [INFO] Verificando se o Promob está pronto na tela inicial...");
             
             bool achouImportar = false;
             bool achouFechar = false;
@@ -102,14 +101,11 @@ namespace AutomacaoPromobTeste.Promob{
             }
 
             if (achouImportar){
-                //Logger.Log("  [INFO] Promob está na tela inicial (pronto para importar). Nenhum projeto aberto detectado.");
                 return;
             }
 
             if (achouFechar){
-                //Logger.Log("  [AVISO] Projeto aberto detectado. Fechando projeto antes de importar...", LogLevel.Warn);
                 Fechar(automation, janela);
-                //Logger.Log("  [OK] Projeto anterior fechado. Promob retornou à tela inicial.");
                 return;
             }
 
@@ -127,12 +123,12 @@ namespace AutomacaoPromobTeste.Promob{
         //--------------------------------------------------------------------------------------
         public static void Fechar(UIA3Automation automation, Window janela){
             var swTotal = Stopwatch.StartNew();
-            //Logger.Log("Iniciando sequência de fechamento do projeto...");
+
             InteractionHelper.AtivarJanela(janela);
             var raizBusca = WindowFinder.ObterHostOuJanela(janela, PromobConfig.AutomationIdHost, PromobWindowHelper.CachedProcessIdPromob);
 
             var swAba = Stopwatch.StartNew();
-            //Logger.Log("    -> Procurando aba 'Arquivo' (FileTab)...");
+
             var abaArquivo = WindowFinder.BuscarElementoComFallback(
                 raizBusca,
                 cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.TabItem)
@@ -146,16 +142,13 @@ namespace AutomacaoPromobTeste.Promob{
             swAba.Stop();
 
             if (abaArquivo != null){
-                //Logger.Log($"    [OK] Aba 'Arquivo' localizada ({swAba.ElapsedMilliseconds}ms). Clicando...");
                 InteractionHelper.SelecionarOuClicar(abaArquivo);
                 InteractionHelper.EsperarUiRespirar(400);
             }
-            else{
-                //Logger.Log($"    [AVISO] Aba 'Arquivo' não encontrada após {swAba.ElapsedMilliseconds}ms.", LogLevel.Warn);
-            }
+            else{}
 
             var swBtn = Stopwatch.StartNew();
-            //Logger.Log("    -> Procurando botão 'Fechar' (ProjectClose)...");
+
             var btnFechar = WindowFinder.BuscarElementoComFallback(
                 raizBusca,
                 cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button)
@@ -169,18 +162,15 @@ namespace AutomacaoPromobTeste.Promob{
             swBtn.Stop();
 
             if (btnFechar != null){
-                //Logger.Log($"    [OK] Botão 'Fechar' localizado ({swBtn.ElapsedMilliseconds}ms). Clicando...");
                 InteractionHelper.AtivarJanela(janela); // Garante foco antes de clicar
                 InteractionHelper.ClicarComFallback(btnFechar);
             }
             else{
-                //Logger.Log($"    [AVISO] Botão 'Fechar' não encontrado após {swBtn.ElapsedMilliseconds}ms. Tentando atalho Alt+F...", LogLevel.Warn);
                 Keyboard.TypeSimultaneously(VirtualKeyShort.ALT, VirtualKeyShort.KEY_F);
                 InteractionHelper.EsperarUiRespirar(800);
             }
 
             // Aguardar ativamente o fechamento do projeto
-            //Logger.Log("    [INFO] Aguardando fechamento do projeto (e possível popup 'Deseja salvar?')...");
             var swFechamento = Stopwatch.StartNew();
             bool projetoFechado = false;
             int ciclosSemPopup = 0;
@@ -198,7 +188,6 @@ namespace AutomacaoPromobTeste.Promob{
                 );
 
                 if (btnImportar != null && !btnImportar.Properties.IsOffscreen.ValueOrDefault){
-                    //Logger.Log($"    [SUCESSO] Botão 'Importar' detectado! Projeto fechado ({swFechamento.ElapsedMilliseconds}ms).");
                     projetoFechado = true;
                     break;
                 }

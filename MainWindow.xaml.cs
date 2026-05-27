@@ -217,7 +217,7 @@ namespace AutomacaoPromobTeste{
                 }
 
                 if (!string.IsNullOrEmpty(caminhoExe) && File.Exists(caminhoExe)){
-                    AppLogs.LogMainWindowStartingPromob(caminhoExe);
+                    AppLogs.LogMainWindowStartingPromob();
                     var info = new ProcessStartInfo{
                         FileName = caminhoExe,
                         WorkingDirectory = Path.GetDirectoryName(caminhoExe) ?? "",

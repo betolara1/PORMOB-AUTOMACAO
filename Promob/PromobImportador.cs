@@ -417,7 +417,6 @@ namespace AutomacaoPromobTeste.Promob{
             if (campoCaminho != null){
                 var valor = campoCaminho.AsTextBox().Text;
                 if (string.IsNullOrWhiteSpace(valor)){
-                    AppLogs.LogImportadorCampoCaminhoVazio();
                     return false;
                 }
                 AppLogs.LogImportadorCampoCaminhoPreenchido(valor);

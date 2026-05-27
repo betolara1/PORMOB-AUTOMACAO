@@ -76,10 +76,7 @@ namespace AutomacaoPromobTeste.Promob{
 
                 return false;
             }, timeoutMs);
-
-            //if (encontrada != null)
-                //Logger.Log($"Janela encontrada (PID: {CachedProcessIdPromob}): '{encontrada.Name}'", LogLevel.Debug);
-
+            
             return encontrada;
         }
 

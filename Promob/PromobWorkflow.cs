@@ -14,21 +14,21 @@ using FlaUI.UIA3;
 
 namespace AutomacaoPromobTeste.Promob{
     //--------------------------------------------------------------------------------------
-    /// <summary>
-    /// Classe central (Orquestradora) responsável por executar todo o fluxo de automação (Workflow)
-    /// do Promob, coordenando as etapas divididas em componentes de responsabilidade única.
-    /// </summary>
+        /// <summary>
+        /// Classe central (Orquestradora) responsável por executar todo o fluxo de automação (Workflow)
+        /// do Promob, coordenando as etapas divididas em componentes de responsabilidade única.
+        /// </summary>
     //--------------------------------------------------------------------------------------
     public static class PromobWorkflow{
 
         //--------------------------------------------------------------------------------------
-        /// <summary>
-        /// Executa a rotina completa de automação para um arquivo específico de projeto 3D.
-        /// Coordena as etapas de inicialização, preenchimento de wizard, abertura de projeto, exportação e fechamento.
-        /// </summary>
-        /// <param name="automation">A instância ativa do motor de automação UIA3.</param>
-        /// <param name="caminhoArquivo">O caminho absoluto do arquivo do projeto a ser processado.</param>
-        /// <param name="token">O token de cancelamento para interrupção imediata.</param>
+            /// <summary>
+            /// Executa a rotina completa de automação para um arquivo específico de projeto 3D.
+            /// Coordena as etapas de inicialização, preenchimento de wizard, abertura de projeto, exportação e fechamento.
+            /// </summary>
+            /// <param name="automation">A instância ativa do motor de automação UIA3.</param>
+            /// <param name="caminhoArquivo">O caminho absoluto do arquivo do projeto a ser processado.</param>
+            /// <param name="token">O token de cancelamento para interrupção imediata.</param>
         //--------------------------------------------------------------------------------------
         public static void ProcessarArquivo(UIA3Automation automation, string caminhoArquivo, CancellationToken token = default){
             token.ThrowIfCancellationRequested();
@@ -189,17 +189,14 @@ namespace AutomacaoPromobTeste.Promob{
             token.ThrowIfCancellationRequested();
 
             /*
-            Logger.Log("  [7/9] Navegando até Ferramentas > Integradores > Promob ERP...");
             Diagnostics.Medir("Abrir Promob ERP", () => PromobExportadorErp.AbrirIntegradorErp(automation, janela));
 
-            Logger.Log("  [8/9] Aguardando exportação XML do Promob ERP...");
             PromobExportException? erroExportacao = null;
             try{
                 Diagnostics.Medir("Exportação ERP", () => PromobExportadorErp.AguardarExportacaoErp(automation, janela));
             }
             catch (PromobExportException ex){
                 erroExportacao = ex;
-                Logger.Log("  [AVISO] Exportação falhou. Fechando o projeto normalmente antes de sinalizar o erro...", LogLevel.Warn);
             }
             */
 
@@ -221,19 +218,19 @@ namespace AutomacaoPromobTeste.Promob{
         }
 
         //--------------------------------------------------------------------------------------
-        /// <summary>
-        /// Rotina de auto-recuperação (Self-Healing) disparada quando ocorrem timeouts ou falhas inesperadas no fluxo principal.
-        /// </summary>
-        /// <param name="automation">A instância ativa do motor de automação UIA3.</param>
+            /// <summary>
+            /// Rotina de auto-recuperação (Self-Healing) disparada quando ocorrem timeouts ou falhas inesperadas no fluxo principal.
+            /// </summary>
+            /// <param name="automation">A instância ativa do motor de automação UIA3.</param>
         //--------------------------------------------------------------------------------------
         public static void TentarRecuperar(UIA3Automation automation){
             PromobRecuperacao.TentarRecuperar(automation);
         }
 
         //--------------------------------------------------------------------------------------
-        /// <summary>
-        /// Lista os botões do projeto para ajudar a diagnosticar e encontrar os IDs na árvore de automação.
-        /// </summary>
+            /// <summary>
+            /// Lista os botões do projeto para ajudar a diagnosticar e encontrar os IDs na árvore de automação.
+            /// </summary>
         //--------------------------------------------------------------------------------------
         public static void ListarTodosBotoes(Window janela){
             var processId = janela.Properties.ProcessId.ValueOrDefault;
