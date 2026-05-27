@@ -112,6 +112,58 @@ namespace AutomacaoPromobTeste.Promob{
                     var swTotal = Stopwatch.StartNew();
                     Logger.Log("    [DEBUG] Iniciando ciclo de verificação UI...");
 
+                    // --- DETECÇÃO PREVENTIVA DE POPUPS DE BLOQUEIO (COMO O DE APENAS LEITURA) ---
+                    try {
+                        var desktop = janelaPromob.Automation.GetDesktop();
+                        var janelasDesktop = desktop.FindAllChildren(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Window));
+                        var janelasFilhas = janelaPromob.FindAllChildren(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Window));
+                        
+                        var todasJanelas = janelasDesktop.Concat(janelasFilhas).ToList();
+                        var janelasAviso = todasJanelas.Where(j => {
+                            var nome = j.Name ?? "";
+                            return InteractionHelper.ContemQualquer(nome, PromobConfig.TitulosAviso);
+                        });
+                        
+                        foreach (var j in janelasAviso) {
+                            var textos = j.FindAllDescendants()
+                                .Where(e => e.ControlType == FlaUI.Core.Definitions.ControlType.Text)
+                                .Select(e => e.Name ?? "")
+                                .ToList();
+                                
+                            bool ehApenasLeitura = textos.Any(t => t.Contains("apenas leitura", StringComparison.OrdinalIgnoreCase) || 
+                                                                   t.Contains("desatualizado", StringComparison.OrdinalIgnoreCase));
+                            
+                            if (ehApenasLeitura) {
+                                Logger.Log("[AVISO-POPUP] Popup 'Aviso (Apenas Leitura / Sem Conexão)' detectado preventivamente. Fechando popup...", LogLevel.Warn);
+                                var popupWindow = j.AsWindow();
+                                InteractionHelper.AtivarJanela(popupWindow);
+                                
+                                // Tenta fechar clicando no OK ou 'X' ou Alt+F4
+                                var btnOk = popupWindow.FindFirstDescendant(cf => 
+                                    cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button)
+                                      .And(cf.ByName("OK").Or(cf.ByName("Ok")).Or(cf.ByName("Fechar")).Or(cf.ByName("Concluir")).Or(cf.ByName("Close")).Or(cf.ByName("Sim")).Or(cf.ByName("Yes"))));
+                                      
+                                if (btnOk != null) {
+                                    Logger.Log("[AVISO-POPUP] Clicando no botão OK.");
+                                    InteractionHelper.ClicarComFallback(btnOk);
+                                } else {
+                                    var primeiroBotao = popupWindow.FindFirstDescendant(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button));
+                                    if (primeiroBotao != null) {
+                                        Logger.Log("[AVISO-POPUP] Clicando no primeiro botão encontrado.");
+                                        InteractionHelper.ClicarComFallback(primeiroBotao);
+                                    } else {
+                                        Logger.Log("[AVISO-POPUP] Enviando ALT+F4...");
+                                        Keyboard.TypeSimultaneously(VirtualKeyShort.ALT, VirtualKeyShort.F4);
+                                    }
+                                }
+                                InteractionHelper.EsperarUiRespirar(1000);
+                            }
+                        }
+                    } catch (Exception ex) {
+                        Logger.Log($"[DEBUG] Erro na verificação preventiva de popup 'Aviso': {ex.Message}", LogLevel.Debug);
+                    }
+                    // ----------------------------------------------------------------------------
+
                     var raizBusca = WindowFinder.ObterHostOuJanela(janelaPromob, PromobConfig.AutomationIdHost, PromobWindowHelper.CachedProcessIdPromob);
 
                     var swAba = Stopwatch.StartNew();
