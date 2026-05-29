@@ -188,7 +188,7 @@ namespace AutomacaoPromobTeste.Promob{
 
             token.ThrowIfCancellationRequested();
 
-            /*
+            
             Diagnostics.Medir("Abrir Promob ERP", () => PromobExportadorErp.AbrirIntegradorErp(automation, janela));
 
             PromobExportException? erroExportacao = null;
@@ -198,7 +198,7 @@ namespace AutomacaoPromobTeste.Promob{
             catch (PromobExportException ex){
                 erroExportacao = ex;
             }
-            */
+            
 
             AppLogs.LogWorkflowFechandoProjeto();
             Diagnostics.Medir("Fechar projeto", () => PromobFecharProjeto.Fechar(automation, janela));
@@ -210,9 +210,9 @@ namespace AutomacaoPromobTeste.Promob{
             token.ThrowIfCancellationRequested();
 
             // Se houve erro na exportação, relança a exceção APÓS fechar o projeto
-            // if (erroExportacao != null){
-            //     throw erroExportacao;
-            // }
+            if (erroExportacao != null){
+                throw erroExportacao;
+            }
 
             AppLogs.LogWorkflowFluxoConcluido();
         }
