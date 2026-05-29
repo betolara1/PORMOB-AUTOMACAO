@@ -5,7 +5,7 @@
   },
   "projects": {
     "C:\\Users\\Ralf\\Desktop\\Programação\\AutomacaoPromobTeste\\AutomacaoPromobTeste.csproj": {
-      "version": "1.0.0",
+      "version": "2.0.0",
       "restore": {
         "projectUniqueName": "C:\\Users\\Ralf\\Desktop\\Programação\\AutomacaoPromobTeste\\AutomacaoPromobTeste.csproj",
         "projectName": "AutomacaoPromobTeste",
@@ -51,6 +51,12 @@
               "target": "Package",
               "version": "[5.0.0, )"
             },
+            "Microsoft.NET.ILLink.Tasks": {
+              "suppressParent": "All",
+              "target": "Package",
+              "version": "[8.0.25, )",
+              "autoReferenced": true
+            },
             "System.Drawing.Common": {
               "target": "Package",
               "version": "[8.0.10, )"
@@ -73,6 +79,14 @@
               "version": "[8.0.25, 8.0.25]"
             },
             {
+              "name": "Microsoft.AspNetCore.App.Runtime.win-x64",
+              "version": "[8.0.25, 8.0.25]"
+            },
+            {
+              "name": "Microsoft.NETCore.App.Crossgen2.win-x64",
+              "version": "[8.0.25, 8.0.25]"
+            },
+            {
               "name": "Microsoft.NETCore.App.Host.win-x64",
               "version": "[8.0.25, 8.0.25]"
             },
@@ -81,7 +95,15 @@
               "version": "[8.0.25, 8.0.25]"
             },
             {
+              "name": "Microsoft.NETCore.App.Runtime.win-x64",
+              "version": "[8.0.25, 8.0.25]"
+            },
+            {
               "name": "Microsoft.WindowsDesktop.App.Ref",
+              "version": "[8.0.25, 8.0.25]"
+            },
+            {
+              "name": "Microsoft.WindowsDesktop.App.Runtime.win-x64",
               "version": "[8.0.25, 8.0.25]"
             }
           ],
@@ -94,6 +116,11 @@
             }
           },
           "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.201/PortableRuntimeIdentifierGraph.json"
+        }
+      },
+      "runtimes": {
+        "win-x64": {
+          "#import": []
         }
       }
     }

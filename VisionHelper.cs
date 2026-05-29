@@ -11,8 +11,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
 
-namespace AutomacaoPromobTeste
-{
+namespace AutomacaoPromobTeste{
     /// <summary>
     /// Helper de visão para a automação:
     /// - captura screenshot
@@ -20,8 +19,7 @@ namespace AutomacaoPromobTeste
     /// - decide se a tela está pronta
     /// - pode localizar elementos por coordenadas
     /// </summary>
-    static class VisionHelper
-    {
+    static class VisionHelper{
         // ────────────────────────────────────────────────────────────────────
         // Configuração
         const string OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";

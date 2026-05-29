@@ -1,7 +1,9 @@
 # AutomacaoPromobTeste
 
-**Automação robótica (RPA) para processamento contínuo de projetos no software Promob.**  
-O projeto automatiza o fluxo completo de importação, geração de exportações via Promob ERP (XML) e fechamento de projetos, eliminando tarefas manuais repetitivas.
+**Automação robótica (RPA) de alta resiliência para processamento contínuo de projetos no software Promob.**  
+O projeto automatiza o fluxo completo de monitoramento, importação de arquivos `.promob`, geração de exportações via Promob ERP (XML), fechamento seguro de projetos e reset de interface, eliminando tarefas manuais repetitivas com controle robusto de janelas e tratamento de erros.
+
+---
 
 ## 2. Fluxo de Funcionamento
 ```mermaid
@@ -33,111 +35,120 @@ graph TD
     Recovery --> MainLoop
 ```
 
+---
+
 ## 3. Status do Projeto
-🚀 **MVP Concluído / Em Desenvolvimento**  
-O sistema já opera em modo contínuo com alta confiabilidade, integrando automação de UI, busca persistente de elementos e tratamento de janelas nativas do Windows.
+🚀 **MVP Concluído / Em Desenvolvimento Contínuo**  
+O sistema já opera em modo contínuo (24/7 se necessário) com altíssima confiabilidade, integrando automação nativa do Windows (UIA3), busca persistente com cache de elementos e tratamento dinâmico de exceções com fallback inteligente.
 
-## 4. Arquitetura / Visão Técnica
-A solução utiliza uma arquitetura de **Automação de Desktop baseada em Eventos e UI Automation (UIA3)**.
+---
 
-- **Motor de Automação**: [FlaUI](https://github.com/FlaUI/FlaUI) para interação direta com os elementos WPF/WinForms do Promob.
-- **Camada de Inteligência Visual**: `VisionHelper` atua como um sistema de suporte, utilizando IA de visão computacional para validar estados da tela que o UIA não consegue mapear (opcional).
-- **Gerenciamento de Estado**: Monitoramento em tempo real de pastas do sistema e tratamento dinâmico de exceções (Recovery Mode).
-- **Resiliência**: Tratamento de timeouts longos (até 40 min) para processos de exportação pesados.
+## 4. Arquitetura e Visão Técnica
+A solução utiliza uma arquitetura de **Automação de Desktop baseada em Eventos e UI Automation (UIA3)** modularizada e blindada contra falhas:
+
+- **Motor de Automação Principal**: [FlaUI (UIA3)](https://github.com/FlaUI/FlaUI) para interagir diretamente com os elementos WPF/WinForms expostos pelo Promob na árvore de acessibilidade do Windows.
+- **Camada de Clique Resiliente com Fallback**: Implementa acionamentos em 3 níveis (Invoke UIA nativo $\rightarrow$ Clique Físico em Coordenadas Dinâmicas $\rightarrow$ Simulação física de Teclado Space/Enter).
+- **Inteligência Visual Assistida (`VisionHelper`)**: Utiliza IA Multimodal (modelo `gemini-2.0-flash` via OpenRouter) para tomar decisões visuais inteligentes e localização de elementos quando a árvore UIA é ausente ou inadequada (opcional).
+- **Gerenciamento de Estado**: Sistema de logs centralizado e controle de estado persistente (`AutomacaoEstado`) para monitorar o andamento dos arquivos, sucessos e taxa de falhas.
+
+---
 
 ## 5. Stack Técnica
 - **Linguagem**: C# (.NET 8.0)
-- **Framework**: .NET Windows Desktop (WPF/UIA)
+- **Interface Gráfica (WPF)**: Painel do operador com estados e gerenciamento.
 - **Bibliotecas Principais**: 
-  - `FlaUI.UIA3`: Interação com a interface.
-  - `System.Drawing.Common`: Manipulação de capturas de tela.
-  - `DotNetEnv`: Gerenciamento de segredos e configurações.
-- **Integração**: APIs de Visão Computacional (OpenAI/Claude).
+  - `FlaUI.UIA3`: Comunicação de baixo nível com a API de Acessibilidade do Windows.
+  - `System.Drawing.Common`: Captura dinâmica e processamento de screenshots.
+  - `DotNetEnv`: Gerenciamento seguro de configurações de variáveis locais.
+- **Integração Externa**: API OpenRouter (LLM Multimodal Gemini).
+
+---
 
 ## 6. Funcionalidades Principais
-- ✅ **Monitoramento Contínuo**: Verifica a entrada de novos arquivos `.promob` em tempo real.
-- ✅ **Wizard de Importação**: Automação inteligente do assistente de importação do Promob, preenchendo caminhos via UIA ou Clipboard.
-- ✅ **Geração de XML (ERP)**: Navega pelos menus `Ferramentas > Integradores > Promob ERP` e aguarda o sucesso da exportação.
-- ✅ **Auto-Recuperação**: Detecta e fecha popups inesperados ou diálogos de erro do sistema durante todo o processo.
-- ✅ **Limpeza Automática**: Fecha janelas do Windows Explorer abertas após exportações e exclui arquivos processados.
+- ✅ **Monitoramento Contínuo**: Varredura inteligente de diretórios monitorados em tempo real sem sobrecarga de CPU.
+- ✅ **Tratamento de Atualizações (`PromobUpdater`)**: Detecta telas de atualização pendentes e as descarta ou confirma de forma robusta.
+- ✅ **Wizard de Importação Resiliente**: Preenche caminhos e executa o assistente contornando limitações de campos travados usando clipboard e digitação direta.
+- ✅ **Geração de XML (Promob ERP)**: Navega pelos menus `Ferramentas > Integradores > Promob ERP` e monitora o processamento longo (suporta projetos pesados com mais de 40 minutos de espera).
+- ✅ **Limpeza de Janelas Órfãs**: Encerra automaticamente as janelas do Windows Explorer que o Promob abre após exportar arquivos.
+- ✅ **Recovery Mode (Autocura)**: Monitora diálogos inesperados, popups de erro e reseta a UI do Promob para o estado neutro caso ocorra alguma falha crítica.
+
+---
 
 ## 7. Fluxos Principais (Processamento)
-1. **MainLoop**: Loop infinito que monitora a pasta configurada (padrão `Desktop/promob`).
-2. **ProcessarArquivo**: Orquestrador que executa do passo [1/8] ao [8/8].
-3. **AguardarEFinalizarExportacaoErp**: Monitoramento de barra de progresso e textos de sucesso com timeout dinâmico.
-4. **TentarRecuperar**: Rotina de emergência que reseta a UI do Promob em caso de erro crítico.
+1. **MainLoop (`Program.cs`)**: Laço infinito que busca arquivos e gerencia o ciclo de vida.
+2. **Workflow (`PromobWorkflow.cs`)**: Orquestrador das 8 etapas sequenciais de processamento.
+3. **Importação (`PromobImportador.cs`)**: Gestão de caixas de diálogo do Windows (File Explorer dialog) e assistente de importação.
+4. **Fechamento e Reset (`PromobFecharProjeto.cs`)**: Reseta o estado do Promob limpando a área de trabalho 3D para o próximo ciclo de processamento.
+
+---
 
 ## 8. Como Rodar Localmente
 ### Pré-requisitos
-- Windows OS (suporte a UIA3).
+- Sistema Operacional Windows 10/11.
 - [SDK .NET 8.0](https://dotnet.microsoft.com/download/dotnet/8.0).
-- Promob instalado e aberto na tela inicial.
+- Promob aberto na tela inicial (sem projetos carregados).
 
-### Comandos
-1. Clone o repositório.
-2. Configure o arquivo `.env` (veja seção abaixo).
-3. Na raiz do projeto, execute:
+### Inicialização rápida
+1. Clone este repositório.
+2. Crie e configure o arquivo `.env` na raiz do projeto (detalhado abaixo).
+3. Execute o comando no PowerShell na pasta raiz:
    ```powershell
    dotnet run
    ```
 
-## 9. Variáveis de Ambiente / Configuração
-Crie um arquivo `.env` na raiz do projeto:
-```env
-# API Key para o VisionHelper (opcional)
-VISION_API_KEY=sua_chave_aqui
+---
 
-# Configurações de pastas (opcional, usa caminhos do Windows por padrão)
+## 9. Variáveis de Ambiente e Configuração
+Crie um arquivo `.env` na raiz do projeto contendo as seguintes definições:
+```env
+# API Key do OpenRouter/Gemini para a IA visual do VisionHelper (Opcional)
+GEMINI_API_KEY=sua_chave_aqui
+
+# Configurações de pastas (Se omitido, usa pastas padrão criadas na área de trabalho)
 PASTA_PROMOB=C:\Users\Nome\Desktop\promob
 PASTA_XML=C:\Users\Nome\Desktop\xml
 ```
 
-## 10. Segurança
-- **Segredos**: Chaves de API e caminhos locais são mantidos fora do código-fonte via `.env`.
-- **Integridade**: O sistema não altera os arquivos originais antes de garantir o processamento bem-sucedido.
-- **Workflow Limpo**: Restaura o foco da janela principal e limpa janelas auxiliares (Explorer) automaticamente.
+---
 
-## 11. Estrutura do Projeto
+## 10. Estrutura Detalhada do Projeto
 ```text
 AutomacaoPromobTeste/
-├── Program.cs          # Ponto de entrada e loop de monitoramento
-├── Promob/
-│   ├── PromobWorkflow.cs   # Lógica sequencial da automação (Workflow)
-│   ├── PromobConfig.cs     # Constantes, IDs e Strings de UI
-│   └── PromobWindowHelper.cs# Utilitários para busca de janelas específicas
-├── Automation/
-│   ├── WindowFinder.cs     # Motor de busca robusto com fallback e cache
-│   └── InteractionHelper.cs# Facades para cliques, foco e preenchimento
-└── Utils/
-    ├── Logger.cs           # Sistema de logs coloridos
-    ├── Diagnostics.cs      # Medição de tempo de execução
-    └── NativeClipboard.cs  # Manipulação segura do clipboard do Windows
+├── Program.cs              # Ponto de entrada do executável e loop de monitoramento
+├── AppMode.cs              # Configuração dos modos de inicialização do robô
+├── AutomacaoEstado.cs      # Modelo de persistência e estatísticas de processamento
+├── VisionHelper.cs         # Integração de Visão Computacional com Gemini 2.0 Flash
+├── MainWindow.xaml / .cs   # Janela principal do operador (Interface WPF)
+├── StartupWindow.xaml / .cs# Splash screen de carregamento inicial
+├── LoginWindow.xaml / .cs  # Tela de autenticação e controle de acessos
+├── Promob/                 # Regras de Negócio e Passos da Automação do Promob
+│   ├── PromobWorkflow.cs        # Orquestrador das 8 etapas principais
+│   ├── PromobConfig.cs          # Dicionário de IDs de elementos UIA, nomes e caminhos
+│   ├── PromobWindowHelper.cs    # Lógica de localização e foco em janelas/popups
+│   ├── PromobUpdater.cs         # Bypass resiliente de telas de atualização
+│   ├── PromobImportador.cs      # Automação do wizard de arquivos .promob
+│   ├── PromobCarregadorProjeto.cs# Tratamento de ambiente 3D e validação de carregamento
+│   ├── PromobExportadorErp.cs   # Processamento e exportação do XML ERP
+│   ├── PromobFecharProjeto.cs   # Encerramento seguro de projetos e reset de tela
+│   ├── PromobRecuperacao.cs     # Tratador de diálogos inesperados (Recovery Mode)
+│   └── PromobExportException.cs # Exceções de negócio para falhas na geração ERP
+├── Automation/             # Ferramentas Genéricas de Automação de Interface
+│   ├── WindowFinder.cs          # Motor de busca UIA resiliente com cache e fallback
+│   ├── InteractionHelper.cs     # Ações de Clique, Foco, Digitação e Polling robustos
+│   └── PromobWatchdog.cs        # Monitoramento e controle do processo Promob.exe
+└── Utils/                  # Utilitários de Diagnóstico e Sistema
+    ├── AppLogs.cs               # Central de mensagens estruturadas de logs
+    ├── Logger.cs                # Formatação e cores de console para o operador
+    ├── Diagnostics.cs           # Marcadores de tempo de execução e performance
+    └── NativeClipboard.cs       # Manipulação segura da Área de Transferência (Clipboard)
 ```
 
-## 12. Próximos Passos
-- [ ] Implementar suporte a múltiplos idiomas (Detecção de nomes de botões dinâmica).
-- [ ] Criar Dashboard de monitoramento com estatísticas de processamento em tempo real.
-- [ ] Adicionar suporte para exportação via "Orçamento" como alternativa opcional (Toggle).
+---
 
-## 13. Logs de Exemplo
-A aplicação exibe um banner personalizado e logs detalhados via console:
-```text
-══════════════════════════════════════════
-[NOVO] Processando: Cozinha_Luxo.promob
-       Processados até agora: 12 | Erros: 0
-══════════════════════════════════════════
-[INFO] [1/8] Localizando janela do Promob...
-[INFO] [7/8] Navegando até Ferramentas > Integradores > Promob ERP...
-[OK] Aba 'Ferramentas' encontrada.
-[OK] Botão 'Integradores' encontrado.
-[SUCESSO] Exportação ERP concluída! ('Completado com sucesso!'). Tempo gasto: 42s.
-[OK] Janela da pasta detectada: '01_XML'. Fechando...
-[INFO] Fluxo concluído para este arquivo.
-```
-══════════════
-[NOVO] Processando: Cozinha_Luxo.promob
-       Processados até agora: 12 | Erros: 0
-══════════════════════════════════════════
-[INFO] [1/8] Localizando janela do Promob...
-[OK] Aba 'Ferramentas' detectada.
-```
+## 11. Segurança e Resiliência
+- **Manipulação Segura do Clipboard**: O robô faz backup da área de transferência do usuário antes de injetar caminhos de arquivos e a restaura logo em seguida (`NativeClipboard.cs`), prevenindo interferências.
+- **Proteção Contra Diálogos Inesperados**: O robô verifica constantemente a presença de diálogos "Salvar Alterações?", "Erro Interno" ou "Aviso de Backup" e os fecha de forma segura antes que o fluxo trave.
+- **Workflow Limpo**: Caso ocorra um erro grave, o robô executa a rotina `TentarRecuperar`, que fecha tudo via atalhos de teclado (ESC) e força o reset do Promob para que o próximo arquivo da fila não seja prejudicado.
+
+---
+

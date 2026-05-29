@@ -1,0 +1,8 @@
+C:\Users\Ralf\Desktop\Programação\AutomacaoPromobTeste\bin\Release\net8.0-windows\win-x64\publish\AutomacaoPromobTeste.pdb
+C:\Users\Ralf\Desktop\Programação\AutomacaoPromobTeste\bin\Release\net8.0-windows\win-x64\publish\network.json
+C:\Users\Ralf\Desktop\Programação\AutomacaoPromobTeste\bin\Release\net8.0-windows\win-x64\publish\D3DCompiler_47_cor3.dll
+C:\Users\Ralf\Desktop\Programação\AutomacaoPromobTeste\bin\Release\net8.0-windows\win-x64\publish\PenImc_cor3.dll
+C:\Users\Ralf\Desktop\Programação\AutomacaoPromobTeste\bin\Release\net8.0-windows\win-x64\publish\PresentationNative_cor3.dll
+C:\Users\Ralf\Desktop\Programação\AutomacaoPromobTeste\bin\Release\net8.0-windows\win-x64\publish\vcruntime140_cor3.dll
+C:\Users\Ralf\Desktop\Programação\AutomacaoPromobTeste\bin\Release\net8.0-windows\win-x64\publish\wpfgfx_cor3.dll
+C:\Users\Ralf\Desktop\Programação\AutomacaoPromobTeste\bin\Release\net8.0-windows\win-x64\publish\AutomacaoPromobTeste.exe
