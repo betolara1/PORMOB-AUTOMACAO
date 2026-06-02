@@ -73,7 +73,7 @@ namespace PromobAutomacao.Promob{
             AppLogs.LogUpdaterIniciandoRotina();
 
             AppLogs.LogUpdaterLocalizandoJanela();
-            var janela = PromobWindowHelper.AguardarJanelaPromob(automation, 15000)
+            var janela = PromobWindowHelper.AguardarJanelaPromob(automation, 5000)
                 ?? throw new Exception("Janela do Promob não encontrada. Abra o Promob antes de atualizar.");
 
             InteractionHelper.AtivarJanela(janela);
@@ -496,7 +496,6 @@ namespace PromobAutomacao.Promob{
         private static Window? AguardarJanelaUpdate(UIA3Automation automation, int timeoutMs){
             var sw = Stopwatch.StartNew();
             bool logDiagnosticoFeito = false; // Loga janelas Promob apenas uma vez no primeiro ciclo
-            bool trayTentado = false;
 
             while (sw.ElapsedMilliseconds < timeoutMs){
 
@@ -511,13 +510,6 @@ namespace PromobAutomacao.Promob{
                         }
                     }
                     catch { }
-                }
-
-                // Se após 5 segundos a janela não apareceu e ainda não tentamos o tray, tenta restaurar pelo tray
-                if (sw.ElapsedMilliseconds > 5000 && !trayTentado) {
-                    trayTentado = true;
-                    AppLogs.LogUpdaterJanelaUpdateNaoApareceuTentandoRestaurar();
-                    PromobWindowHelper.RestaurarJanelaUpdateDoTray(automation);
                 }
 
                 // ETAPA 2: Win32 EnumWindows — busca em TODAS as janelas (visíveis e ocultas)
@@ -719,6 +711,16 @@ namespace PromobAutomacao.Promob{
             const int timeoutSimMs = 15000;
             
             while (swSim.ElapsedMilliseconds < timeoutSimMs) {
+                // Se a janela principal já fechou ou sumiu, não há motivo para continuar esperando pelo popup
+                try {
+                    if (janelaUpdate.IsAvailable == false || janelaUpdate.Properties.IsOffscreen.ValueOrDefault) {
+                        break;
+                    }
+                }
+                catch {
+                    break;
+                }
+
                 var todosElementosAlerta = janelaUpdate.FindAllDescendants();
                 
                 btnSim = todosElementosAlerta.FirstOrDefault(e =>

@@ -265,7 +265,7 @@ namespace PromobAutomacao{
                     PromobUpdater.ExecutarAtualizacao(automation);
                 }
                 catch (Exception ex){
-                    AppLogs.LogMainWindowUpdateError(ex.Message);
+                    AppLogs.LogMainWindowUpdateError(); 
                 }
                 finally{
                     AutomacaoEstado.AtualizacaoEmAndamento = false;

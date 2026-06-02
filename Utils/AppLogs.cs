@@ -1179,8 +1179,8 @@ namespace PromobAutomacao.Utils{
             Logger.Log($"[ERRO] Não foi possível iniciar o Promob: {detail}", LogLevel.Error);
         }
 
-        public static void LogMainWindowUpdateError(string detail){
-            Logger.Log($"[ERRO ATUALIZAÇÃO] Falha ao atualizar: {detail}", LogLevel.Error);
+        public static void LogMainWindowUpdateError(){
+            Logger.Log($"[AVISO] Instancia de atualização já aberta! Tente novamente mais tarde.", LogLevel.Warn);
         }
 
         public static void LogMainWindowAutomationStarted(){
