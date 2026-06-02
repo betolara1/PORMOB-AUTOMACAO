@@ -6,9 +6,9 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using AutomacaoPromobTeste.Utils;
+using PromobAutomacao.Utils;
 
-namespace AutomacaoPromobTeste.Network{
+namespace PromobAutomacao.Network{
     //--------------------------------------------------------------------------------------
         /// <summary>
         /// Servidor TCP que aceita conexões de clientes remotos, transmite logs em tempo real

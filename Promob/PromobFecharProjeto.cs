@@ -4,15 +4,15 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 
-using AutomacaoPromobTeste.Automation;
-using AutomacaoPromobTeste.Utils;
+using PromobAutomacao.Automation;
+using PromobAutomacao.Utils;
 
 using FlaUI.Core.AutomationElements;
 using FlaUI.Core.Input;
 using FlaUI.Core.WindowsAPI;
 using FlaUI.UIA3;
 
-namespace AutomacaoPromobTeste.Promob{
+namespace PromobAutomacao.Promob{
     public static class PromobFecharProjeto{
 
         //--------------------------------------------------------------------------------------

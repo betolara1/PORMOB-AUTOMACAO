@@ -2,7 +2,7 @@ using System;
 using System.Net.Http;
 using System.Threading.Tasks;
 
-namespace AutomacaoPromobTeste.Network{
+namespace PromobAutomacao.Network{
     //--------------------------------------------------------------------------------------
         /// <summary>
         /// Serviço de notificações externas via Telegram Bot.

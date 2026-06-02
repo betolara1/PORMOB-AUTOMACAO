@@ -7,9 +7,9 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
-using AutomacaoPromobTeste.Network;
+using PromobAutomacao.Network;
 
-namespace AutomacaoPromobTeste{
+namespace PromobAutomacao{
     //--------------------------------------------------------------------------------------
         /// <summary>
         /// Tela de inicialização para seleção do modo de operação (Local, Servidor ou Cliente).

@@ -1,7 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace AutomacaoPromobTeste.Network{
+namespace PromobAutomacao.Network{
 
     //--------------------------------------------------------------------------------------
         /// <summary>
@@ -55,6 +55,10 @@ namespace AutomacaoPromobTeste.Network{
         [JsonPropertyName("promobRunning")]
         public bool PromobRunning { get; set; }
 
+        /// <summary>Indica se há uma atualização em andamento no servidor.</summary>
+        [JsonPropertyName("updating")]
+        public bool Updating { get; set; }
+
         /// <summary>Serializa a mensagem para uma linha JSON.</summary>
         public string Serialize() => JsonSerializer.Serialize(this, _opts);
 
@@ -72,8 +76,8 @@ namespace AutomacaoPromobTeste.Network{
             Type = MessageType.Log, Text = text, Level = level
         };
 
-        public static WsMessage CreateMetrics(int sucessos, int erros, string status, bool promobRunning) => new(){
-            Type = MessageType.Metrics, Sucessos = sucessos, Erros = erros, Status = status, PromobRunning = promobRunning
+        public static WsMessage CreateMetrics(int sucessos, int erros, string status, bool promobRunning, bool updating = false) => new(){
+            Type = MessageType.Metrics, Sucessos = sucessos, Erros = erros, Status = status, PromobRunning = promobRunning, Updating = updating
         };
 
         public static WsMessage CreateCommand(string action) => new(){

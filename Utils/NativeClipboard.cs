@@ -3,7 +3,7 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Threading;
 
-namespace AutomacaoPromobTeste.Utils{
+namespace PromobAutomacao.Utils{
     //--------------------------------------------------------------------------------------
         /// <summary>
         /// Classe utilitária que gerencia acesso de baixo nível (Win32 API / PInvoke) e PowerShell à Área de Transferência (Clipboard) do Windows.

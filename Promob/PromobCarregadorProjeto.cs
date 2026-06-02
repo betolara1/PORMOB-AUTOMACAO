@@ -3,14 +3,14 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 
-using AutomacaoPromobTeste.Automation;
-using AutomacaoPromobTeste.Utils;
+using PromobAutomacao.Automation;
+using PromobAutomacao.Utils;
 
 using FlaUI.Core.AutomationElements;
 using FlaUI.Core.Input;
 using FlaUI.Core.WindowsAPI;
 
-namespace AutomacaoPromobTeste.Promob{
+namespace PromobAutomacao.Promob{
     //--------------------------------------------------------------------------------------
     /// <summary>
     /// Componente responsável por gerenciar o carregamento de projetos recém-importados no Promob,

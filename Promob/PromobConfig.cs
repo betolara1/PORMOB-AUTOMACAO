@@ -1,7 +1,7 @@
 using System;
 using System.IO;
 
-namespace AutomacaoPromobTeste.Promob{
+namespace PromobAutomacao.Promob{
     //--------------------------------------------------------------------------------------
         /// <summary>
         /// Classe centralizadora de configurações, constantes e caminhos do Promob.

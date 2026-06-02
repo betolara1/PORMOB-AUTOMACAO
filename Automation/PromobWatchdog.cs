@@ -2,10 +2,10 @@
 // using System.Diagnostics;
 // using System.Linq;
 // using System.Threading;
-// using AutomacaoPromobTeste.Utils;
+// using PromobAutomacao.Utils;
 // using FlaUI.Core.AutomationElements;
 
-// namespace AutomacaoPromobTeste.Automation{
+// namespace PromobAutomacao.Automation{
 //     public static class PromobWatchdog{
 //         private const string ProcessName = "Promob5";
         

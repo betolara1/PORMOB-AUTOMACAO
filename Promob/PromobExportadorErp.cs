@@ -3,15 +3,15 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 
-using AutomacaoPromobTeste.Automation;
-using AutomacaoPromobTeste.Utils;
+using PromobAutomacao.Automation;
+using PromobAutomacao.Utils;
 
 using FlaUI.Core.AutomationElements;
 using FlaUI.Core.Input;
 using FlaUI.Core.WindowsAPI;
 using FlaUI.UIA3;
 
-namespace AutomacaoPromobTeste.Promob{
+namespace PromobAutomacao.Promob{
     //--------------------------------------------------------------------------------------
     /// <summary>
     /// Componente responsável por gerenciar a navegação e a exportação de dados para o ERP,

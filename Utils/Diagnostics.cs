@@ -1,10 +1,10 @@
 using System;
 using System.Diagnostics;
 using System.Linq;
-using AutomacaoPromobTeste.Utils;
+using PromobAutomacao.Utils;
 using FlaUI.Core.AutomationElements;
 
-namespace AutomacaoPromobTeste.Utils{
+namespace PromobAutomacao.Utils{
     //--------------------------------------------------------------------------------------
         /// <summary>
         /// Classe utilitária para diagnósticos, medições de desempenho e análise estrutural 

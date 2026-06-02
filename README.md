@@ -1,4 +1,4 @@
-# AutomacaoPromobTeste
+# PromobAutomacao
 
 **Automação robótica (RPA) de alta resiliência para processamento contínuo de projetos no software Promob.**  
 O projeto automatiza o fluxo completo de monitoramento, importação de arquivos `.promob`, geração de exportações via Promob ERP (XML), fechamento seguro de projetos e reset de interface, eliminando tarefas manuais repetitivas com controle robusto de janelas e tratamento de erros.
@@ -113,7 +113,7 @@ PASTA_XML=C:\Users\Nome\Desktop\xml
 
 ## 10. Estrutura Detalhada do Projeto
 ```text
-AutomacaoPromobTeste/
+PromobAutomacao/
 ├── Program.cs              # Ponto de entrada do executável e loop de monitoramento
 ├── AppMode.cs              # Configuração dos modos de inicialização do robô
 ├── AutomacaoEstado.cs      # Modelo de persistência e estatísticas de processamento

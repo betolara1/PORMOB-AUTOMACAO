@@ -2,11 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using AutomacaoPromobTeste.Utils;
+using PromobAutomacao.Utils;
 using FlaUI.Core.AutomationElements;
 using FlaUI.Core.Conditions;
 
-namespace AutomacaoPromobTeste.Automation{
+namespace PromobAutomacao.Automation{
     //--------------------------------------------------------------------------------------
         /// <summary>
         /// Classe utilitária responsável pela busca otimizada de elementos visuais do Windows.

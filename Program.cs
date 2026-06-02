@@ -1,7 +1,7 @@
 using System;
 using System.Windows;
 
-namespace AutomacaoPromobTeste{
+namespace PromobAutomacao{
     internal class Program{
         [STAThread]
         static void Main(string[] args){

@@ -1,7 +1,7 @@
 using System.Windows;
 using System.Windows.Media;
 
-namespace AutomacaoPromobTeste{
+namespace PromobAutomacao{
     //--------------------------------------------------------------------------------------
         /// <summary>
         /// Janela de Login para autenticação do Cliente como Operador (admin) ou Espectador.

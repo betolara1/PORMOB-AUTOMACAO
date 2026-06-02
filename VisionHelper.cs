@@ -11,7 +11,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
 
-namespace AutomacaoPromobTeste{
+namespace PromobAutomacao{
     /// <summary>
     /// Helper de visão para a automação:
     /// - captura screenshot

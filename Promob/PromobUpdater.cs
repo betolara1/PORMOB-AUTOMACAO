@@ -5,14 +5,14 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
-using AutomacaoPromobTeste.Automation;
-using AutomacaoPromobTeste.Utils;
+using PromobAutomacao.Automation;
+using PromobAutomacao.Utils;
 using FlaUI.Core.AutomationElements;
 using FlaUI.UIA3;
 using FlaUI.Core.Input;
 using FlaUI.Core.WindowsAPI;
 
-namespace AutomacaoPromobTeste.Promob{
+namespace PromobAutomacao.Promob{
     //--------------------------------------------------------------------------------------
     /// <summary>
     /// Componente responsável por gerenciar a rotina de atualização do Promob,
@@ -496,6 +496,7 @@ namespace AutomacaoPromobTeste.Promob{
         private static Window? AguardarJanelaUpdate(UIA3Automation automation, int timeoutMs){
             var sw = Stopwatch.StartNew();
             bool logDiagnosticoFeito = false; // Loga janelas Promob apenas uma vez no primeiro ciclo
+            bool trayTentado = false;
 
             while (sw.ElapsedMilliseconds < timeoutMs){
 
@@ -510,6 +511,13 @@ namespace AutomacaoPromobTeste.Promob{
                         }
                     }
                     catch { }
+                }
+
+                // Se após 5 segundos a janela não apareceu e ainda não tentamos o tray, tenta restaurar pelo tray
+                if (sw.ElapsedMilliseconds > 5000 && !trayTentado) {
+                    trayTentado = true;
+                    Logger.Log("[UPDATE] Janela de atualização não apareceu. Tentando restaurar a partir do tray...", LogLevel.Info);
+                    PromobWindowHelper.RestaurarJanelaUpdateDoTray(automation);
                 }
 
                 // ETAPA 2: Win32 EnumWindows — busca em TODAS as janelas (visíveis e ocultas)

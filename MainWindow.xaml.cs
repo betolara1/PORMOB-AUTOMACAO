@@ -9,14 +9,14 @@ using System.Windows.Media;
 using System.Windows.Media.Effects;
 using System.Diagnostics;
 using Microsoft.Win32;
-using AutomacaoPromobTeste.Utils;
-using AutomacaoPromobTeste.Promob;
-using AutomacaoPromobTeste.Automation;
-using AutomacaoPromobTeste.Network;
+using PromobAutomacao.Utils;
+using PromobAutomacao.Promob;
+using PromobAutomacao.Automation;
+using PromobAutomacao.Network;
 using FlaUI.UIA3;
 using FlaUIWindow = FlaUI.Core.AutomationElements.Window;
 
-namespace AutomacaoPromobTeste{
+namespace PromobAutomacao{
     public partial class MainWindow : Window{
         private bool _isMonitoring = false;
         private CancellationTokenSource? _cts;
@@ -226,6 +226,16 @@ namespace AutomacaoPromobTeste{
                     };
                     info.EnvironmentVariables["__COMPAT_LAYER"] = "RunAsInvoker";
                     Process.Start(info);
+
+                    // Após abrir o Promob, inicia uma tarefa em background para abrir a tela de update se ela estiver oculta no tray
+                    Task.Run(() => {
+                        Thread.Sleep(6000); // Aguarda Promob inicializar um pouco
+                        try {
+                            using var auto = new UIA3Automation();
+                            PromobWindowHelper.RestaurarJanelaUpdateDoTray(auto);
+                        }
+                        catch { }
+                    });
                 }
                 else{
                     AppLogs.LogMainWindowPromobExeNotFound();
@@ -243,13 +253,21 @@ namespace AutomacaoPromobTeste{
         private void BtnAtualizarPromob_Click(object sender, RoutedEventArgs e){
             if (AppMode.Mode == AppRunMode.Client){
                 _promobClient?.Send(WsMessage.CreateCommand("UPDATE_PROMOB"));
+                // Bloqueia botões imediatamente no cliente
+                btnAtualizarPromob.IsEnabled = false;
+                btnToggleAutomacao.IsEnabled = false;
+                btnAbrirPromob.IsEnabled = false;
                 return;
             }
 
             // Local or Server mode:
+            AutomacaoEstado.AtualizacaoEmAndamento = true;
             btnAtualizarPromob.IsEnabled = false;
             btnToggleAutomacao.IsEnabled = false;
             btnAbrirPromob.IsEnabled = false;
+            if (AppMode.Mode == AppRunMode.Server) {
+                BroadcastMetrics();
+            }
 
             Task.Run(() => {
                 try{
@@ -260,6 +278,10 @@ namespace AutomacaoPromobTeste{
                     AppLogs.LogMainWindowUpdateError(ex.Message);
                 }
                 finally{
+                    AutomacaoEstado.AtualizacaoEmAndamento = false;
+                    if (AppMode.Mode == AppRunMode.Server) {
+                        BroadcastMetrics();
+                    }
                     Dispatcher.Invoke(() => {
                         AtualizarBotaoIniciar();
                     });
@@ -487,6 +509,12 @@ namespace AutomacaoPromobTeste{
 
                     // Ativa a trava de atualização para evitar que a automação principal inicie novos arquivos
                     AutomacaoEstado.AtualizacaoEmAndamento = true;
+                    Dispatcher.Invoke(() => {
+                        AtualizarBotaoIniciar();
+                    });
+                    if (AppMode.Mode == AppRunMode.Server) {
+                        BroadcastMetrics();
+                    }
 
                     try{
                         // Se há um arquivo em processamento, aguarda o projeto ser fechado (passo 9/9)
@@ -529,6 +557,12 @@ namespace AutomacaoPromobTeste{
                     finally{
                         // Sempre garante a liberação da trava de atualização ao concluir ou falhar
                         AutomacaoEstado.AtualizacaoEmAndamento = false;
+                        Dispatcher.Invoke(() => {
+                            AtualizarBotaoIniciar();
+                        });
+                        if (AppMode.Mode == AppRunMode.Server) {
+                            BroadcastMetrics();
+                        }
                     }
                 }
                 catch (OperationCanceledException){
@@ -638,7 +672,21 @@ namespace AutomacaoPromobTeste{
         // ==========================================
 
         private async void StatusTimer_Tick(object? sender, EventArgs e){
+            if (AutomacaoEstado.AtualizacaoEmAndamento){
+                btnAbrirPromob.IsEnabled = false;
+                btnToggleAutomacao.IsEnabled = false;
+                btnAtualizarPromob.IsEnabled = false;
+                return;
+            }
+
             bool promobAberto = await Task.Run(() => IsPromobRunning());
+
+            if (AutomacaoEstado.AtualizacaoEmAndamento){
+                btnAbrirPromob.IsEnabled = false;
+                btnToggleAutomacao.IsEnabled = false;
+                btnAtualizarPromob.IsEnabled = false;
+                return;
+            }
 
             Dispatcher.Invoke(() => {
                 AtualizarEstadoBotaoPromob(promobAberto);
@@ -658,6 +706,13 @@ namespace AutomacaoPromobTeste{
         }
 
         private void AtualizarBotaoIniciar(){
+            if (AutomacaoEstado.AtualizacaoEmAndamento){
+                btnAbrirPromob.IsEnabled = false;
+                btnToggleAutomacao.IsEnabled = false;
+                btnAtualizarPromob.IsEnabled = false;
+                return;
+            }
+
             bool promobAberto = IsPromobRunning();
             AtualizarEstadoBotaoPromob(promobAberto);
 
@@ -680,6 +735,11 @@ namespace AutomacaoPromobTeste{
             else{
                 btnAbrirPromob.Content = "Abrir Promob";
                 btnAbrirPromob.Background = new SolidColorBrush(Color.FromRgb(59, 130, 246));
+            }
+
+            if (AutomacaoEstado.AtualizacaoEmAndamento){
+                btnAbrirPromob.IsEnabled = false;
+                return;
             }
 
             if (!_isMonitoring){
@@ -867,10 +927,16 @@ namespace AutomacaoPromobTeste{
                             }
                         }
 
-                        // Atualiza o botão Abrir/Fechar Promob e a disponibilidade do toggle
-                        AtualizarEstadoBotaoPromob(msg.PromobRunning);
-                        btnToggleAutomacao.IsEnabled = msg.PromobRunning || _isMonitoring;
-                        btnAtualizarPromob.IsEnabled = msg.PromobRunning && !_isMonitoring;
+                        if (msg.Updating) {
+                            btnToggleAutomacao.IsEnabled = false;
+                            btnAbrirPromob.IsEnabled     = false;
+                            btnAtualizarPromob.IsEnabled = false;
+                        } else {
+                            // Atualiza o botão Abrir/Fechar Promob e a disponibilidade do toggle
+                            AtualizarEstadoBotaoPromob(msg.PromobRunning);
+                            btnToggleAutomacao.IsEnabled = msg.PromobRunning || _isMonitoring;
+                            btnAtualizarPromob.IsEnabled = msg.PromobRunning && !_isMonitoring;
+                        }
                         break;
                 }
             });
@@ -897,7 +963,8 @@ namespace AutomacaoPromobTeste{
             var erros         = _errosCount;
             _ = Task.Run(() => {
                 var promobRunning = IsPromobRunning();
-                _server.Broadcast(WsMessage.CreateMetrics(processados, erros, status, promobRunning));
+                var updating = AutomacaoEstado.AtualizacaoEmAndamento;
+                _server.Broadcast(WsMessage.CreateMetrics(processados, erros, status, promobRunning, updating));
             });
         }
 

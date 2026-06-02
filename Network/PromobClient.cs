@@ -4,7 +4,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace AutomacaoPromobTeste.Network{
+namespace PromobAutomacao.Network{
     //--------------------------------------------------------------------------------------
         /// <summary>
         /// Cliente TCP que conecta ao PromobServer, recebe logs e métricas em tempo real

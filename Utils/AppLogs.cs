@@ -1,6 +1,6 @@
 using System;
 
-namespace AutomacaoPromobTeste.Utils{
+namespace PromobAutomacao.Utils{
     //--------------------------------------------------------------------------------------
     /// <summary>
     /// Classe utilitária estática centralizadora que encapsula todas as mensagens de log

@@ -1,4 +1,4 @@
-namespace AutomacaoPromobTeste{
+namespace PromobAutomacao{
     //--------------------------------------------------------------------------------------
         /// <summary>
         /// Define o modo de operação da aplicação ao ser iniciada.

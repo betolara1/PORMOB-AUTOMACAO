@@ -1,7 +1,7 @@
 using System;
 using System.IO;
 
-namespace AutomacaoPromobTeste.Utils{
+namespace PromobAutomacao.Utils{
     //--------------------------------------------------------------------------------------
         /// <summary>
         /// Define os níveis de severidade hierárquicos para o sistema de registros de logs.

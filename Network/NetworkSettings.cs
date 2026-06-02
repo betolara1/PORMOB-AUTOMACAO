@@ -4,7 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 
-namespace AutomacaoPromobTeste.Network{
+namespace PromobAutomacao.Network{
     //--------------------------------------------------------------------------------------
         /// <summary>
         /// Gerenciador de configurações de rede persistidas no arquivo "network.json".

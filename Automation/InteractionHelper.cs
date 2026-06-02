@@ -3,12 +3,12 @@ using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
-using AutomacaoPromobTeste.Utils;
+using PromobAutomacao.Utils;
 using FlaUI.Core.AutomationElements;
 using FlaUI.Core.Input;
 using FlaUI.Core.WindowsAPI;
 
-namespace AutomacaoPromobTeste.Automation{
+namespace PromobAutomacao.Automation{
     
     //--------------------------------------------------------------------------------------
         /// <summary>

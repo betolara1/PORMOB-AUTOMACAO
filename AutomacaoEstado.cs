@@ -1,4 +1,4 @@
-namespace AutomacaoPromobTeste{
+namespace PromobAutomacao{
     //--------------------------------------------------------------------------------------
         /// <summary>
         /// Estado compartilhado entre o loop de automação e o monitor de atualização do Promob.

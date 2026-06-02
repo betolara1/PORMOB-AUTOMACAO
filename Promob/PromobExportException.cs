@@ -1,6 +1,6 @@
 using System;
 
-namespace AutomacaoPromobTeste.Promob{
+namespace PromobAutomacao.Promob{
     //--------------------------------------------------------------------------------------
         /// <summary>
         /// Exceção específica lançada quando a exportação ERP do Promob falha com "Abortado com erro!".
