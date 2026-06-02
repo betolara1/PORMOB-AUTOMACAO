@@ -516,7 +516,7 @@ namespace PromobAutomacao.Promob{
                 // Se após 5 segundos a janela não apareceu e ainda não tentamos o tray, tenta restaurar pelo tray
                 if (sw.ElapsedMilliseconds > 5000 && !trayTentado) {
                     trayTentado = true;
-                    Logger.Log("[UPDATE] Janela de atualização não apareceu. Tentando restaurar a partir do tray...", LogLevel.Info);
+                    AppLogs.LogUpdaterJanelaUpdateNaoApareceuTentandoRestaurar();
                     PromobWindowHelper.RestaurarJanelaUpdateDoTray(automation);
                 }
 

@@ -327,7 +327,7 @@ namespace PromobAutomacao.Promob{
                 bool matches = isUpdateOrNews && !isMainStudio;
                                
                 if (matches) {
-                    Logger.Log($"[TRAY] Ícone UIA correspondente encontrado! Nome='{name}', AutoId='{autoId}', Help='{helpText}'. Clicando...", LogLevel.Debug);
+                    AppLogs.LogTrayIconFoundUia(name, autoId, helpText);
                     var rect = item.BoundingRectangle;
                     if (!rect.IsEmpty) {
                         int x = (int)(rect.X + (rect.Width / 2));
@@ -351,7 +351,7 @@ namespace PromobAutomacao.Promob{
                 if (taskbar != null) {
                     var trayNotify = taskbar.FindFirstDescendant(cf => cf.ByClassName("TrayNotifyWnd"));
                     if (trayNotify != null) {
-                        Logger.Log("[TRAY] Escaneando tray principal via UIA...", LogLevel.Debug);
+                        AppLogs.LogTrayScanPrincipalUia();
                         if (ScanAndClickUiaIcon(trayNotify)) {
                             return true;
                         }
@@ -368,7 +368,7 @@ namespace PromobAutomacao.Promob{
                     }
                 }
                 if (hMainToolbar != IntPtr.Zero) {
-                    Logger.Log("[TRAY] Escaneando tray principal via Win32 Toolbar...", LogLevel.Debug);
+                    AppLogs.LogTrayScanPrincipalWin32();
                     if (ScanAndClickTrayIcon(hMainToolbar, desktop.AsWindow())) {
                         return true;
                     }
@@ -387,7 +387,7 @@ namespace PromobAutomacao.Promob{
                                   );
                                   
                     if (chevron != null) {
-                        Logger.Log("[TRAY] Chevron do tray encontrado. Clicando para abrir overflow...", LogLevel.Debug);
+                        AppLogs.LogTrayChevronEncontrado();
                         var rectChevron = chevron.BoundingRectangle;
                         int cx = 0, cy = 0;
                         if (!rectChevron.IsEmpty) {
@@ -431,7 +431,7 @@ namespace PromobAutomacao.Promob{
                         }
                         
                         if (overflowWin != null) {
-                            Logger.Log($"[TRAY] Janela de overflow localizada (Title='{overflowWin.Name}', ClassName='{overflowWin.Properties.ClassName.ValueOrDefault}', Hwnd={hOverflow}). Escaneando via UIA...", LogLevel.Debug);
+                            AppLogs.LogTrayOverflowLocalizado(overflowWin.Name, overflowWin.Properties.ClassName.ValueOrDefault, hOverflow);
                             if (ScanAndClickUiaIcon(overflowWin)) {
                                 // Fecha a overflow clicando novamente no chevron
                                 if (cx > 0 && cy > 0) {
@@ -447,7 +447,7 @@ namespace PromobAutomacao.Promob{
                         if (hOverflow != IntPtr.Zero) {
                             IntPtr hOverflowToolbar = FindToolbarWindow32(hOverflow);
                             if (hOverflowToolbar != IntPtr.Zero) {
-                                Logger.Log("[TRAY] Escaneando overflow via Win32 Toolbar...", LogLevel.Debug);
+                                AppLogs.LogTrayScanOverflowWin32();
                                 if (ScanAndClickTrayIcon(hOverflowToolbar, desktop.AsWindow())) {
                                     // Fecha a overflow clicando novamente no chevron
                                     if (cx > 0 && cy > 0) {
@@ -464,14 +464,14 @@ namespace PromobAutomacao.Promob{
                 }
             }
             catch (Exception ex) {
-                Logger.Log($"[TRAY] Erro ao buscar ícone no tray: {ex.Message}", LogLevel.Error);
+                AppLogs.LogTrayErroBuscaIcone(ex.Message);
             }
             return false;
         }
 
         private static bool ScanAndClickTrayIcon(IntPtr hToolbar, Window desktopWindow) {
             int count = SendMessage(hToolbar, TB_BUTTONCOUNT, 0, 0);
-            Logger.Log($"[TRAY] ScanAndClickTrayIcon: count={count} icons in toolbar {hToolbar}", LogLevel.Debug);
+            AppLogs.LogTrayScanAndClickIconCount(count, hToolbar);
             if (count <= 0) return false;
 
             uint explorerPid = 0;
@@ -480,7 +480,7 @@ namespace PromobAutomacao.Promob{
 
             IntPtr hProcess = OpenProcess(PROCESS_VM_OPERATION | PROCESS_VM_READ | PROCESS_VM_WRITE, false, explorerPid);
             if (hProcess == IntPtr.Zero) {
-                Logger.Log($"[TRAY] Failed to OpenProcess for Explorer PID {explorerPid}", LogLevel.Debug);
+                AppLogs.LogTrayFailedOpenProcess(explorerPid);
                 return false;
             }
 
@@ -488,7 +488,7 @@ namespace PromobAutomacao.Promob{
                 // Aloca memória no processo do Explorer
                 IntPtr ipMem = VirtualAllocEx(hProcess, IntPtr.Zero, 32, MEM_COMMIT, PAGE_READWRITE);
                 if (ipMem == IntPtr.Zero) {
-                    Logger.Log("[TRAY] Failed to VirtualAllocEx in Explorer process", LogLevel.Debug);
+                    AppLogs.LogTrayFailedVirtualAlloc();
                     return false;
                 }
 
@@ -496,7 +496,7 @@ namespace PromobAutomacao.Promob{
                     for (int i = 0; i < count; i++) {
                         int res = SendMessage(hToolbar, TB_GETBUTTON, i, ipMem);
                         if (res == 0) {
-                            Logger.Log($"[TRAY] TB_GETBUTTON returned 0 for index {i}", LogLevel.Debug);
+                            AppLogs.LogTrayTbGetButtonReturnedZero(i);
                             continue;
                         }
 
@@ -504,13 +504,13 @@ namespace PromobAutomacao.Promob{
                         int bytesRead = 0;
                         bool success = ReadProcessMemory(hProcess, ipMem, btnBytes, 32, out bytesRead);
                         if (!success) {
-                            Logger.Log($"[TRAY] ReadProcessMemory failed for TBBUTTON at index {i}", LogLevel.Debug);
+                            AppLogs.LogTrayReadProcessMemoryFailed(i);
                             continue;
                         }
 
                         long dwDataLong = BitConverter.ToInt64(btnBytes, 16);
                         if (dwDataLong == 0) {
-                            Logger.Log($"[TRAY] dwData is 0 for index {i}", LogLevel.Debug);
+                            AppLogs.LogTrayDwDataZero(i);
                             continue;
                         }
 
@@ -518,20 +518,20 @@ namespace PromobAutomacao.Promob{
                         byte[] hWndBytes = new byte[8];
                         bool success2 = ReadProcessMemory(hProcess, dwData, hWndBytes, 8, out bytesRead);
                         if (!success2) {
-                            Logger.Log($"[TRAY] ReadProcessMemory for dwData failed at index {i}", LogLevel.Debug);
+                            AppLogs.LogTrayReadProcessMemoryDwDataFailed(i);
                             continue;
                         }
 
                         IntPtr ownerHWnd = (IntPtr)BitConverter.ToInt64(hWndBytes, 0);
                         if (ownerHWnd == IntPtr.Zero) {
-                            Logger.Log($"[TRAY] ownerHWnd is 0 for index {i}", LogLevel.Debug);
+                            AppLogs.LogTrayOwnerHwndZero(i);
                             continue;
                         }
 
                         uint ownerPid = 0;
                         GetWindowThreadProcessId(ownerHWnd, out ownerPid);
                         if (ownerPid == 0) {
-                            Logger.Log($"[TRAY] ownerPid is 0 for hWnd {ownerHWnd} at index {i}", LogLevel.Debug);
+                            AppLogs.LogTrayOwnerPidZero(ownerHWnd, i);
                             continue;
                         }
 
@@ -544,7 +544,7 @@ namespace PromobAutomacao.Promob{
                             processName = $"[Unknown: {exProc.Message}]";
                         }
 
-                        Logger.Log($"[TRAY] Index {i}: hWnd={ownerHWnd}, ProcessName={processName}, PID={ownerPid}", LogLevel.Debug);
+                        AppLogs.LogTrayIconDetail(i, ownerHWnd, processName, ownerPid);
 
                         bool isUpdateProc = processName.Contains("Procad", StringComparison.OrdinalIgnoreCase) ||
                                             processName.Contains("Update", StringComparison.OrdinalIgnoreCase) ||
@@ -555,7 +555,7 @@ namespace PromobAutomacao.Promob{
 
                         if (isUpdateProc && !isMainProc) {
 
-                            Logger.Log($"[TRAY] Ícone correspondente encontrado! Processo: {processName} (PID: {ownerPid}). Clicando...", LogLevel.Debug);
+                            AppLogs.LogTrayIconCorrespondingFound(processName, ownerPid);
 
                             // Aloca memória para a RECT
                             IntPtr ipMemRect = VirtualAllocEx(hProcess, IntPtr.Zero, 16, MEM_COMMIT, PAGE_READWRITE);

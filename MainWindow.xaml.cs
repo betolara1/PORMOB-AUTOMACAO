@@ -226,16 +226,6 @@ namespace PromobAutomacao{
                     };
                     info.EnvironmentVariables["__COMPAT_LAYER"] = "RunAsInvoker";
                     Process.Start(info);
-
-                    // Após abrir o Promob, inicia uma tarefa em background para abrir a tela de update se ela estiver oculta no tray
-                    Task.Run(() => {
-                        Thread.Sleep(6000); // Aguarda Promob inicializar um pouco
-                        try {
-                            using var auto = new UIA3Automation();
-                            PromobWindowHelper.RestaurarJanelaUpdateDoTray(auto);
-                        }
-                        catch { }
-                    });
                 }
                 else{
                     AppLogs.LogMainWindowPromobExeNotFound();

@@ -134,6 +134,78 @@ namespace PromobAutomacao.Utils{
             //Logger.Log($"    [DEBUG] Erro ao buscar wizard na janela principal: {detail}", LogLevel.Debug);
         }
 
+        public static void LogTrayIconFoundUia(string name, string autoId, string helpText){
+            //Logger.Log($"[TRAY] Ícone UIA correspondente encontrado! Nome='{name}', AutoId='{autoId}', Help='{helpText}'. Clicando...", LogLevel.Debug);
+        }
+
+        public static void LogTrayScanPrincipalUia(){
+            //Logger.Log("[TRAY] Escaneando tray principal via UIA...", LogLevel.Debug);
+        }
+
+        public static void LogTrayScanPrincipalWin32(){
+            //Logger.Log("[TRAY] Escaneando tray principal via Win32 Toolbar...", LogLevel.Debug);
+        }
+
+        public static void LogTrayChevronEncontrado(){
+            //Logger.Log("[TRAY] Chevron do tray encontrado. Clicando para abrir overflow...", LogLevel.Debug);
+        }
+
+        public static void LogTrayOverflowLocalizado(string? name, string? className, IntPtr hwnd){
+            //Logger.Log($"[TRAY] Janela de overflow localizada (Title='{name}', ClassName='{className}', Hwnd={hwnd}). Escaneando via UIA...", LogLevel.Debug);
+        }
+
+        public static void LogTrayScanOverflowWin32(){
+            //Logger.Log("[TRAY] Escaneando overflow via Win32 Toolbar...", LogLevel.Debug);
+        }
+
+        public static void LogTrayErroBuscaIcone(string detail){
+            Logger.Log($"[TRAY] Erro ao buscar ícone no tray: {detail}", LogLevel.Error);
+        }
+
+        public static void LogTrayScanAndClickIconCount(int count, IntPtr hToolbar){
+            //Logger.Log($"[TRAY] ScanAndClickTrayIcon: count={count} icons in toolbar {hToolbar}", LogLevel.Debug);
+        }
+
+        public static void LogTrayFailedOpenProcess(uint explorerPid){
+            //Logger.Log($"[TRAY] Failed to OpenProcess for Explorer PID {explorerPid}", LogLevel.Debug);
+        }
+
+        public static void LogTrayFailedVirtualAlloc(){
+            //Logger.Log("[TRAY] Failed to VirtualAllocEx in Explorer process", LogLevel.Debug);
+        }
+
+        public static void LogTrayTbGetButtonReturnedZero(int index){
+            //Logger.Log($"[TRAY] TB_GETBUTTON returned 0 for index {index}", LogLevel.Debug);
+        }
+
+        public static void LogTrayReadProcessMemoryFailed(int index){
+            //Logger.Log($"[TRAY] ReadProcessMemory failed for TBBUTTON at index {index}", LogLevel.Debug);
+        }
+
+        public static void LogTrayDwDataZero(int index){
+            //Logger.Log($"[TRAY] dwData is 0 for index {index}", LogLevel.Debug);
+        }
+
+        public static void LogTrayReadProcessMemoryDwDataFailed(int index){
+            //Logger.Log($"[TRAY] ReadProcessMemory for dwData failed at index {index}", LogLevel.Debug);
+        }
+
+        public static void LogTrayOwnerHwndZero(int index){
+            //Logger.Log($"[TRAY] ownerHWnd is 0 for index {index}", LogLevel.Debug);
+        }
+
+        public static void LogTrayOwnerPidZero(IntPtr ownerHWnd, int index){
+            //Logger.Log($"[TRAY] ownerPid is 0 for hWnd {ownerHWnd} at index {index}", LogLevel.Debug);
+        }
+
+        public static void LogTrayIconDetail(int index, IntPtr hWnd, string processName, uint ownerPid){
+            //Logger.Log($"[TRAY] Index {index}: hWnd={hWnd}, ProcessName={processName}, PID={ownerPid}", LogLevel.Debug);
+        }
+
+        public static void LogTrayIconCorrespondingFound(string processName, uint ownerPid){
+            //Logger.Log($"[TRAY] Ícone correspondente encontrado! Processo: {processName} (PID: {ownerPid}). Clicando...", LogLevel.Debug);
+        }
+
 
         // ==================================================================================
         // --- 6. PROMOB: PROMOB RECUPERACAO ---
@@ -802,6 +874,10 @@ namespace PromobAutomacao.Utils{
         // --- 12. PROMOB: PROMOB UPDATER ---
         // ==================================================================================
 
+        public static void LogUpdaterJanelaUpdateNaoApareceuTentandoRestaurar(){
+            Logger.Log("[UPDATE] Janela de atualização não apareceu. Tentando restaurar a partir do tray...", LogLevel.Info);
+        }
+
         public static void LogUpdaterIniciandoRotina(){
             Logger.Log("[ATUALIZAÇÃO] Iniciando rotina de verificação e atualização...");
         }
@@ -1241,6 +1317,42 @@ namespace PromobAutomacao.Utils{
 
         public static void LogMainWindowRemoteCloseError(string detail){
             Logger.Log($"[ERRO] Falha ao encerrar o Promob remotamente: {detail}", LogLevel.Error);
+        }
+
+        // ==================================================================================
+        // --- 14. NETWORK: PROMOB SERVER ---
+        // ==================================================================================
+
+        public static void LogServerClientConnected(int count){
+            Logger.Log($"[REDE] Novo cliente conectado ({count} total).");
+        }
+
+        public static void LogServerAcceptConnectionError(string detail){
+            Logger.Log($"[REDE] Erro ao aceitar conexão: {detail}", LogLevel.Warn);
+        }
+
+        public static void LogServerClientDisconnected(int count){
+            Logger.Log($"[REDE] Cliente desconectado ({count} restantes).");
+        }
+
+        // ==================================================================================
+        // --- 15. AUTOMATION: WATCHDOG ---
+        // ==================================================================================
+
+        public static void LogWatchdogNotResponding(){
+            Logger.Log("[CRÍTICO] Promob detectado como 'Não Respondendo'!");
+        }
+
+        public static void LogWatchdogKillingProcess(int pid){
+            Logger.Log($"[INFO] Finalizando processo do Promob travado (PID: {pid})...");
+        }
+
+        public static void LogWatchdogKillError(string detail){
+            Logger.Log($"[ERRO] Não foi possível matar o processo: {detail}");
+        }
+
+        public static void LogWatchdogStartingCleanInstance(){
+            Logger.Log("[INFO] Iniciando uma nova instância limpa do Promob...");
         }
 
     }

@@ -52,13 +52,13 @@ namespace PromobAutomacao.Network{
                     client.NoDelay = true;
                     var id = Guid.NewGuid();
                     _clients[id] = client;
-                    Logger.Log($"[REDE] Novo cliente conectado ({_clients.Count} total).");
+                    AppLogs.LogServerClientConnected(_clients.Count);
                     OnClientCountChanged?.Invoke();
                     _ = HandleClientAsync(id, client, token);
                 }
                 catch (OperationCanceledException){ break; }
                 catch (Exception ex) when (!token.IsCancellationRequested){
-                    Logger.Log($"[REDE] Erro ao aceitar conexão: {ex.Message}", LogLevel.Warn);
+                    AppLogs.LogServerAcceptConnectionError(ex.Message);
                 }
             }
         }
@@ -101,7 +101,7 @@ namespace PromobAutomacao.Network{
             finally{
                 _clients.TryRemove(id, out _);
                 try{ client.Close(); } catch{ }
-                Logger.Log($"[REDE] Cliente desconectado ({_clients.Count} restantes).");
+                AppLogs.LogServerClientDisconnected(_clients.Count);
                 OnClientCountChanged?.Invoke();
             }
         }
