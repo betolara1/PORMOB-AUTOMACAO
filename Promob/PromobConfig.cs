@@ -394,7 +394,7 @@ namespace PromobAutomacao.Promob{
             /// Coleção de títulos de janelas comuns que indicam modais nativos de aviso, erro ou atenção do Promob.
             /// </summary>
         //--------------------------------------------------------------------------------------
-        public static readonly string[] TitulosAviso = { "Aviso", "Erro", "Atenção", "Atencao", "Atençao", "Confirmação", "Confirmacao", "Salvar", "Save" };
+        public static readonly string[] TitulosAviso = { "Aviso", "Erro", "Atenção", "Atencao", "Atençao", "Confirmação", "Confirmacao", "Salvar", "Save", "Informação", "Informacao" };
 
         //--------------------------------------------------------------------------------------
             /// <summary>

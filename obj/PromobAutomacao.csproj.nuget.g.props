@@ -12,11 +12,7 @@
   <ItemGroup Condition=" '$(ExcludeRestorePackageImports)' != 'true' ">
     <SourceRoot Include="C:\Users\Ralf\.nuget\packages\" />
   </ItemGroup>
-  <ImportGroup Condition=" '$(ExcludeRestorePackageImports)' != 'true' ">
-    <Import Project="$(NuGetPackageRoot)microsoft.net.illink.tasks\8.0.25\build\Microsoft.NET.ILLink.Tasks.props" Condition="Exists('$(NuGetPackageRoot)microsoft.net.illink.tasks\8.0.25\build\Microsoft.NET.ILLink.Tasks.props')" />
-  </ImportGroup>
   <PropertyGroup Condition=" '$(ExcludeRestorePackageImports)' != 'true' ">
-    <PkgMicrosoft_NET_ILLink_Tasks Condition=" '$(PkgMicrosoft_NET_ILLink_Tasks)' == '' ">C:\Users\Ralf\.nuget\packages\microsoft.net.illink.tasks\8.0.25</PkgMicrosoft_NET_ILLink_Tasks>
     <PkgInterop_UIAutomationClient Condition=" '$(PkgInterop_UIAutomationClient)' == '' ">C:\Users\Ralf\.nuget\packages\interop.uiautomationclient\10.19041.0</PkgInterop_UIAutomationClient>
   </PropertyGroup>
 </Project>

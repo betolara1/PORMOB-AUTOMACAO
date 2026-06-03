@@ -277,6 +277,33 @@ namespace PromobAutomacao.Automation{
 
         //--------------------------------------------------------------------------------------
             /// <summary>
+            /// Realiza um clique físico utilizando o mouse, movendo o cursor até o centro do elemento e clicando.
+            /// </summary>
+            /// <param name="el">O elemento a ser clicado.</param>
+        //--------------------------------------------------------------------------------------
+        public static void ClicarComMouseFisico(AutomationElement el){
+            if (el == null) return;
+            var rect = el.BoundingRectangle;
+            if (!rect.IsEmpty){
+                try {
+                    int x = (int)(rect.X + (rect.Width / 2));
+                    int y = (int)(rect.Y + (rect.Height / 2));
+                    Mouse.MoveTo(x, y);
+                    EsperarUiRespirar(250);
+                    Mouse.Click();
+                    EsperarUiRespirar(500);
+                }
+                catch {
+                    try { el.Click(); } catch { }
+                }
+            }
+            else {
+                try { el.Click(); } catch { }
+            }
+        }
+
+        //--------------------------------------------------------------------------------------
+            /// <summary>
             /// Aciona um elemento de automação visual usando estritamente padrões UIA corporativos
             /// (Invoke, Toggle, Expand, Selection) sem usar interações físicas de mouse.
             /// O mouse físico só é empregado como último recurso absoluto de segurança.
