@@ -258,9 +258,15 @@ namespace PromobAutomacao.Promob{
             
             AutomationElement? btnAtualizar = null;
             var swCarregando = Stopwatch.StartNew();
-            const int timeoutCarregamentoMs = 120000; // 2 minutos
+            const int timeoutCarregamentoMs = 900000; // 15 minutos
             
             while (swCarregando.ElapsedMilliseconds < timeoutCarregamentoMs){
+                // Garante que a janela de atualização esteja ativa e em primeiro plano
+                try {
+                    InteractionHelper.AtivarJanela(janelaUpdate);
+                }
+                catch { }
+
                 var todosElementos = janelaUpdate.FindAllDescendants();
                 
                 // 1. Tenta encontrar diretamente pelo AutomationId 'btnUpdate' habilitado
@@ -344,9 +350,15 @@ namespace PromobAutomacao.Promob{
             
             AutomationElement? btnInstalar = null;
             var swDownload = Stopwatch.StartNew();
-            const int timeoutDownloadMs = 600000; // 10 minutos
+            const int timeoutDownloadMs = 900000; // 15 minutos
             
             while (swDownload.ElapsedMilliseconds < timeoutDownloadMs) {
+                // Garante que a janela de atualização esteja ativa e em primeiro plano
+                try {
+                    InteractionHelper.AtivarJanela(janelaUpdate);
+                }
+                catch { }
+
                 var todosElementosFresh = janelaUpdate.FindAllDescendants();
                 
                 btnInstalar = todosElementosFresh.FirstOrDefault(e =>
@@ -382,7 +394,7 @@ namespace PromobAutomacao.Promob{
             }
 
             if (btnInstalar == null) {
-                throw new Exception("[FLUXO] Timeout: O download demorou mais de 10 minutos ou o botão 'Instalar' não apareceu.");
+                throw new Exception("[FLUXO] Timeout: O download demorou mais de 15 minutos ou o botão 'Instalar' não apareceu.");
             }
 
             AppLogs.LogUpdaterBotaoInstalarDefinido(btnInstalar.ControlType.ToString(), btnInstalar.Name, btnInstalar.Properties.AutomationId.ValueOrDefault);
@@ -393,9 +405,15 @@ namespace PromobAutomacao.Promob{
             
             AutomationElement? btnOk = null;
             var swAlerta = Stopwatch.StartNew();
-            const int timeoutAlertaMs = 25000;
+            const int timeoutAlertaMs = 30000; // 30 segundos
             
             while (swAlerta.ElapsedMilliseconds < timeoutAlertaMs) {
+                // Garante que a janela de atualização esteja ativa e em primeiro plano
+                try {
+                    InteractionHelper.AtivarJanela(janelaUpdate);
+                }
+                catch { }
+
                 var todosElementosFresh = janelaUpdate.FindAllDescendants();
                 
                 var candidatosOk = todosElementosFresh.Where(e =>
@@ -443,7 +461,7 @@ namespace PromobAutomacao.Promob{
         //--------------------------------------------------------------------------------------
         private static void ClicarBotaoComEstrategias(Window janela, AutomationElement botao, string label){
             // Garante foco na janela e no botão
-            try { janela.SetForeground(); } catch {}
+            try { InteractionHelper.AtivarJanela(janela); } catch {}
             InteractionHelper.EsperarUiRespirar(300);
             try { botao.Focus(); } catch {}
             InteractionHelper.EsperarUiRespirar(300);
@@ -771,17 +789,37 @@ namespace PromobAutomacao.Promob{
                 foreach (var child in janelasDesktop) {
                     if (child.ControlType != FlaUI.Core.Definitions.ControlType.Window) continue;
                     string nome = child.Name ?? "";
-                    if (nome.Equals("PromobUpdate", StringComparison.OrdinalIgnoreCase)) {
+                    if (nome.Contains("PromobUpdate", StringComparison.OrdinalIgnoreCase)) {
                         var descSucesso = child.FindAllDescendants();
                         var btnCheck = descSucesso.FirstOrDefault(e =>
                             (e.ControlType == FlaUI.Core.Definitions.ControlType.Button) &&
-                            ((e.Name ?? "").Equals("Fechar", StringComparison.OrdinalIgnoreCase) ||
+                            ((e.Name ?? "").Contains("Fechar", StringComparison.OrdinalIgnoreCase) ||
                              (e.Properties.AutomationId.ValueOrDefault ?? "").Equals("btnClose", StringComparison.OrdinalIgnoreCase))
                         );
                         if (btnCheck != null) {
                             return (child.AsWindow(), btnCheck);
                         }
                     }
+                }
+
+                // ETAPA 3: Fallback direto usando o HWND retornado de EnumWindows
+                if (hOculta != IntPtr.Zero) {
+                    try {
+                        var elDireto = automation.FromHandle(hOculta);
+                        if (elDireto != null) {
+                            var wDireto = elDireto.AsWindow();
+                            var descSucesso = wDireto.FindAllDescendants();
+                            var btnCheck = descSucesso.FirstOrDefault(e =>
+                                (e.ControlType == FlaUI.Core.Definitions.ControlType.Button) &&
+                                ((e.Name ?? "").Contains("Fechar", StringComparison.OrdinalIgnoreCase) ||
+                                 (e.Properties.AutomationId.ValueOrDefault ?? "").Equals("btnClose", StringComparison.OrdinalIgnoreCase))
+                            );
+                            if (btnCheck != null) {
+                                return (wDireto, btnCheck);
+                            }
+                        }
+                    }
+                    catch { }
                 }
             }
             catch (Exception exCheck) {
@@ -803,7 +841,7 @@ namespace PromobAutomacao.Promob{
             AutomationElement? btnFecharSucesso = null;
             Window? janelaSucesso = null;
             var swSucesso = Stopwatch.StartNew();
-            const int timeoutSucessoMs = 300000; // 5 minutos
+            const int timeoutSucessoMs = 600000; // 10 minutos
             
             while (swSucesso.ElapsedMilliseconds < timeoutSucessoMs) {
                 var (janela, btn) = BuscarPopupSucessoNoDesktop(automation);
@@ -821,7 +859,7 @@ namespace PromobAutomacao.Promob{
             }
 
             if (btnFecharSucesso == null || janelaSucesso == null) {
-                throw new Exception("[SUCESSO] Timeout: O popup de conclusão da instalação não apareceu após 5 minutos.");
+                throw new Exception("[SUCESSO] Timeout: O popup de conclusão da instalação não apareceu após 10 minutos.");
             }
 
             FinalizarEFecharPopupSucesso(janelaSucesso, btnFecharSucesso);
