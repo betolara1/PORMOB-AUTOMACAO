@@ -1,4 +1,4 @@
-# PromobAutomacao
+# Automação Promob
 
 **Automação robótica (RPA) de alta resiliência e controle remoto distribuído para processamento de projetos no software Promob.**
 
