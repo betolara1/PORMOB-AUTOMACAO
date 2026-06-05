@@ -26,6 +26,20 @@ namespace PromobAutomacao.Automation{
             /// <returns>O ponteiro de memória (Handle) da janela ativa em primeiro plano.</returns>
         //--------------------------------------------------------------------------------------
         [DllImport("user32.dll")] static extern IntPtr GetForegroundWindow();
+        [DllImport("user32.dll")] [return: MarshalAs(UnmanagedType.Bool)] static extern bool SetForegroundWindow(IntPtr hWnd);
+        [DllImport("user32.dll")] static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+        [DllImport("user32.dll")] static extern bool IsIconic(IntPtr hWnd);
+        [DllImport("user32.dll")] [return: MarshalAs(UnmanagedType.Bool)] static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
+
+        static readonly IntPtr HWND_TOPMOST = new IntPtr(-1);
+        static readonly IntPtr HWND_NOTOPMOST = new IntPtr(-2);
+
+        const int SW_RESTORE = 9;
+        const int SW_SHOW = 5;
+
+        const uint SWP_NOSIZE = 0x0001;
+        const uint SWP_NOMOVE = 0x0002;
+        const uint SWP_SHOWWINDOW = 0x0040;
 
         //--------------------------------------------------------------------------------------
             /// <summary>
@@ -37,6 +51,27 @@ namespace PromobAutomacao.Automation{
         public static void AtivarJanela(Window janela){
             
             if (janela == null) return;
+
+            try {
+                var hwnd = (IntPtr)janela.Properties.NativeWindowHandle.ValueOrDefault;
+                if (hwnd != IntPtr.Zero) {
+                    if (IsIconic(hwnd)) {
+                        ShowWindow(hwnd, SW_RESTORE);
+                        EsperarUiRespirar(200);
+                    }
+                    ShowWindow(hwnd, SW_SHOW);
+                    
+                    // Força a janela a ficar Topmost temporariamente para garantir primeiro plano absoluto
+                    SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW);
+                    EsperarUiRespirar(100);
+                    SetWindowPos(hwnd, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW);
+                    EsperarUiRespirar(150);
+
+                    SetForegroundWindow(hwnd);
+                    EsperarUiRespirar(100);
+                }
+            }
+            catch { }
 
             try{
                 // Se a janela já for a janela ativa atual do Windows, ignora para evitar flickers/lentidão
@@ -277,28 +312,81 @@ namespace PromobAutomacao.Automation{
 
         //--------------------------------------------------------------------------------------
             /// <summary>
-            /// Realiza um clique físico utilizando o mouse, movendo o cursor até o centro do elemento e clicando.
+            /// Executa a sequência completa de estratégias de clique para acionar um botão:
+            /// 1. Clique físico por coordenadas absolutas (Mouse real)
+            /// 2. Clique via UIA Invoke/Click fallback
+            /// 3. Envio direto de teclado (Focus + ENTER + SPACE)
             /// </summary>
-            /// <param name="el">O elemento a ser clicado.</param>
+            /// <param name="el">O elemento visual a ser acionado.</param>
+            /// <param name="janela">A janela opcional para focar/ativar antes do clique.</param>
+            /// <param name="labelLog">Label opcional para log de falhas do updater.</param>
+            /// <param name="apenasMouse">Se true, executa apenas o clique físico de mouse (Strategy 1).</param>
         //--------------------------------------------------------------------------------------
-        public static void ClicarComMouseFisico(AutomationElement el){
+        public static void ClicarComEstrategias(AutomationElement el, Window? janela = null, string? labelLog = null, bool apenasMouse = false){
             if (el == null) return;
+
+            // Garante foco na janela e no elemento
+            if (janela != null) {
+                try { AtivarJanela(janela); } catch {}
+                EsperarUiRespirar(300);
+            }
+            try { el.Focus(); } catch {}
+            EsperarUiRespirar(300);
+
+            // ESTRATÉGIA 1: Clique Físico por coordenadas absolutas
             var rect = el.BoundingRectangle;
-            if (!rect.IsEmpty){
+            bool clickFisicoSucesso = false;
+            if (!rect.IsEmpty) {
                 try {
                     int x = (int)(rect.X + (rect.Width / 2));
                     int y = (int)(rect.Y + (rect.Height / 2));
+                    
+                    if (labelLog != null) {
+                        AppLogs.LogUpdaterMovendoCursor(x, y);
+                    }
                     Mouse.MoveTo(x, y);
                     EsperarUiRespirar(250);
                     Mouse.Click();
-                    EsperarUiRespirar(500);
+                    EsperarUiRespirar(apenasMouse ? 500 : 1000);
+                    clickFisicoSucesso = true;
                 }
-                catch {
-                    try { el.Click(); } catch { }
+                catch (Exception exMouse) {
+                    if (labelLog != null) {
+                        AppLogs.LogUpdaterFalhaCliqueFisico(labelLog, exMouse.Message);
+                    }
                 }
             }
-            else {
-                try { el.Click(); } catch { }
+
+            // Se configurado para apenas mouse, encerramos aqui
+            if (apenasMouse) {
+                if (!clickFisicoSucesso) {
+                    try { el.Click(); } catch { }
+                }
+                return;
+            }
+
+            // ESTRATÉGIA 2: Clicar com Fallback UIA (Invoke -> Click -> Keyboard Space)
+            if (labelLog != null) {
+                AppLogs.LogUpdaterAcionandoFallback();
+            }
+            ClicarComFallback(el);
+            EsperarUiRespirar(500);
+
+            // ESTRATÉGIA 3: Envio Direto de Teclado (Focus + ENTER / ESPAÇO)
+            try {
+                if (labelLog != null) {
+                    AppLogs.LogUpdaterEnviandoFocusEnterSpace();
+                }
+                el.Focus();
+                EsperarUiRespirar(150);
+                Keyboard.Type(VirtualKeyShort.ENTER);
+                EsperarUiRespirar(150);
+                Keyboard.Type(VirtualKeyShort.SPACE);
+            }
+            catch (Exception exKey) {
+                if (labelLog != null) {
+                    AppLogs.LogUpdaterFalhaTeclado(labelLog, exKey.Message);
+                }
             }
         }
 

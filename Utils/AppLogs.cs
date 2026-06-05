@@ -1139,7 +1139,7 @@ namespace PromobAutomacao.Utils{
         }
 
         public static void LogUpdaterConcluidaSucesso(){
-            Logger.Log("[ATUALIZAÇÃO] Atualização do Promob concluída com sucesso!");
+            Logger.Log("[ATUALIZAÇÃO] Atualização completa!");
         }
 
 
@@ -1264,7 +1264,7 @@ namespace PromobAutomacao.Utils{
         }
 
         public static void LogMainWindowUpdateSuccess(){
-            Logger.Log("[ATUALIZAÇÃO] Atualização concluída com sucesso!");
+            Logger.Log("[ATUALIZAÇÃO] Atualização completa!");
         }
 
         public static void LogMainWindowUpdateMonitorError(string detail){
@@ -1353,6 +1353,74 @@ namespace PromobAutomacao.Utils{
 
         public static void LogWatchdogStartingCleanInstance(){
             Logger.Log("[INFO] Iniciando uma nova instância limpa do Promob...");
+        }
+
+        // ==================================================================================
+        // --- 16. POPUP E RECONSTRUTOR DE UPDATE LOGS ---
+        // ==================================================================================
+
+        public static void LogMainWindowFalhaVerificarPopupInicial(string message) {
+            Logger.Log($"  [AVISO] Falha ao verificar popup de conclusão do update no início da automação: {message}", LogLevel.Warn);
+        }
+
+        public static void LogWorkflowFalhaVerificarPopupProcessamento(string message) {
+            Logger.Log($"  [AVISO] Falha ao verificar popup de conclusão do update no início do processamento do arquivo: {message}", LogLevel.Warn);
+        }
+
+        public static void LogWorkflowVerificandoPopupsIniciais() {
+            Logger.Log("  [INFO] Verificando se existem popups de bloqueio iniciais (como 'Informação')...");
+        }
+
+        public static void LogWorkflowPopupInicialDetectado(string nomePopup) {
+            Logger.Log($"  [AVISO-POPUP] Popup inicial detectado: '{nomePopup}'. Tratando e fechando...");
+        }
+
+        public static void LogWorkflowClicandoBtnOkPopup(string btnName) {
+            Logger.Log($"  [ACTION] Clicando no botão '{btnName}' do popup usando clique físico de mouse...");
+        }
+
+        public static void LogWorkflowClicandoPrimeiroBotaoPopup(string btnName) {
+            Logger.Log($"  [ACTION] Clicando no primeiro botão encontrado '{btnName}' do popup usando clique físico de mouse...");
+        }
+
+        public static void LogWorkflowBotaoFechamentoNaoEncontradoPopup() {
+            Logger.Log("  [AVISO] Botão de fechamento não encontrado no popup. Enviando ENTER/Alt+F4...");
+        }
+
+        public static void LogWorkflowFalhaVerificarPopupsIniciais(string message) {
+            Logger.Log($"  [AVISO] Falha ao verificar popups iniciais: {message}", LogLevel.Warn);
+        }
+
+        public static void LogUpdaterFalhaVarrerBotoesSucesso(string message) {
+            Logger.Log($"  [ERROR] Falha ao varrer botões da janela de sucesso: {message}");
+        }
+
+        public static void LogUpdaterIniciandoVarreduraJanelas() {
+            Logger.Log("  [DEBUG-WINDOW-SCAN] Iniciando varredura de janelas no Desktop...");
+        }
+
+        public static void LogUpdaterJanelaPromobLocalizadaVarredura(string nome, IntPtr childHwnd) {
+            Logger.Log($"  [DEBUG-WINDOW-SCAN] Janela contendo 'Promob' localizada: '{nome}' (Handle: {childHwnd})");
+        }
+
+        public static void LogUpdaterAguardandoConclusaoInstalacao() {
+            Logger.Log("[ATUALIZAÇÃO] Aguardando a conclusão da instalação (esperando a janela de sucesso 'PromobUpdate' aparecer)...");
+        }
+
+        public static void LogUpdaterAguardandoPopupConclusao(int minutes, int seconds) {
+            Logger.Log($"[ATUALIZAÇÃO] Aguardando popup de conclusão da instalação... (Tempo decorrido: {minutes}m {seconds}s)");
+        }
+
+        public static void LogUpdaterPopupConclusaoDetectado(string btnName) {
+            Logger.Log($"[ATUALIZAÇÃO] Popup de conclusão detectado. Clicando no botão '{btnName}'...");
+        }
+
+        public static void LogUpdaterPopupUpdateAbertoDesktop() {
+            Logger.Log("  [INFO] Popup de conclusão do update ('PromobUpdate') detectado aberto no desktop. Iniciando fechamento...");
+        }
+
+        public static void LogUpdaterFalhaVerificarFecharPopupSucessoInicial(string message) {
+            Logger.Log($"  [AVISO] Falha ao verificar/fechar popup de sucesso inicial: {message}", LogLevel.Warn);
         }
 
     }

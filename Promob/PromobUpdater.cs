@@ -343,7 +343,7 @@ namespace PromobAutomacao.Promob{
 
             // --- Clicar no botão "Atualizar" do rodapé ---
             AppLogs.LogUpdaterBotaoAtualizarDefinido(btnAtualizar.ControlType.ToString(), btnAtualizar.Name, btnAtualizar.Properties.AutomationId.ValueOrDefault);
-            ClicarBotaoComEstrategias(janelaUpdate, btnAtualizar, "Atualizar");
+            InteractionHelper.ClicarComEstrategias(btnAtualizar, janelaUpdate, "Atualizar");
 
             // --- Aguardar download e clicar em "Instalar" ---
             AppLogs.LogUpdaterBaixandoAtualizacoes();
@@ -398,7 +398,7 @@ namespace PromobAutomacao.Promob{
             }
 
             AppLogs.LogUpdaterBotaoInstalarDefinido(btnInstalar.ControlType.ToString(), btnInstalar.Name, btnInstalar.Properties.AutomationId.ValueOrDefault);
-            ClicarBotaoComEstrategias(janelaUpdate, btnInstalar, "Instalar");
+            InteractionHelper.ClicarComEstrategias(btnInstalar, janelaUpdate, "Instalar");
 
             // --- Aguardar e clicar no botão "Ok" do alerta de fechamento ---
             AppLogs.LogUpdaterConfirmandoFechamento();
@@ -440,68 +440,23 @@ namespace PromobAutomacao.Promob{
             }
 
             AppLogs.LogUpdaterBotaoOkDefinido(btnOk.ControlType.ToString(), btnOk.Name, btnOk.Properties.AutomationId.ValueOrDefault);
-            ClicarBotaoComEstrategias(janelaUpdate, btnOk, "Ok");
+            InteractionHelper.ClicarComEstrategias(btnOk, janelaUpdate, "Ok");
             AppLogs.LogUpdaterCliqueOkSucesso();
 
+            IntPtr hwndUpdate = IntPtr.Zero;
+            try {
+                hwndUpdate = (IntPtr)janelaUpdate.Properties.NativeWindowHandle.ValueOrDefault;
+            } catch { }
+
             // --- Aguardar popup de sucesso da instalação e fechar ---
-            AguardarEFecharPopupSucesso(automation);
+            AguardarEFecharPopupSucesso(automation, hwndUpdate);
         }
 
         // ==================================================================================
         // MÉTODOS PRIVADOS — UTILITÁRIOS
         // ==================================================================================
 
-        //--------------------------------------------------------------------------------------
-        /// <summary>
-        /// Executa a sequência completa de estratégias de clique para acionar um botão:
-        /// 1. Clique físico por coordenadas absolutas (Mouse real)
-        /// 2. Clique via UIA Invoke/Click fallback
-        /// 3. Envio direto de teclado (Focus + ENTER + SPACE)
-        /// </summary>
-        //--------------------------------------------------------------------------------------
-        private static void ClicarBotaoComEstrategias(Window janela, AutomationElement botao, string label){
-            // Garante foco na janela e no botão
-            try { InteractionHelper.AtivarJanela(janela); } catch {}
-            InteractionHelper.EsperarUiRespirar(300);
-            try { botao.Focus(); } catch {}
-            InteractionHelper.EsperarUiRespirar(300);
 
-            // ESTRATÉGIA 1: Clique Físico por coordenadas absolutas
-            var rect = botao.BoundingRectangle;
-            if (!rect.IsEmpty) {
-                try {
-                    int x = (int)(rect.X + (rect.Width / 2));
-                    int y = (int)(rect.Y + (rect.Height / 2));
-                    
-                    AppLogs.LogUpdaterMovendoCursor(x, y);
-                    Mouse.MoveTo(x, y);
-                    InteractionHelper.EsperarUiRespirar(250);
-                    Mouse.Click();
-                    InteractionHelper.EsperarUiRespirar(1000);
-                }
-                catch (Exception exMouse) {
-                    AppLogs.LogUpdaterFalhaCliqueFisico(label, exMouse.Message);
-                }
-            }
-
-            // ESTRATÉGIA 2: Clicar com Fallback UIA (Invoke -> Click -> Keyboard Space)
-            AppLogs.LogUpdaterAcionandoFallback();
-            InteractionHelper.ClicarComFallback(botao);
-            InteractionHelper.EsperarUiRespirar(500);
-
-            // ESTRATÉGIA 3: Envio Direto de Teclado (Focus + ENTER / ESPAÇO)
-            try {
-                AppLogs.LogUpdaterEnviandoFocusEnterSpace();
-                botao.Focus();
-                InteractionHelper.EsperarUiRespirar(150);
-                Keyboard.Type(VirtualKeyShort.ENTER);
-                InteractionHelper.EsperarUiRespirar(150);
-                Keyboard.Type(VirtualKeyShort.SPACE);
-            }
-            catch (Exception exKey) {
-                AppLogs.LogUpdaterFalhaTeclado(label, exKey.Message);
-            }
-        }
 
         //--------------------------------------------------------------------------------------
         /// <summary>
@@ -581,7 +536,7 @@ namespace PromobAutomacao.Promob{
         /// </summary>
         /// <returns>O HWND da janela encontrada e restaurada, ou IntPtr.Zero se não encontrada.</returns>
         //--------------------------------------------------------------------------------------
-        private static IntPtr BuscarERestaurarJanelaOculta(string tituloContem, bool logDiagnostico = false){
+        private static IntPtr BuscarERestaurarJanelaOculta(Func<string, IntPtr, bool> matchPredicate, bool logDiagnostico = false){
             IntPtr resultado = IntPtr.Zero;
             var sb = new StringBuilder(512);
 
@@ -601,7 +556,7 @@ namespace PromobAutomacao.Promob{
                     AppLogs.LogUpdaterHwndDetalhe(hWnd, titulo, visivel, wp.showCmd, isToolWin);
                 }
 
-                if (!titulo.Contains(tituloContem, StringComparison.OrdinalIgnoreCase))
+                if (!matchPredicate(titulo, hWnd))
                     return true; // Continua enumerando
 
                 // Janela encontrada — verifica se precisa ser restaurada
@@ -610,7 +565,7 @@ namespace PromobAutomacao.Promob{
                 bool janelaVisivel = IsWindowVisible(hWnd);
                 int exStyleJanela  = GetWindowLong(hWnd, GWL_EXSTYLE);
 
-                AppLogs.LogUpdaterJanelaEncontradaHwnd(tituloContem, hWnd, titulo);
+                AppLogs.LogUpdaterJanelaEncontradaHwnd("Filtro Customizado", hWnd, titulo);
                 AppLogs.LogUpdaterJanelaEstado(janelaVisivel, placement.showCmd, (exStyleJanela & WS_EX_TOOLWINDOW) != 0);
 
                 // Restaura em todos os casos onde não está em estado normal visível
@@ -639,6 +594,10 @@ namespace PromobAutomacao.Promob{
             }, IntPtr.Zero);
 
             return resultado;
+        }
+
+        private static IntPtr BuscarERestaurarJanelaOculta(string tituloContem, bool logDiagnostico = false){
+            return BuscarERestaurarJanelaOculta((titulo, _) => titulo.Contains(tituloContem, StringComparison.OrdinalIgnoreCase), logDiagnostico);
         }
 
         //--------------------------------------------------------------------------------------
@@ -719,7 +678,7 @@ namespace PromobAutomacao.Promob{
                 throw new Exception("Botão 'Fechar' não encontrado na janela 'Promob Update'.");
             }
 
-            ClicarBotaoComEstrategias(janelaUpdate, btnFechar, "Fechar");
+            InteractionHelper.ClicarComEstrategias(btnFechar, janelaUpdate, "Fechar");
 
             // --- Confirmar fechamento clicando em "Sim" no alerta (se aparecer) ---
             AppLogs.LogUpdaterAlertaSimNaoApareceu();
@@ -758,7 +717,7 @@ namespace PromobAutomacao.Promob{
 
             if (btnSim != null) {
                 AppLogs.LogUpdaterBtnSimDefinido(btnSim.ControlType.ToString(), btnSim.Name);
-                ClicarBotaoComEstrategias(janelaUpdate, btnSim, "Sim");
+                InteractionHelper.ClicarComEstrategias(btnSim, janelaUpdate, "Sim");
                 AppLogs.LogUpdaterSimClicado();
             }
             else {
@@ -770,14 +729,96 @@ namespace PromobAutomacao.Promob{
 
         //--------------------------------------------------------------------------------------
         /// <summary>
+        /// Verifica se uma janela identificada por HWND é a janela de sucesso da instalação
+        /// analisando a presença de textos de conclusão.
+        /// </summary>
+        //--------------------------------------------------------------------------------------
+        private static bool VerificarSeEhJanelaSucessoPorHwnd(IntPtr hWnd, UIA3Automation automation) {
+            try {
+                var el = automation.FromHandle(hWnd);
+                if (el != null) {
+                    var desc = el.FindAllDescendants();
+                    return desc.Any(e => (e.Name ?? "").Contains("concluída", StringComparison.OrdinalIgnoreCase) || 
+                                         (e.Name ?? "").Contains("sucedida", StringComparison.OrdinalIgnoreCase));
+                }
+            }
+            catch { }
+            return false;
+        }
+
+        //--------------------------------------------------------------------------------------
+        /// <summary>
+        /// Localiza robustamente o botão "Fechar" (ou qualquer botão alternativo caso não localizado)
+        /// na janela de sucesso da instalação.
+        /// </summary>
+        //--------------------------------------------------------------------------------------
+        private static AutomationElement? ObterBotaoFecharRobustamente(AutomationElement janela) {
+            try {
+                var desc = janela.FindAllDescendants();
+                
+                // 1. Botão com nome "Fechar" ou similar, ou AutomationId "btnClose" ou "btnFechar"
+                var btn = desc.FirstOrDefault(e =>
+                    e.ControlType == FlaUI.Core.Definitions.ControlType.Button &&
+                    ((e.Name ?? "").Contains("Fechar", StringComparison.OrdinalIgnoreCase) ||
+                     (e.Properties.AutomationId.ValueOrDefault ?? "").Equals("btnClose", StringComparison.OrdinalIgnoreCase) ||
+                     (e.Properties.AutomationId.ValueOrDefault ?? "").Equals("btnFechar", StringComparison.OrdinalIgnoreCase))
+                );
+                if (btn != null) return btn;
+
+                // 2. Qualquer elemento (não necessariamente do tipo Button) com nome "Fechar"
+                btn = desc.FirstOrDefault(e =>
+                    (e.Name ?? "").Equals("Fechar", StringComparison.OrdinalIgnoreCase)
+                );
+                if (btn != null) return btn;
+
+                // 3. Qualquer botão (ControlType.Button) que esteja ativo e visível na janela
+                var botoes = desc.Where(e =>
+                    e.ControlType == FlaUI.Core.Definitions.ControlType.Button &&
+                    e.IsEnabled &&
+                    !e.Properties.IsOffscreen.ValueOrDefault
+                ).ToList();
+                if (botoes.Count > 0) {
+                    return botoes.First();
+                }
+
+                // 4. Qualquer elemento Custom que possa representar um botão
+                var customElements = desc.Where(e =>
+                    e.ControlType == FlaUI.Core.Definitions.ControlType.Custom &&
+                    e.IsEnabled &&
+                    !e.Properties.IsOffscreen.ValueOrDefault
+                ).ToList();
+                if (customElements.Count > 0) {
+                    return customElements.First();
+                }
+            }
+            catch (Exception ex) {
+                AppLogs.LogUpdaterFalhaVarrerBotoesSucesso(ex.Message);
+            }
+
+            return null;
+        }
+
+        //--------------------------------------------------------------------------------------
+        /// <summary>
         /// Busca no desktop o popup de sucesso "PromobUpdate" (sem espaço) que contém
         /// um botão "Fechar". Retorna a janela e o botão, ou (null, null).
         /// </summary>
+        /// <param name="automation">A instância de automação UIA.</param>
+        /// <param name="hwndParaIgnorar">Handle opcional da janela principal do atualizador a ser ignorada.</param>
         //--------------------------------------------------------------------------------------
-        private static (Window? janela, AutomationElement? btnFechar) BuscarPopupSucessoNoDesktop(UIA3Automation automation){
+        private static (Window? janela, AutomationElement? btnFechar) BuscarPopupSucessoNoDesktop(UIA3Automation automation, IntPtr hwndParaIgnorar = default){
             // ETAPA 1: Tenta restaurar a janela caso esteja oculta (ícone em segundo plano)
-            // O popup "PromobUpdate" pode estar invisível para o FlaUI
-            var hOculta = BuscarERestaurarJanelaOculta("PromobUpdate");
+            // O popup "PromobUpdate" pode estar invisível para o FlaUI.
+            // Aceita tanto "PromobUpdate" quanto "Promob Update" desde que contenha o texto de sucesso.
+            var hOculta = BuscarERestaurarJanelaOculta((titulo, hWnd) => {
+                if (hwndParaIgnorar != IntPtr.Zero && hWnd == hwndParaIgnorar) return false;
+                if (titulo.Contains("PromobUpdate", StringComparison.OrdinalIgnoreCase)) return true;
+                if (titulo.Contains("Promob Update", StringComparison.OrdinalIgnoreCase)) {
+                    return VerificarSeEhJanelaSucessoPorHwnd(hWnd, automation);
+                }
+                return false;
+            });
+
             if (hOculta != IntPtr.Zero){
                 AppLogs.LogUpdaterPopupSucessoOcultoRestaurado();
                 InteractionHelper.EsperarUiRespirar(800);
@@ -786,16 +827,44 @@ namespace PromobAutomacao.Promob{
             // ETAPA 2: Scan via FlaUI (janelas visíveis, incluindo a recém-restaurada)
             try {
                 var janelasDesktop = automation.GetDesktop().FindAllChildren();
+                
+                // Log de depuração para listar janelas do Promob no Desktop
+                AppLogs.LogUpdaterIniciandoVarreduraJanelas();
                 foreach (var child in janelasDesktop) {
                     if (child.ControlType != FlaUI.Core.Definitions.ControlType.Window) continue;
+                    
+                    IntPtr childHwnd = IntPtr.Zero;
+                    try { childHwnd = (IntPtr)child.Properties.NativeWindowHandle.ValueOrDefault; } catch { }
+                    if (hwndParaIgnorar != IntPtr.Zero && childHwnd == hwndParaIgnorar) continue;
+
                     string nome = child.Name ?? "";
-                    if (nome.Contains("PromobUpdate", StringComparison.OrdinalIgnoreCase)) {
-                        var descSucesso = child.FindAllDescendants();
-                        var btnCheck = descSucesso.FirstOrDefault(e =>
-                            (e.ControlType == FlaUI.Core.Definitions.ControlType.Button) &&
-                            ((e.Name ?? "").Contains("Fechar", StringComparison.OrdinalIgnoreCase) ||
-                             (e.Properties.AutomationId.ValueOrDefault ?? "").Equals("btnClose", StringComparison.OrdinalIgnoreCase))
-                        );
+                    if (nome.Contains("Promob", StringComparison.OrdinalIgnoreCase)) {
+                        AppLogs.LogUpdaterJanelaPromobLocalizadaVarredura(nome, childHwnd);
+                    }
+                }
+
+                foreach (var child in janelasDesktop) {
+                    if (child.ControlType != FlaUI.Core.Definitions.ControlType.Window) continue;
+                    
+                    IntPtr childHwnd = IntPtr.Zero;
+                    try { childHwnd = (IntPtr)child.Properties.NativeWindowHandle.ValueOrDefault; } catch { }
+                    if (hwndParaIgnorar != IntPtr.Zero && childHwnd == hwndParaIgnorar) continue;
+
+                    string nome = child.Name ?? "";
+                    
+                    bool ehJanelaSucesso = nome.Contains("PromobUpdate", StringComparison.OrdinalIgnoreCase);
+                    if (!ehJanelaSucesso && nome.Contains("Promob Update", StringComparison.OrdinalIgnoreCase)) {
+                        try {
+                            var desc = child.FindAllDescendants();
+                            ehJanelaSucesso = desc.Any(e => 
+                                (e.Name ?? "").Contains("concluída", StringComparison.OrdinalIgnoreCase) || 
+                                (e.Name ?? "").Contains("sucedida", StringComparison.OrdinalIgnoreCase)
+                            );
+                        } catch { }
+                    }
+
+                    if (ehJanelaSucesso) {
+                        var btnCheck = ObterBotaoFecharRobustamente(child);
                         if (btnCheck != null) {
                             return (child.AsWindow(), btnCheck);
                         }
@@ -808,12 +877,7 @@ namespace PromobAutomacao.Promob{
                         var elDireto = automation.FromHandle(hOculta);
                         if (elDireto != null) {
                             var wDireto = elDireto.AsWindow();
-                            var descSucesso = wDireto.FindAllDescendants();
-                            var btnCheck = descSucesso.FirstOrDefault(e =>
-                                (e.ControlType == FlaUI.Core.Definitions.ControlType.Button) &&
-                                ((e.Name ?? "").Contains("Fechar", StringComparison.OrdinalIgnoreCase) ||
-                                 (e.Properties.AutomationId.ValueOrDefault ?? "").Equals("btnClose", StringComparison.OrdinalIgnoreCase))
-                            );
+                            var btnCheck = ObterBotaoFecharRobustamente(wDireto);
                             if (btnCheck != null) {
                                 return (wDireto, btnCheck);
                             }
@@ -834,9 +898,15 @@ namespace PromobAutomacao.Promob{
         /// Aguarda o popup de sucesso "PromobUpdate" aparecer no desktop (até 5 minutos)
         /// e aciona o fechamento via <see cref="FinalizarEFecharPopupSucesso"/>.
         /// </summary>
+        /// <param name="automation">A instância de automação UIA (não utilizada devido ao uso de conexão local fresca).</param>
+        /// <param name="hwndParaIgnorar">Handle opcional da janela principal do atualizador a ser ignorada.</param>
         //--------------------------------------------------------------------------------------
-        private static void AguardarEFecharPopupSucesso(UIA3Automation automation){
-            AppLogs.LogUpdaterBaixandoAtualizacoes(); // Usa a mensagem de andamento
+        private static void AguardarEFecharPopupSucesso(UIA3Automation automation, IntPtr hwndParaIgnorar = default){
+            AppLogs.LogUpdaterAguardandoConclusaoInstalacao();
+            
+            // Usamos uma conexão local fresca com o UIA para evitar problemas com buffers COM corrompidos
+            // após o encerramento do processo principal do atualizador
+            using var localAutomation = new UIA3Automation();
             
             AutomationElement? btnFecharSucesso = null;
             Window? janelaSucesso = null;
@@ -844,7 +914,7 @@ namespace PromobAutomacao.Promob{
             const int timeoutSucessoMs = 600000; // 10 minutos
             
             while (swSucesso.ElapsedMilliseconds < timeoutSucessoMs) {
-                var (janela, btn) = BuscarPopupSucessoNoDesktop(automation);
+                var (janela, btn) = BuscarPopupSucessoNoDesktop(localAutomation, hwndParaIgnorar);
                 if (janela != null && btn != null) {
                     janelaSucesso = janela;
                     btnFecharSucesso = btn;
@@ -852,7 +922,7 @@ namespace PromobAutomacao.Promob{
                 }
 
                 if (((int)swSucesso.Elapsed.TotalSeconds) % 10 == 0) {
-                    AppLogs.LogUpdaterTempoInstalacao(swSucesso.Elapsed.Minutes, swSucesso.Elapsed.Seconds);
+                    AppLogs.LogUpdaterAguardandoPopupConclusao(swSucesso.Elapsed.Minutes, swSucesso.Elapsed.Seconds);
                 }
 
                 Thread.Sleep(2000);
@@ -872,9 +942,32 @@ namespace PromobAutomacao.Promob{
         /// </summary>
         //--------------------------------------------------------------------------------------
         private static void FinalizarEFecharPopupSucesso(Window janelaSucesso, AutomationElement btnFecharSucesso) {
-            AppLogs.LogUpdaterBtnFecharSucessoDefinido(btnFecharSucesso.ControlType.ToString(), btnFecharSucesso.Name);
-            ClicarBotaoComEstrategias(janelaSucesso, btnFecharSucesso, "Fechar Sucesso");
+            AppLogs.LogUpdaterPopupConclusaoDetectado(btnFecharSucesso.Name);
+            
+            // Permite fallbacks de clique (mouse, Invoke, teclado) para garantir que o botão seja acionado em qualquer circunstância
+            InteractionHelper.ClicarComEstrategias(btnFecharSucesso, janelaSucesso, apenasMouse: false);
             AppLogs.LogUpdaterConcluidaSucesso();
+        }
+
+        //--------------------------------------------------------------------------------------
+        /// <summary>
+        /// Verifica se o popup de conclusão da atualização ("PromobUpdate") está aberto no desktop
+        /// e, se estiver, faz o fechamento automático.
+        /// </summary>
+        //--------------------------------------------------------------------------------------
+        public static bool VerificarEFecharPopupSucessoSeAberto(UIA3Automation automation) {
+            try {
+                var (janela, btn) = BuscarPopupSucessoNoDesktop(automation);
+                if (janela != null && btn != null) {
+                    AppLogs.LogUpdaterPopupUpdateAbertoDesktop();
+                    FinalizarEFecharPopupSucesso(janela, btn);
+                    return true;
+                }
+            }
+            catch (Exception ex) {
+                AppLogs.LogUpdaterFalhaVerificarFecharPopupSucessoInicial(ex.Message);
+            }
+            return false;
         }
 
     }

@@ -263,6 +263,7 @@ namespace PromobAutomacao{
                 try{
                     using var automation = new UIA3Automation();
                     PromobUpdater.ExecutarAtualizacao(automation);
+                    AppLogs.LogMainWindowUpdateSuccess();
                 }
                 catch (Exception ex){
                     AppLogs.LogMainWindowUpdateExecutionError(ex.Message);
@@ -332,6 +333,15 @@ namespace PromobAutomacao{
             Directory.CreateDirectory(PromobConfig.PastaPromobErro);
 
             using var automation = new UIA3Automation();
+
+            // Verifica e fecha o popup de conclusão do update ('PromobUpdate') se estiver aberto antes de começar
+            try {
+                PromobUpdater.VerificarEFecharPopupSucessoSeAberto(automation);
+            }
+            catch (Exception ex) {
+                AppLogs.LogMainWindowFalhaVerificarPopupInicial(ex.Message);
+            }
+
             using var fileAddedEvent = new AutoResetEvent(true);
 
             using var watcher = new FileSystemWatcher(PromobConfig.PastaPromob, "*.promob"){

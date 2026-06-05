@@ -57,6 +57,16 @@ namespace PromobAutomacao.Promob{
 
             token.ThrowIfCancellationRequested();
 
+            // Verifica e fecha o popup de conclusão do update ('PromobUpdate') se estiver aberto
+            try {
+                PromobUpdater.VerificarEFecharPopupSucessoSeAberto(automation);
+            }
+            catch (Exception ex) {
+                AppLogs.LogWorkflowFalhaVerificarPopupProcessamento(ex.Message);
+            }
+
+            token.ThrowIfCancellationRequested();
+
             // Verifica e fecha popups de bloqueio iniciais (como o modal 'Informação') antes de tentar interagir com a interface principal
             VerificarEFecharPopupsIniciais(automation, token);
 
@@ -241,33 +251,33 @@ namespace PromobAutomacao.Promob{
         private static void VerificarEFecharPopupsIniciais(UIA3Automation automation, CancellationToken token){
             token.ThrowIfCancellationRequested();
             try {
-                Logger.Log("  [INFO] Verificando se existem popups de bloqueio iniciais (como 'Informação')...");
+                AppLogs.LogWorkflowVerificandoPopupsIniciais();
                 var desktop = automation.GetDesktop();
                 
                 // Procuramos por popups de atenção/aviso/informação no Desktop pertencentes ao processo do Promob
                 var popup = PromobWindowHelper.EncontrarPopupAtencao(desktop, PromobWindowHelper.CachedProcessIdPromob);
                 if (popup != null) {
                     string nomePopup = popup.Name ?? "";
-                    Logger.Log($"  [AVISO-POPUP] Popup inicial detectado: '{nomePopup}'. Tratando e fechando...");
+                    AppLogs.LogWorkflowPopupInicialDetectado(nomePopup);
                     InteractionHelper.AtivarJanela(popup);
                     InteractionHelper.EsperarUiRespirar(500);
-
+ 
                     // Procura o botão OK ou Ok no popup
                     var btnOk = popup.FindFirstDescendant(cf => 
                         cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button)
                           .And(cf.ByName(PromobConfig.BtnOk).Or(cf.ByName(PromobConfig.BtnOkAlt)).Or(cf.ByName(PromobConfig.BtnConcluir))));
-
+ 
                     if (btnOk != null) {
-                        Logger.Log($"  [ACTION] Clicando no botão '{btnOk.Name}' do popup usando clique físico de mouse...");
-                        InteractionHelper.ClicarComMouseFisico(btnOk);
+                        AppLogs.LogWorkflowClicandoBtnOkPopup(btnOk.Name);
+                        InteractionHelper.ClicarComEstrategias(btnOk, apenasMouse: true);
                     } else {
                         // Se não encontrar o botão OK pelo nome, tenta o primeiro botão
                         var primeiroBotao = popup.FindFirstDescendant(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button));
                         if (primeiroBotao != null) {
-                            Logger.Log($"  [ACTION] Clicando no primeiro botão encontrado '{primeiroBotao.Name}' do popup usando clique físico de mouse...");
-                            InteractionHelper.ClicarComMouseFisico(primeiroBotao);
+                            AppLogs.LogWorkflowClicandoPrimeiroBotaoPopup(primeiroBotao.Name);
+                            InteractionHelper.ClicarComEstrategias(primeiroBotao, apenasMouse: true);
                         } else {
-                            Logger.Log("  [AVISO] Botão de fechamento não encontrado no popup. Enviando ENTER/Alt+F4...");
+                            AppLogs.LogWorkflowBotaoFechamentoNaoEncontradoPopup();
                             Keyboard.Type(VirtualKeyShort.ENTER);
                         }
                     }
@@ -275,7 +285,7 @@ namespace PromobAutomacao.Promob{
                 }
             }
             catch (Exception ex) {
-                Logger.Log($"  [AVISO] Falha ao verificar popups iniciais: {ex.Message}", LogLevel.Warn);
+                AppLogs.LogWorkflowFalhaVerificarPopupsIniciais(ex.Message);
             }
         }
 
