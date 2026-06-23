@@ -1130,6 +1130,19 @@ namespace PromobAutomacao.Utils{
             //Logger.Log($"Falha ao verificar popup de sucesso: {detail}", LogLevel.Debug);
         }
 
+        public static void LogUpdaterPopupConclusaoDetectadoSemBotao() {
+            Logger.Log("[ATUALIZAÇÃO] Popup de conclusão detectado, mas o botão 'Fechar' não pôde ser acessado. Forçando encerramento dos processos do atualizador...");
+        }
+
+        public static void LogUpdaterProcessosEncerradosForcadamente() {
+            Logger.Log("[ATUALIZAÇÃO] Processos do atualizador encerrados com sucesso!");
+        }
+
+        public static void LogUpdaterErroEncerrarProcessosForcadamente(string message) {
+            Logger.Log($"[ATUALIZAÇÃO] [AVISO] Erro ao encerrar processos do atualizador: {message}", LogLevel.Warn);
+        }
+
+
         public static void LogUpdaterTempoInstalacao(int minutes, int seconds){
             //Logger.Log($"Instalando atualizações... (Tempo decorrido: {minutes}m {seconds}s)", LogLevel.Debug);
         }
@@ -1263,10 +1276,6 @@ namespace PromobAutomacao.Utils{
             Logger.Log($"[ERRO] Falha ao atualizar: {detail}", LogLevel.Error);
         }
 
-        public static void LogMainWindowUpdateSuccess(){
-            Logger.Log("[ATUALIZAÇÃO] Atualização completa!");
-        }
-
         public static void LogMainWindowUpdateMonitorError(string detail){
             //Logger.Log($"[UPDATE MONITOR] Erro no monitor: {detail}", LogLevel.Debug);
         }
@@ -1371,10 +1380,6 @@ namespace PromobAutomacao.Utils{
             Logger.Log("  [INFO] Verificando se existem popups de bloqueio iniciais (como 'Informação')...");
         }
 
-        public static void LogWorkflowPopupInicialDetectado(string nomePopup) {
-            Logger.Log($"  [AVISO-POPUP] Popup inicial detectado: '{nomePopup}'. Tratando e fechando...");
-        }
-
         public static void LogWorkflowClicandoBtnOkPopup(string btnName) {
             Logger.Log($"  [ACTION] Clicando no botão '{btnName}' do popup usando clique físico de mouse...");
         }
@@ -1395,12 +1400,20 @@ namespace PromobAutomacao.Utils{
             Logger.Log($"  [ERROR] Falha ao varrer botões da janela de sucesso: {message}");
         }
 
+        public static void LogUpdaterBotaoFecharSucessoEncontrado(string estrategia, string? name, string? tipo, string? id) {
+            Logger.Log($"  [SUCESSO] Botão de fechamento localizado via {estrategia}: Nome='{name}', Tipo={tipo}, Id={id}");
+        }
+
+        public static void LogUpdaterDumpPopupSucesso(string detail) {
+            Logger.Log($"  [SUCESSO] Conteúdo do popup de conclusão (para diagnóstico): {detail}", LogLevel.Warn);
+        }
+
         public static void LogUpdaterIniciandoVarreduraJanelas() {
-            Logger.Log("  [DEBUG-WINDOW-SCAN] Iniciando varredura de janelas no Desktop...");
+            //Logger.Log("  [DEBUG-WINDOW-SCAN] Iniciando varredura de janelas no Desktop...");
         }
 
         public static void LogUpdaterJanelaPromobLocalizadaVarredura(string nome, IntPtr childHwnd) {
-            Logger.Log($"  [DEBUG-WINDOW-SCAN] Janela contendo 'Promob' localizada: '{nome}' (Handle: {childHwnd})");
+            //Logger.Log($"  [DEBUG-WINDOW-SCAN] Janela contendo 'Promob' localizada: '{nome}' (Handle: {childHwnd})");
         }
 
         public static void LogUpdaterAguardandoConclusaoInstalacao() {

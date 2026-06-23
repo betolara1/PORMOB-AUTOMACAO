@@ -37,6 +37,7 @@ namespace PromobAutomacao{
         static readonly object Sync = new();
 
         static string _apiKey = "";
+        static bool _inicializado = false;
         static readonly HttpClient Http = new()
         {
             Timeout = TimeSpan.FromSeconds(TIMEOUT_HTTP_SEGUNDOS)
@@ -55,19 +56,34 @@ namespace PromobAutomacao{
         // Inicialização
         public static void Inicializar()
         {
-            _apiKey = CarregarApiKey();
+            lock (Sync)
+            {
+                if (_inicializado) return;
+                _apiKey = CarregarApiKey();
 
-            if (string.IsNullOrWhiteSpace(_apiKey))
-            {
-                Console.WriteLine("[VISION] ⚠️ API key não encontrada. Vision desabilitado.");
-            }
-            else
-            {
-                Console.WriteLine("[VISION] ✅ API key carregada. Vision habilitado.");
+                if (string.IsNullOrWhiteSpace(_apiKey))
+                {
+                    Console.WriteLine("[VISION] ⚠️ API key não encontrada. Vision desabilitado.");
+                }
+                else
+                {
+                    Console.WriteLine("[VISION] ✅ API key carregada. Vision habilitado.");
+                }
+                _inicializado = true;
             }
         }
 
-        public static bool Habilitado => !string.IsNullOrWhiteSpace(_apiKey);
+        public static bool Habilitado
+        {
+            get
+            {
+                if (!_inicializado)
+                {
+                    Inicializar();
+                }
+                return !string.IsNullOrWhiteSpace(_apiKey);
+            }
+        }
 
         // ────────────────────────────────────────────────────────────────────
         // API principal

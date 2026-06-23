@@ -263,7 +263,7 @@ namespace PromobAutomacao{
                 try{
                     using var automation = new UIA3Automation();
                     PromobUpdater.ExecutarAtualizacao(automation);
-                    AppLogs.LogMainWindowUpdateSuccess();
+                    AppLogs.LogUpdaterConcluidaSucesso();
                 }
                 catch (Exception ex){
                     AppLogs.LogMainWindowUpdateExecutionError(ex.Message);
@@ -551,7 +551,7 @@ namespace PromobAutomacao{
                         }
 
                         if (sucesso){
-                            AppLogs.LogMainWindowUpdateSuccess();
+                            AppLogs.LogUpdaterConcluidaSucesso();
                         }
                     }
                     finally{
