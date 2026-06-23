@@ -201,15 +201,15 @@ namespace PromobAutomacao.Promob{
             token.ThrowIfCancellationRequested();
 
             
-            // Diagnostics.Medir("Abrir Promob ERP", () => PromobExportadorErp.AbrirIntegradorErp(automation, janela));
+            Diagnostics.Medir("Abrir Promob ERP", () => PromobExportadorErp.AbrirIntegradorErp(automation, janela));
 
-            // PromobExportException? erroExportacao = null;
-            // try{
-            //     Diagnostics.Medir("Exportação ERP", () => PromobExportadorErp.AguardarExportacaoErp(automation, janela));
-            // }
-            // catch (PromobExportException ex){
-            //     erroExportacao = ex;
-            // }
+            PromobExportException? erroExportacao = null;
+            try{
+                Diagnostics.Medir("Exportação ERP", () => PromobExportadorErp.AguardarExportacaoErp(automation, janela));
+            }
+            catch (PromobExportException ex){
+                erroExportacao = ex;
+            }
             
 
             AppLogs.LogWorkflowFechandoProjeto();
