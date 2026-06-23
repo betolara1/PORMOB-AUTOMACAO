@@ -262,6 +262,10 @@ namespace PromobAutomacao{
             Task.Run(() => {
                 try{
                     using var automation = new UIA3Automation();
+                    
+                    // Verifica e ativa a interface 'Novo Promob' caso o checkbox esteja desativado
+                    PromobWindowHelper.VerificarEAtivarNovoPromob(automation);
+
                     PromobUpdater.ExecutarAtualizacao(automation);
                     AppLogs.LogUpdaterConcluidaSucesso();
                 }
@@ -333,6 +337,9 @@ namespace PromobAutomacao{
             Directory.CreateDirectory(PromobConfig.PastaPromobErro);
 
             using var automation = new UIA3Automation();
+
+            // Verifica e ativa a interface 'Novo Promob' caso o checkbox esteja desativado
+            PromobWindowHelper.VerificarEAtivarNovoPromob(automation);
 
             // Verifica e fecha o popup de conclusão do update ('PromobUpdate') se estiver aberto antes de começar
             try {

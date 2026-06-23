@@ -225,5 +225,65 @@ namespace PromobAutomacao.Promob{
 
             return null;
         }
+
+        //--------------------------------------------------------------------------------------
+            /// <summary>
+            /// Verifica se a caixa de seleção 'Novo Promob' está desativada e a ativa caso necessário.
+            /// </summary>
+            /// <param name="automation">A instância ativa do motor de automação UIA3.</param>
+        //--------------------------------------------------------------------------------------
+        public static void VerificarEAtivarNovoPromob(UIA3Automation automation){
+            try{
+                AppLogs.LogVerificandoNovoPromob();
+                
+                var janela = AguardarJanelaPromob(automation, 15000);
+                if (janela == null){
+                    AppLogs.LogNovoPromobJanelaNaoEncontrada();
+                    return;
+                }
+
+                // Tenta localizar o checkbox com AutomationId 'NewMenuUIToggleButton' ou pelo nome 'Novo Promob'
+                var chk = janela.FindFirstDescendant(cf => cf.ByAutomationId("NewMenuUIToggleButton"))?.AsCheckBox()
+                       ?? janela.FindFirstDescendant(cf => cf.ByName("Novo Promob").And(cf.ByControlType(FlaUI.Core.Definitions.ControlType.CheckBox)))?.AsCheckBox();
+
+                if (chk != null){
+                    if (chk.IsChecked != true){
+                        AppLogs.LogNovoPromobDesativado();
+                        InteractionHelper.AtivarJanela(janela);
+                        InteractionHelper.EsperarUiRespirar(300);
+                        
+                        try{
+                            chk.IsChecked = true;
+                        }
+                        catch{
+                            // Fallback se a propriedade de definição direta falhar
+                            InteractionHelper.ClicarComFallback(chk);
+                        }
+                        
+                        InteractionHelper.EsperarUiRespirar(1000);
+                        
+                        // Valida se ativou
+                        var chkValida = janela.FindFirstDescendant(cf => cf.ByAutomationId("NewMenuUIToggleButton"))?.AsCheckBox()
+                                     ?? janela.FindFirstDescendant(cf => cf.ByName("Novo Promob").And(cf.ByControlType(FlaUI.Core.Definitions.ControlType.CheckBox)))?.AsCheckBox();
+                        
+                        if (chkValida != null && chkValida.IsChecked == true){
+                            AppLogs.LogNovoPromobAtivadoComSucesso();
+                        }
+                        else{
+                            AppLogs.LogNovoPromobFalhaAtivacao();
+                        }
+                    }
+                    else{
+                        AppLogs.LogNovoPromobJaAtivado();
+                    }
+                }
+                else{
+                    AppLogs.LogNovoPromobCheckboxNaoEncontrado();
+                }
+            }
+            catch (Exception ex){
+                AppLogs.LogNovoPromobErroVerificacao(ex.Message);
+            }
+        }
     }
 }

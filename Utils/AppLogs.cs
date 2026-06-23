@@ -1436,5 +1436,40 @@ namespace PromobAutomacao.Utils{
             Logger.Log($"  [AVISO] Falha ao verificar/fechar popup de sucesso inicial: {message}", LogLevel.Warn);
         }
 
+        // ==================================================================================
+        // --- 12. NOVO PROMOB CHECKBOX VERIFICATION ---
+        // ==================================================================================
+
+        public static void LogVerificandoNovoPromob() {
+            Logger.Log("[VERIFICAÇÃO] Verificando checkbox 'Novo Promob'...");
+        }
+
+        public static void LogNovoPromobJanelaNaoEncontrada() {
+            Logger.Log("  [AVISO] Janela do Promob não foi encontrada para verificar o checkbox 'Novo Promob'.", LogLevel.Warn);
+        }
+
+        public static void LogNovoPromobDesativado() {
+            //Logger.Log("  [INFO] Checkbox 'Novo Promob' está desativado. Ativando...");
+        }
+
+        public static void LogNovoPromobAtivadoComSucesso() {
+            Logger.Log("  [OK] Checkbox 'Novo Promob' foi ativado com sucesso.");
+        }
+
+        public static void LogNovoPromobFalhaAtivacao() {
+            Logger.Log("  [AVISO] Checkbox 'Novo Promob' não pôde ser ativado.", LogLevel.Warn);
+        }
+
+        public static void LogNovoPromobJaAtivado() {
+            Logger.Log("  [OK] Checkbox 'Novo Promob' já está ativado.");
+        }
+
+        public static void LogNovoPromobCheckboxNaoEncontrado() {
+            Logger.Log("  [AVISO] Checkbox 'Novo Promob' não foi encontrado na janela.", LogLevel.Warn);
+        }
+
+        public static void LogNovoPromobErroVerificacao(string error) {
+            Logger.Log($"  [ERRO] Ocorreu um erro ao verificar o checkbox 'Novo Promob': {error}", LogLevel.Error);
+        }
     }
 }
