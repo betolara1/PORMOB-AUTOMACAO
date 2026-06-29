@@ -200,10 +200,6 @@ namespace PromobAutomacao.Promob{
 
             token.ThrowIfCancellationRequested();
 
-            Diagnostics.Medir("Exportação 3D", () => PromobExportador3D.Exportar(automation, janela));
-
-            token.ThrowIfCancellationRequested();
-
             
             Diagnostics.Medir("Abrir Promob ERP", () => PromobExportadorErp.AbrirIntegradorErp(automation, janela));
 

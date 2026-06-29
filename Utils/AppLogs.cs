@@ -634,6 +634,109 @@ namespace PromobAutomacao.Utils{
             //Logger.Log($"  [SUCESSO] Exportação ERP concluída em {s}s.");
         }
 
+        // ==================================================================================
+        // --- 9b. PROMOB: PROMOB EXPORTADOR 3D ---
+        // ==================================================================================
+
+        public static void LogExportador3DSelecionandoAbaArquivo() {
+            Logger.Log("  [INFO] Selecionando aba 'Arquivo'...");
+        }
+
+        public static void LogExportador3DProcurandoBotaoExportar() {
+            Logger.Log("  [INFO] Procurando botão 'Exportar' na aba 'Arquivo'...");
+        }
+
+        public static void LogExportador3DBotaoEncontrado() {
+            Logger.Log("  [OK] Botão 'Exportar' encontrado. Clicando...");
+        }
+
+        public static void LogExportador3DProcurandoOpcaoArquivo3D() {
+            Logger.Log("  [INFO] Procurando opção 'Arquivo 3D' no menu suspenso...");
+        }
+
+        public static void LogExportador3DSelecionandoOpcaoArquivo3D() {
+            Logger.Log("  [OK] Selecionando opção 'Arquivo 3D'...");
+        }
+
+        public static void LogExportador3DAguardandoJanelaWizard() {
+            Logger.Log("  [INFO] Aguardando janela do 'Assistente para Exportação de Arquivo 3D'...");
+        }
+
+        public static void LogExportador3DJanelaWizardEncontrada() {
+            Logger.Log("  [OK] Janela do assistente encontrada.");
+        }
+
+        public static void LogExportador3DProcurandoOpcaoModulo() {
+            Logger.Log("  [INFO] Procurando opção 'Agrupar layer por módulo'...");
+        }
+
+        public static void LogExportador3DSelecionandoOpcaoModulo() {
+            Logger.Log("  [OK] Selecionando opção 'Agrupar layer por módulo'...");
+        }
+
+        public static void LogExportador3DProcurandoBotaoAvancar() {
+            Logger.Log("  [INFO] Procurando botão 'Avançar' no assistente...");
+        }
+
+        public static void LogExportador3DClicandoBotaoAvancar() {
+            Logger.Log("  [OK] Clicando no botão 'Avançar'...");
+        }
+
+        public static void LogExportador3DAvancandoDetalhamento() {
+            Logger.Log("  [INFO] Avançando para a página 'Detalhamento de Exportação'...");
+        }
+
+        public static void LogExportador3DAvancandoFiltros() {
+            Logger.Log("  [INFO] Avançando para a página 'Filtros'...");
+        }
+
+        public static void LogExportador3DProcessandoFiltroCamadas() {
+            Logger.Log("  [INFO] Processando 'Filtro de Camadas': desmarcando todos...");
+        }
+
+        public static void LogExportador3DDesmarcandoCamada(string nome) {
+            Logger.Log($"    [OK] Desmarcando camada: '{nome}'");
+        }
+
+        public static void LogExportador3DMarcandoEspeciais() {
+            Logger.Log("  [OK] Marcando camada 'ESPECIAIS'.");
+        }
+
+        public static void LogExportador3DEspeciaisNaoEncontrado() {
+            Logger.Log("  [INFO] Camada 'ESPECIAIS' não encontrada. Todas as camadas ficarão desmarcadas.");
+        }
+
+        public static void LogExportador3DFiltrosProcessados(int total, bool temEspeciais) {
+            Logger.Log($"  [OK] Filtro de Camadas processado: {total} camadas encontradas, ESPECIAIS {(temEspeciais ? "marcada" : "não encontrada")}.");
+        }
+
+        public static void LogExportador3DProcurandoBotaoConcluir() {
+            Logger.Log("  [INFO] Procurando botão 'Concluir' no assistente...");
+        }
+
+        public static void LogExportador3DClicandoBotaoConcluir() {
+            Logger.Log("  [OK] Clicando no botão 'Concluir'...");
+        }
+
+        public static void LogExportador3DVerificandoPopupErro() {
+            Logger.Log("  [INFO] Verificando se popup de erro/aviso apareceu...");
+        }
+
+        public static void LogExportador3DPopupErroDetectado() {
+            Logger.Log("  [AVISO-POPUP] Popup 'Não há módulos para serem exportados' detectado.");
+        }
+
+        public static void LogExportador3DClicandoBotaoOkPopup() {
+            Logger.Log("    [OK] Clicando em OK no popup para fechar.");
+        }
+
+        public static void LogExportador3DPopupErroNaoDetectado() {
+            Logger.Log("  [INFO] Nenhum popup de erro detectado. Prosseguindo...");
+        }
+
+        public static void LogExportador3DFechandoWizardRestante() {
+            Logger.Log("  [INFO] Janela do assistente ainda aberta. Fechando via botão 'Cancelar'...");
+        }
 
         // ==================================================================================
         public static void LogCarregadorLocalizandoPrimeiroProjetoRecentes(){
