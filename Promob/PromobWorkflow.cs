@@ -200,7 +200,7 @@ namespace PromobAutomacao.Promob{
 
             token.ThrowIfCancellationRequested();
 
-            Diagnostics.Medir("Exportação 3D", () => PromobExportador3D.Exportar(automation, janela));
+            Diagnostics.Medir("Exportação 3D", () => PromobExportador3D.Exportar(automation, janela, caminhoArquivo));
 
             token.ThrowIfCancellationRequested();
 

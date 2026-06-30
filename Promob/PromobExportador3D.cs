@@ -38,7 +38,7 @@ namespace PromobAutomacao.Promob{
         /// <param name="automation">A instância ativa do motor de automação UIA3.</param>
         /// <param name="janela">A janela principal ativa do Promob.</param>
         //--------------------------------------------------------------------------------------
-        public static void Exportar(UIA3Automation automation, Window janela){
+        public static void Exportar(UIA3Automation automation, Window janela, string caminhoArquivo){
             InteractionHelper.AtivarJanela(janela);
 
             var raizBusca = WindowFinder.ObterHostOuJanela(janela, PromobConfig.AutomationIdHost, PromobWindowHelper.CachedProcessIdPromob);
@@ -153,6 +153,111 @@ namespace PromobAutomacao.Promob{
             InteractionHelper.AtivarJanela(janelaWizard);
             InteractionHelper.EsperarUiRespirar(500);
 
+            // --- Alterar nome do arquivo no campo "Nome" para corresponder ao .promob sendo processado ---
+            try {
+                string promobName = System.IO.Path.GetFileNameWithoutExtension(caminhoArquivo);
+                Logger.Log($"[Exportador 3D] Ajustando o nome do arquivo para exportar usando o promob: '{promobName}'");
+
+                // Busca o campo de texto correspondente ao Nome do arquivo
+                var todosEdits = janelaWizard.FindAllDescendants(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Edit));
+                var editNome = todosEdits.FirstOrDefault(e => {
+                    try {
+                        var txt = e.AsTextBox().Text;
+                        return txt.Contains(".dxf", StringComparison.OrdinalIgnoreCase) || txt.Contains(@"\Clientes\", StringComparison.OrdinalIgnoreCase);
+                    } catch { return false; }
+                }) ?? todosEdits.FirstOrDefault();
+
+                if (editNome != null) {
+                    var caminhoOriginal = editNome.AsTextBox().Text;
+                    string novoCaminhoDxf = "";
+                    if (!string.IsNullOrWhiteSpace(caminhoOriginal)) {
+                        try {
+                            var diretorio = System.IO.Path.GetDirectoryName(caminhoOriginal);
+                            if (!string.IsNullOrWhiteSpace(diretorio)) {
+                                novoCaminhoDxf = System.IO.Path.Combine(diretorio, promobName + ".dxf");
+                            }
+                        } catch (Exception ex) {
+                            Logger.Log($"[Exportador 3D] [AVISO] Erro ao extrair diretório do caminho original '{caminhoOriginal}': {ex.Message}", LogLevel.Warn);
+                        }
+                    }
+
+                    if (string.IsNullOrWhiteSpace(novoCaminhoDxf)) {
+                        novoCaminhoDxf = System.IO.Path.Combine(@"C:\ProgramData\Procad\Promob Studio Bartz\Clientes", promobName + ".dxf");
+                    }
+
+                    Logger.Log($"[Exportador 3D] Definindo novo caminho de exportação: '{novoCaminhoDxf}'");
+                    
+                    bool preenchido = false;
+                    
+                    // 1. Tenta definir via UIA (SetValue / ValuePattern)
+                    if (InteractionHelper.TentarDefinirValor(editNome, novoCaminhoDxf)) {
+                        InteractionHelper.EsperarUiRespirar(200);
+                        var txtAtual = editNome.AsTextBox().Text;
+                        if (txtAtual.Equals(novoCaminhoDxf, StringComparison.OrdinalIgnoreCase)) {
+                            preenchido = true;
+                        }
+                    }
+                    
+                    // 2. Se falhar, tenta via teclado simulado (Ctrl+A, Backspace, Digitar)
+                    if (!preenchido) {
+                        try {
+                            InteractionHelper.AtivarJanela(janelaWizard);
+                            editNome.Focus();
+                            InteractionHelper.EsperarUiRespirar(200);
+                            Keyboard.TypeSimultaneously(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_A);
+                            InteractionHelper.EsperarUiRespirar(100);
+                            Keyboard.Type(VirtualKeyShort.BACK);
+                            InteractionHelper.EsperarUiRespirar(100);
+                            Keyboard.Type(novoCaminhoDxf);
+                            InteractionHelper.EsperarUiRespirar(300);
+                            
+                            var txtAtual = editNome.AsTextBox().Text;
+                            if (txtAtual.Equals(novoCaminhoDxf, StringComparison.OrdinalIgnoreCase)) {
+                                preenchido = true;
+                            }
+                        } catch { }
+                    }
+                    
+                    // 3. Se ainda assim falhar, tenta via Clipboard
+                    if (!preenchido) {
+                        try {
+                            InteractionHelper.AtivarJanela(janelaWizard);
+                            editNome.Focus();
+                            InteractionHelper.EsperarUiRespirar(200);
+                            Keyboard.TypeSimultaneously(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_A);
+                            InteractionHelper.EsperarUiRespirar(100);
+                            Keyboard.Type(VirtualKeyShort.BACK);
+                            InteractionHelper.EsperarUiRespirar(100);
+
+                            string? conteudoAnterior = NativeClipboard.ObterTexto();
+                            NativeClipboard.CopiarParaClipboardNativo(novoCaminhoDxf);
+                            InteractionHelper.EsperarUiRespirar(300);
+                            Keyboard.TypeSimultaneously(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_V);
+                            InteractionHelper.EsperarUiRespirar(300);
+                            
+                            if (conteudoAnterior != null) {
+                                NativeClipboard.CopiarParaClipboardNativo(conteudoAnterior);
+                            }
+                            
+                            var txtAtual = editNome.AsTextBox().Text;
+                            if (txtAtual.Equals(novoCaminhoDxf, StringComparison.OrdinalIgnoreCase)) {
+                                preenchido = true;
+                            }
+                        } catch { }
+                    }
+
+                    if (preenchido) {
+                        Logger.Log($"[Exportador 3D] Caminho preenchido com sucesso: '{novoCaminhoDxf}'");
+                    } else {
+                        Logger.Log("[Exportador 3D] [AVISO] Não foi possível verificar o preenchimento do novo caminho.", LogLevel.Warn);
+                    }
+                } else {
+                    Logger.Log("[Exportador 3D] [AVISO] Campo de texto 'Nome' não foi encontrado.", LogLevel.Warn);
+                }
+            } catch (Exception ex) {
+                Logger.Log($"[Exportador 3D] [AVISO] Erro ao preencher campo Nome: {ex.Message}", LogLevel.Warn);
+            }
+
             // --- Selecionar RadioButton "Agrupar layer por módulo" ---
             AppLogs.LogExportador3DProcurandoOpcaoModulo();
 
@@ -223,41 +328,117 @@ namespace PromobAutomacao.Promob{
             // --- Verificar se a popup de erro "Não há módulos para serem exportados" apareceu ---
             AppLogs.LogExportador3DVerificandoPopupErro();
             Window? janelaPopup = null;
-            bool encontrouPopup = InteractionHelper.EsperarAte(() => {
-                try {
-                    var desktop = automation.GetDesktop();
-                    var janelas = desktop.FindAllChildren(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Window));
-                    foreach (var j in janelas) {
-                        if (PromobWindowHelper.CachedProcessIdPromob.HasValue && j.Properties.ProcessId.ValueOrDefault != PromobWindowHelper.CachedProcessIdPromob.Value)
-                            continue;
 
-                        var name = j.Name ?? "";
-                        if (name.Equals("Exportar", StringComparison.OrdinalIgnoreCase) ||
-                            name.Contains("Não há módulos", StringComparison.OrdinalIgnoreCase) ||
-                            name.Contains("módulos", StringComparison.OrdinalIgnoreCase)) {
-                            janelaPopup = j.AsWindow();
+            // Identifica se uma janela é o popup de erro de exportação.
+            // OBS: NÃO filtramos por ProcessId — esse popup é uma MessageBox do Windows
+            // que frequentemente reporta PID 0 ou diferente do processo principal do Promob,
+            // o que fazia a detecção antiga pular justamente a janela certa.
+            bool EhPopupModulos(AutomationElement j) {
+                try {
+                    var nome = j.Name ?? "";
+                    // 1) Casamento pelo título da janela
+                    if (nome.Contains("Não há módulos", StringComparison.OrdinalIgnoreCase) ||
+                        nome.Contains("módulos", StringComparison.OrdinalIgnoreCase) ||
+                        nome.Contains("modulos", StringComparison.OrdinalIgnoreCase) ||
+                        nome.Equals("Exportar", StringComparison.OrdinalIgnoreCase)) {
+                        return true;
+                    }
+                    // 2) Casamento pelo texto interno (mensagem da MessageBox).
+                    //    Só varre janelas pequenas/diálogo para não percorrer a árvore gigante da janela principal.
+                    var rect = j.BoundingRectangle;
+                    bool ehDialogo = rect.IsEmpty || (rect.Width > 0 && rect.Width < 800 && rect.Height < 600);
+                    if (ehDialogo) {
+                        // Otimização crucial: só faz a varredura profunda (FindAllDescendants) se a janela pertencer
+                        // ao processo do Promob ou for um alerta/diálogo legítimo do Promob. Evita varrer
+                        // árvores UIA gigantescas de processos de terceiros (VS Code, Chrome, etc.) que estejam minimizados (rect.IsEmpty).
+                        bool pertenceAoPromob = false;
+                        try {
+                            int pid = j.Properties.ProcessId.ValueOrDefault;
+                            if (pid > 0) {
+                                if (PromobWindowHelper.CachedProcessIdPromob.HasValue && pid == PromobWindowHelper.CachedProcessIdPromob.Value) {
+                                    pertenceAoPromob = true;
+                                } else {
+                                    using (var proc = Process.GetProcessById(pid)) {
+                                        if (proc.ProcessName.Contains("Promob", StringComparison.OrdinalIgnoreCase)) {
+                                            pertenceAoPromob = true;
+                                        }
+                                    }
+                                }
+                            }
+                        } catch {
+                            // Se falhar ao ler ProcessId (ex: janela em fechamento), permitimos se tiver títulos comuns de MessageBox do Promob
+                            if (InteractionHelper.ContemQualquer(nome, PromobConfig.TitulosAviso) || string.IsNullOrWhiteSpace(nome)) {
+                                pertenceAoPromob = true;
+                            }
+                        }
+
+                        if (!pertenceAoPromob) return false;
+
+                        var internos = j.FindAllDescendants();
+                        if (internos.Any(e =>
+                                (e.Name ?? "").Contains("Não há módulos", StringComparison.OrdinalIgnoreCase) ||
+                                (e.Name ?? "").Contains("serem exportados", StringComparison.OrdinalIgnoreCase))) {
                             return true;
                         }
                     }
                 } catch { }
                 return false;
-            }, timeoutMs: 3000, intervaloMs: 200);
+            }
+
+            // Timeout ampliado: o popup pode demorar a aparecer após o clique em "Concluir"
+            bool encontrouPopup = InteractionHelper.EsperarAte(() => {
+                try {
+                    // Estratégia 1: janelas de topo no Desktop (sem filtro rígido de ProcessId)
+                    var desktop = automation.GetDesktop();
+                    foreach (var j in desktop.FindAllChildren(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Window))) {
+                        if (EhPopupModulos(j)) { janelaPopup = j.AsWindow(); return true; }
+                    }
+
+                    // Estratégia 2: janelas-filhas diretas da janela principal do Promob (diálogos WinForms)
+                    foreach (var f in janela.FindAllChildren(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Window))) {
+                        if (EhPopupModulos(f)) { janelaPopup = f.AsWindow(); return true; }
+                    }
+                } catch { }
+                return false;
+            }, timeoutMs: 10000, intervaloMs: 300);
+
+            // Diagnóstico: se não encontrou, lista todas as janelas de topo para depuração
+            if (!encontrouPopup) {
+                try {
+                    var dump = string.Join(" | ", automation.GetDesktop()
+                        .FindAllChildren(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Window))
+                        .Select(j => {
+                            try { return $"'{j.Name}' (PID={j.Properties.ProcessId.ValueOrDefault})"; }
+                            catch { return "'?'"; }
+                        }));
+                    AppLogs.LogExportador3DDumpJanelas(dump);
+                } catch { }
+            }
 
             if (encontrouPopup && janelaPopup != null){
                 AppLogs.LogExportador3DPopupErroDetectado();
                 InteractionHelper.AtivarJanela(janelaPopup);
-                InteractionHelper.EsperarUiRespirar(200);
+                InteractionHelper.EsperarUiRespirar(400);
 
-                var btnOk = janelaPopup.FindFirstDescendant(cf =>
-                    cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button)
-                      .And(cf.ByName("OK").Or(cf.ByName("Ok")).Or(cf.ByName("Sim"))))
-                      ?? janelaPopup.FindAllDescendants(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button)).FirstOrDefault();
+                // O Promob pode renderizar o botão como Button OU Custom — testa os dois
+                var desc = janelaPopup.FindAllDescendants();
+                var btnOk = desc.FirstOrDefault(e =>
+                    (e.ControlType == FlaUI.Core.Definitions.ControlType.Button ||
+                     e.ControlType == FlaUI.Core.Definitions.ControlType.Custom) &&
+                    InteractionHelper.ContemQualquer(e.Name, "OK", "Ok", "ok", "Sim", "Fechar") &&
+                    e.IsEnabled
+                ) ?? desc.FirstOrDefault(e =>
+                    e.ControlType == FlaUI.Core.Definitions.ControlType.Button && e.IsEnabled
+                );
 
                 if (btnOk != null){
                     AppLogs.LogExportador3DClicandoBotaoOkPopup();
-                    InteractionHelper.ClicarComFallback(btnOk);
+                    InteractionHelper.ClicarComEstrategias(btnOk, janelaPopup, "Ok Popup Exportar");
                 }
                 else {
+                    // Fallback: foca a janela e envia ENTER
+                    InteractionHelper.AtivarJanela(janelaPopup);
+                    InteractionHelper.EsperarUiRespirar(300);
                     Keyboard.Type(VirtualKeyShort.ENTER);
                 }
                 InteractionHelper.EsperarUiRespirar(800);
