@@ -427,9 +427,6 @@ namespace PromobAutomacao{
                         AppLogs.LogMainWindowExportFailure(nome, exErp.Message);
                         Logger.RegistrarErro(nome, exErp);
 
-                        // Notifica via Telegram
-                        NotificationService.EnviarAlertaFalha(nome, exErp.Message);
-
                         try{
                             var destino = Path.Combine(PromobConfig.PastaPromobErro, nome);
                             if (File.Exists(destino)){
@@ -462,9 +459,6 @@ namespace PromobAutomacao{
 
                         AppLogs.LogMainWindowProcessingError(nome, ex.Message);
                         Logger.RegistrarErro(nome, ex);
-
-                        // Notifica via Telegram
-                        NotificationService.EnviarAlertaFalha(nome, ex.Message);
 
                         try{
                             PromobWorkflow.TentarRecuperar(automation);

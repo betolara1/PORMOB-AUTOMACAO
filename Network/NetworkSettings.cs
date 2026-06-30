@@ -19,11 +19,7 @@ namespace PromobAutomacao.Network{
         /// <summary>Porta TCP do servidor (padrão: 8085).</summary>
         public static int Port { get; set; } = 8085;
 
-        /// <summary>Token do Bot do Telegram para alertas de falha.</summary>
-        public static string TelegramBotToken { get; private set; } = "";
 
-        /// <summary>Chat ID do Telegram que receberá as notificações.</summary>
-        public static string TelegramChatId { get; private set; } = "";
 
         /// <summary>Lista dos IPs de servidor usados recentemente (máximo 5).</summary>
         public static string[] RecentServerIps { get; private set; } = Array.Empty<string>();
@@ -41,8 +37,7 @@ namespace PromobAutomacao.Network{
                 var root = doc.RootElement;
 
                 if (root.TryGetProperty("port", out var p)) Port = p.GetInt32();
-                if (root.TryGetProperty("telegramBotToken", out var t)) TelegramBotToken = t.GetString() ?? "";
-                if (root.TryGetProperty("telegramChatId", out var c)) TelegramChatId = c.GetString() ?? "";
+
 
                 if (root.TryGetProperty("recentServerIps", out var ips) && ips.ValueKind == JsonValueKind.Array){
                     RecentServerIps = ips.EnumerateArray()
@@ -72,8 +67,6 @@ namespace PromobAutomacao.Network{
             try{
                 var data = new{
                     port = Port,
-                    telegramBotToken = TelegramBotToken,
-                    telegramChatId = TelegramChatId,
                     recentServerIps = RecentServerIps
                 };
                 File.WriteAllText(_path, JsonSerializer.Serialize(data, new JsonSerializerOptions{ WriteIndented = true }));
