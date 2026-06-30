@@ -182,7 +182,7 @@ namespace PromobAutomacao.Promob{
                     }
 
                     if (string.IsNullOrWhiteSpace(novoCaminhoDxf)) {
-                        novoCaminhoDxf = System.IO.Path.Combine(@"C:\ProgramData\Procad\Promob Studio Bartz\Clientes", promobName + ".dxf");
+                        novoCaminhoDxf = System.IO.Path.Combine(@"\\192.168.1.10\Cortes Especiais", promobName + ".dxf");
                     }
 
                     Logger.Log($"[Exportador 3D] Definindo novo caminho de exportação: '{novoCaminhoDxf}'");
