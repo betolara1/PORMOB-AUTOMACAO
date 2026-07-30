@@ -36,3 +36,9 @@ C:\Users\Ralf\Desktop\Programação\AutomacaoPromobTeste\obj\Debug\net8.0-window
 C:\Users\Ralf\Desktop\Programação\AutomacaoPromobTeste\obj\Debug\net8.0-windows\PromobAutomacao.pdb
 C:\Users\Ralf\Desktop\Programação\AutomacaoPromobTeste\obj\Debug\net8.0-windows\PromobAutomacao.genruntimeconfig.cache
 C:\Users\Ralf\Desktop\Programação\AutomacaoPromobTeste\obj\Debug\net8.0-windows\ref\PromobAutomacao.dll
+C:\Users\Ralf\AppData\Local\Temp\claude\C--Users-Ralf-Desktop-Programa--o-AutomacaoPromobTeste\6f516e75-9212-445c-915e-9d170098cb40\scratchpad\build-check\network.json
+C:\Users\Ralf\AppData\Local\Temp\claude\C--Users-Ralf-Desktop-Programa--o-AutomacaoPromobTeste\6f516e75-9212-445c-915e-9d170098cb40\scratchpad\build-check\PromobAutomacao.exe
+C:\Users\Ralf\AppData\Local\Temp\claude\C--Users-Ralf-Desktop-Programa--o-AutomacaoPromobTeste\6f516e75-9212-445c-915e-9d170098cb40\scratchpad\build-check\PromobAutomacao.deps.json
+C:\Users\Ralf\AppData\Local\Temp\claude\C--Users-Ralf-Desktop-Programa--o-AutomacaoPromobTeste\6f516e75-9212-445c-915e-9d170098cb40\scratchpad\build-check\PromobAutomacao.runtimeconfig.json
+C:\Users\Ralf\AppData\Local\Temp\claude\C--Users-Ralf-Desktop-Programa--o-AutomacaoPromobTeste\6f516e75-9212-445c-915e-9d170098cb40\scratchpad\build-check\PromobAutomacao.dll
+C:\Users\Ralf\AppData\Local\Temp\claude\C--Users-Ralf-Desktop-Programa--o-AutomacaoPromobTeste\6f516e75-9212-445c-915e-9d170098cb40\scratchpad\build-check\PromobAutomacao.pdb
